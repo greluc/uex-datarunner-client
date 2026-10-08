@@ -28,7 +28,7 @@ The bounded contexts existed only as **packages**, protected by ArchUnit rules. 
 **Advantages of cutting the core by context (B and C):**
 
 1. **Boundaries enforced by the compiler.** JPMS refuses access to non-exported packages of another context. With A this rested only on ArchUnit rules.
-2. **High cohesion.** Everything about the reporting rules (Report aggregate, invariants I1–I6, submission gate, deviation assessment, review use cases) is in **one** module. With A it was spread over `domain` and `application`.
+2. **High cohesion.** Everything about the reporting rules (Report aggregate, invariants I1–I7, submission gate, deviation assessment, review use cases) is in **one** module. With A it was spread over `domain` and `application`.
 3. **Change locality.**
    - A Star Citizen UI patch changes `recognition` (and `adapter-ocr`).
    - A UEX API change changes `adapter-uex` (and at most `reference-data`).
@@ -58,7 +58,7 @@ Option **C**:
 ── Core (pure: no JavaFX, HTTP, SQL, ONNX, file system) ──
 shared-kernel     IDs, money/quantity value objects, Outcome, domain-event base, DDD marker annotations
 game              Game Environment context: environment, version, game state; port GameStateProbe
-reference-data    Reference Data context: ReferenceSnapshot, vocabulary indexes, fuzzy matcher; port ReferenceDataSource
+reference-data    Reference Data context: ReferenceSnapshot, vocabulary indexes, fuzzy matcher; ports ReferenceDataFetcher, ReferenceDataCache
 capture           Capture context: Capture, WatchedFolder, import use cases; ports CaptureSource, CaptureRepository
 recognition       Recognition context (formerly "pipeline"): locate, layout, parse, resolve, fuse, validate, stitch; ports Reader, TextDetector
 reporting         Reporting context: Report aggregate, submission gate, deviation assessment, grouping, review use cases; port ReportRepository
@@ -72,6 +72,8 @@ adapter-uex, adapter-storage, adapter-ocr, adapter-vlm, adapter-files, adapter-p
 ui, app, tools/ocr-eval
 ```
 
+Module and port names in this block are an excerpt; the authoritative module and port list is [02-architecture.md §2](../plan/02-architecture.md).
+
 **Context map (dependencies, acyclic):**
 
 ```
@@ -80,7 +82,7 @@ game           → shared-kernel
 reference-data → shared-kernel
 capture        → game
 recognition    → reference-data, game
-reporting      → recognition (published language: Scan/CardReading), reference-data, game
+reporting      → recognition (published language: Scan, CardReading, StitchedScan, FieldReading, Finding), reference-data, game
 submission     → reference-data, game            (does NOT know reporting)
 workflows      → capture, recognition, reporting, submission, game, reference-data
 ui             → workflows and the public application API of the context modules
@@ -89,7 +91,7 @@ app            → everything (composition root, no logic)
 ```
 
 - `submission` does not depend on `reporting`. `workflows` turns a released `Report` into a `SubmissionRequest` (a type of `submission`).
-- Results from `submission` (`ReportSubmitted`, `SubmissionRejected`) are applied to the report by `workflows`. This avoids the cycle D6.
+- Results from `submission` (`SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionRejected`, `SubmissionOutcomeUnknown` and the other submission and withdrawal events listed in [02 §2](../plan/02-architecture.md), all published by `submission`) are applied to the report by `workflows`; the resulting Report state changes publish `ReportSubmitted` etc. in `reporting`. This avoids the cycle D6.
 
 ## Consequences
 

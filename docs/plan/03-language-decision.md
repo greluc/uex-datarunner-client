@@ -26,7 +26,7 @@
 - **JavaFX 27** is GA on Maven Central (`org.openjfx:javafx-controls:27`).
 - **ONNX Runtime Java 1.30.0** (`com.microsoft.onnxruntime:onnxruntime`) is official and stable.
   - The JAR already contains the natives for `win-x64`, `linux-x64`, `linux-aarch64` and `osx-aarch64`; checked by listing the JAR contents.
-  - It ships an `Automatic-Module-Name: com.microsoft.onnxruntime`.
+  - It ships an `Automatic-Module-Name: com.microsoft.onnxruntime` → in the jlink image, `org.beryx.jlink` merges it into the merged module (explicit `mergedModuleName`), so native access is granted to that module (see [02](02-architecture.md) §8).
 - **basetool-sc-extractor** (Kotlin/JVM, JDK 25) uses exactly this ONNX Runtime version with PP-OCRv6 small models.
   - The image processing is written entirely on `BufferedImage`, without OpenCV.
   - This shows that PP-OCR via ORT on the JVM works **technically** with the SC HUD font.
@@ -90,15 +90,15 @@ The exact score is less important than the two criteria with the highest weight:
   - `jlink` with only the required modules
   - heap limit
   - load models lazily and close the ORT session after inactivity
-- **JDK 27 is not an LTS.** In line with the requirement "latest version", we develop on JDK 27 and move to JDK 28 in March 2027.
-  - For end users this does not matter, because `jpackage` ships the runtime.
-  - **Alternative:** JDK 25 LTS, if less upgrade effort is desired.
+- **JDK 27 is not an LTS.** In line with the requirement "latest version", we develop on JDK 27. Its support ends when JDK 28 ships (March 2027), so the move to JDK 28 must be **released** before the April 2027 JDK security update.
+  - Because `jpackage` ships the runtime, users get JDK security fixes only through our releases: every quarterly JDK security update means a PATCH release ([release-process.md](../release-process.md) 'Security release').
+  - **Alternative:** JDK 25 LTS, if less upgrade effort is desired (the quarterly rebuilds remain).
 - **No preview features** (e.g. Structured Concurrency, JEP 533 – still preview in JDK 27). Production code uses only final features.
 - **Toolchain risk JDK 27:** Error Prone, NullAway, google-java-format and the jlink plugin hook deeply into javac or the JDK. Whether the current versions support JDK 27 is **not checked**; that happens in M0. If one of them does not support JDK 27, the fallback is JDK 25 LTS (the decision for Java remains unaffected).
 
 **When Rust would be the better choice:** if a small single binary and minimal memory footprint were the top priority, or if the team knows Rust considerably better than Java. The architecture (see [02](02-architecture.md)) is cut in a language-neutral way, so a later port of the OCR core would be possible.
 
-**Addendum (optional AI recognition):** The local VLM is connected via the Ollama HTTP API (`java.net.http` + Jackson). This is equally easy in both languages and does not change the rating. Game detection via `ProcessHandle` is included in the JDK; in Rust it would need a crate such as `sysinfo`.
+**Addendum (optional AI recognition):** The local VLM is connected via the Ollama HTTP API (`java.net.http` + Jackson). This is equally easy in both languages and does not change the rating. Game detection uses the JDK (`ProcessHandle`, `/proc`) plus a small FFM call on Windows (Toolhelp snapshot, R-VLM-2); in Rust it would need a crate such as `sysinfo`.
 
 ## 5. License notice (consequence for reuse)
 

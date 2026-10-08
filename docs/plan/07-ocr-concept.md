@@ -6,15 +6,15 @@ The five screenshots supplied by the project owner (2000×1125, Buy and Local Ma
 
 | Element | Observation | Consequence |
 |---|---|---|
-| Header | "COMMODITIES" at the top left; "CURRENT BALANCE: ¤9,484,456 aUEC" at the top right | The header serves as an anchor. **Never transmit the balance**, redact it in the upload. |
+| Header | "COMMODITIES" at the top left; "CURRENT BALANCE: ¤9,484,456 aUEC" at the top right | "COMMODITIES" serves only as a locate anchor. **The balance is never stored or transmitted:** every crop excludes the header band (R-SUB-7, R-CAP-7). |
 | Left panel "YOUR INVENTORIES" | Dropdown with the current location ("PATCH CITY"), below it IN DEMAND / NO DEMAND / CANNOT SELL | **Location field = best source for the terminal assignment** (text in capital letters, letter-spaced) |
 | Right panel "SHOP INVENTORY" | Tabs "Buy" and "Local Market Value"; the active tab is filled with a strong orange-red, the inactive one is dark | Determine the side (BUY/SELL) by comparing the two tab fills (relative luminance and saturation, §2.1 item 7), with the section and label text as witness |
-| Sections | Buy: "IN STOCK" (expanded), below "OUT OF STOCK" (collapsed, "+"). Sell: "SELLABLE CARGO", "IN DEMAND" | Remember the section per card; consistency rules |
-| Card | Icon · vertical status bar (color/fill level) · name · status text (colored) · on the right "SHOP QUANTITY" (Buy only) · "333 SCU" · "¤3,237/SCU" · "AVAILABLE CARGO SIZE (SCU)" with boxes [1][2][4][8][16][24][32] | Field positions relative to the card; second reader for the status from bar and color |
+| Sections | Buy: "IN STOCK" (expanded), below "OUT OF STOCK" (collapsed, "+"). Sell: "SELLABLE CARGO", "IN DEMAND" | Section per card from headers inside the shop panel, inherited across captures only when they are contiguous (§2.3, §2.5b); consistency rules |
+| Card | Icon · vertical status bar (color/fill level) · name · status text (colored) · on the right "SHOP QUANTITY" (Buy only) · "333 SCU" · "¤3,237/SCU" · "AVAILABLE CARGO SIZE (SCU)" with boxes [1][2][4][8][16][24][32] | Field positions relative to the card; status-bar witness from bar and colour |
 | Currency symbol | `¤` sits directly in front of the number, without a space | Cause of the "9" prefix in the original (F1): separate it geometrically |
 | Numbers | Thousands separator comma ("6,000", "¤36,000/SCU"), whole aUEC | Structure parser (F3/F4) |
-| Long names | "Recycled Material Composite" overlaps with "0 SCU" → glued together "Compos0iSCU" | Name resolution via fuzzy prefix, SCU regex inside the token (F6) |
-| Scrolling | Cards cut off at the top and bottom edges (e.g. only "AVAILABLE CARGO SIZE" without a name; card without the cargo row) | Accept edge cards only with complete fields; merge via commodity ID |
+| Long names | "Recycled Material Composite" overlaps with "0 SCU" → glued together "Compos0iSCU" | Name resolution via fuzzy prefix, then the SCU parser anchored on the suffix inside the token (§2.4, F6) |
+| Scrolling | Cards cut off at the top and bottom edges (e.g. only "AVAILABLE CARGO SIZE" without a name; card without the cargo row) | Accept edge cards only if complete (§2.3); merge via commodity ID |
 | Dimmed cards | Fluorine (2 SCU, containers 8–32) and DynaFlex (13 SCU, containers 16–32) are dimmed. First interpreted as "fade-out at the viewport edge"; **corrected** after the Pyro Gateway screenshots (§1b): there, IRON is dimmed in the middle of the list (4 SCU < smallest container 8). | Hypothesis A14: dimmed = not buyable in any container size. Contrast normalization per card; the dimming is **not** an edge effect. For duplicates the following still applies: prefer the reading further from the edge (cut-off edge cards). |
 | Hover highlight | One card has a red background (mouse over it) | Contrast normalization per card, not global |
 | Font | Digits in HUD style (e.g. "16" resembles "lb", "4" resembles "Ч") | Classify cargo sizes via a closed set {1,2,4,8,16,24,32} and the order, do not read them freely |
@@ -28,26 +28,30 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 | Element | Observation | Consequence |
 |---|---|---|
 | Theme and font | Blue, **capital letters, monospace-like font**, unlike Patch City (orange, mixed case, rounded font) | At least two font and layout profiles; matching case-insensitive; the corpus must cover both |
-| Location field | "PYRO GATEWAY" – **without** a system suffix, although the terminal is "Pyro Gateway (Stanton)" | Confirms F12: the location text alone is not unambiguous. Disambiguation via the assortment, the session context and weakly via the theme (hypothesis A13: blue = Stanton side); when in doubt, mandatory selection. |
+| Location field | "PYRO GATEWAY" – **without** a system suffix, although the terminal is "Pyro Gateway (Stanton)" | Confirms F12: the location text alone is not unambiguous. Disambiguation via the assortment check (§2.5 item 2). The session context and, weakly, the theme (hypothesis A13: blue = Stanton side) only order the candidates; when in doubt, mandatory selection. |
 | Scrolling **without overlap** | The 4 Buy screenshots join exactly page by page; no card appears twice | Stitching must **not** rely on overlap. Order and gaps come from the **scrollbar** (position and length of the thumb on the right) and the UEX assortment. Possible gaps between two images are shown as a warning. |
-| Partial cards | At the bottom edge only the card header is visible (buy-1, buy-2); on the Sell side the price of HUMAN FOOD BARS is half cut off ("¤490/SCU") | A card only counts if its bottom edge is visible. A half-readable price must **not** be accepted. |
+| Partial cards | At the bottom edge only the card header is visible (buy-1, buy-2); on the Sell side the price of HUMAN FOOD BARS is half cut off ("¤490/SCU") | A card only counts if it is complete: top and bottom edge inside the viewport (§2.3). A half-readable price must **not** be accepted. |
 | Nearly identical names | "SHIP AMMUNITION – SIZE 1" … "SIZE 7" differ only by one digit; names wrap onto two lines | Fuzzy matching alone is dangerous here (see §2.5, rule for near-duplicate names) |
-| Status colors | Buy: "VERY LOW INVENTORY" **red**; Sell: "VERY LOW INVENTORY" **green** | The color is inverted between the sides (consistent with `commodities_status`). The second reader for the status via color must know the side. |
+| Status colors | Buy: "VERY LOW INVENTORY" **red**; Sell: "VERY LOW INVENTORY" **green** | The color is inverted between the sides (consistent with `commodities_status`). The status-bar witness must know the side. |
 | Sell side | Quantity without "SHOP QUANTITY", but with stock status (1,482 SCU, VERY LOW INVENTORY) | Indication that the number means the terminal's stock level (A10: rather `scu_sell_stock` than `scu_sell` – clarify with UEX) |
-| Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | Plausibility witness: "MAX INVENTORY" ⇒ SCU equals the known maximum of this terminal or this commodity (from the UEX history) |
+| Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | Consistency check only (prior-based, never an independent witness under R-VAL-2b): "MAX INVENTORY" with an SCU below the highest SCU UEX has recorded for this terminal **and** commodity on this side gives `Inconsistent` (confirm); nothing is repaired. Active once the data source is verified ([06](06-uex-api.md) open point 26); the status mapping depends on A5. |
 
 ## 2. Pipeline in detail
 
 ### 2.1 Preprocessing and locate
 
 1. **Anchor-search scale:** the coarse pass runs on a box-filtered copy at factor f = min(1, target height / image height), with a target height of 1080 px (start value). It never uses a fixed fraction and never upscales. basetool measured that bicubic loses hatched UI elements (25 % vs. 83 % hit rate with the box filter). A fixed factor such as 1/4 would shrink the anchors of a 1080p capture to ≈ 3 px, below the reading limit.
-   - **Native-resolution retry:** the pass is repeated at native resolution if no anchor is found, or if the smallest anchor found ("SHOP INVENTORY"/"YOUR INVENTORIES") is below 8 px cap height at factor f. Only then does the scan become `NotLocated` or get `TextTooSmall`. Without this retry, a 4K capture from twice the distance (anchors ≈ 11 px native, ≈ 5.5 px after f = ½) would fail although it passes R-OCR-17.
+   - **Native-resolution retry:** the pass is repeated at native resolution if no anchor is found, or if the smallest anchor found ("SHOP INVENTORY"/"YOUR INVENTORIES") is below 8 px cap height at factor f. Only then is the locate outcome decided (item 3) or `TextTooSmall` given. Without this retry, a 4K capture from twice the distance (anchors ≈ 11 px native, ≈ 5.5 px after f = ½) would fail although it passes R-OCR-17.
    - **No detector size limit:** the frame is never downscaled further to satisfy a detector limit; PaddleOCR's pipeline default `max_side_limit` of 4000 would shrink 5120×1440 by 0.78 and 5760×1080 by 0.69. If a side exceeds the detector tile size (setting), the frame is processed in overlapping tiles. The overlap is at least the width of the widest anchor line (start value 0.3 × frame height), so that every anchor lies completely inside one tile.
    - **Ultrawide and multi-monitor:** the panel can sit far off-centre; the search covers the full width, there is no centre crop.
-2. **Coarse OCR** (detection plus recognition only, on the downscaled image or its tiles) finds the text anchors "SHOP INVENTORY", "YOUR INVENTORIES", "COMMODITIES" and "AVAILABLE CARGO SIZE". Their positions define the panel geometry.
+2. **Coarse OCR** (detection plus recognition only, on the downscaled image or its tiles) finds the text anchors "SHOP INVENTORY", "YOUR INVENTORIES", "COMMODITIES" and "AVAILABLE CARGO SIZE". Their positions define the panel geometry. "COMMODITIES" lies in the terminal header next to the balance; it serves only as a locate anchor and is never part of a crop (crop extent: R-SUB-7).
 3. **Panel frame:** the frame lines of the panel are searched for via luma-gradient edges and line fitting, with thresholds relative to the panel's own gradient percentiles; no theme colour is used. The result gives the four corners for the homography.
-   - Fallback: corners from the text anchors plus layout profile.
+   - Fallback: corners from the text anchors plus layout profile. Crops from this fallback, and from the manual fallback, need the R-SUB-7 preview confirmation before upload.
    - Last fallback: manual.
+   - **Locate outcome**, decided after the native-resolution retry of item 1. *Structure cues* are at least 2 price tokens of the form glyph + digits + `/SCU`, or a row of cargo-size boxes. The start values are settings, calibrated in M3.
+     - `NotLocated`: a layout anchor or a structure cue was found, but neither the frame fit nor anchors + layout profile give a quad that passes the plausibility check (aspect ratio within the layout-profile tolerance). The capture goes to the report editor with manual corner correction (R-OCR-2, R-UI-6).
+     - `NotLocated` with reason "layout labels not recognised": structure cues are present but no English anchor is found, possibly because the game runs in another language. This needs no `global.ini`, so R-L10N-2 stays in M4; M4 replaces the hint with the `global.ini` lookup.
+     - `WrongScreen`: neither an anchor nor a structure cue. The capture is set aside per R-OCR-16 ("process anyway / crop manually").
 4. **Homography and resampling:**
    - The working size is chosen so that the reference glyph (R-OCR-17) reaches a fixed target height (start value 22 px, via the layout-profile ratio; ≈ 1000 px shop-panel width for the Stanton theme). Layout tolerances are fractions of this size.
    - Resampling is bilinear where the local scale is ≥ 1 and uses an area (box) prefilter where it is < 1.
@@ -55,7 +59,7 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
    - The resize to height 48 reproduces the training preprocessing: OpenCV `INTER_LINEAR` semantics (pixel-centre convention), BGR channel order, (x/255 − 0.5)/0.5, and right padding with 0 in the normalized space (mid-grey). A golden test against reference tensors pins this.
    - No bicubic or Lanczos pre-upscaling: in the preliminary measurement (one theme, third-party export) it brought no gain and more confident errors.
 5. **Channels:** the recognizer gets RGB in the trained (BGR) order. Classic edge and geometry steps use luma Y by default, because 4:2:0 JPEG halves the chroma resolution and blurs coloured strokes in the max channel. The max channel remains an evaluated alternative per layout profile, because saturated blue or red strokes have low luma contrast (F8). Colour is used only for tab, status, stock bar and hover; it is averaged over stroke or fill areas and never sampled per pixel.
-6. **Text-size gate (R-OCR-17):** the reference glyph height (cap height of the price digits) is estimated from the anchors in the original image via the layout-profile ratios, then measured on the price digits of every fully visible card; the smallest value counts, because perspective makes cards differ by 5–10 %. Limits and findings (`SmallText`, `TextTooSmall`) are defined in R-OCR-17. Upscaling cannot invent detail. If the decoder reduced the image to the pixel budget (`Downscaled`), the gate uses the raster that is actually read.
+6. **Text-size gate (R-OCR-17):** the reference glyph height (cap height of the price digits) is estimated from the anchors in the original image via the layout-profile ratios, then measured on the price digits of every complete card (§2.3); the smallest value counts, because perspective makes cards differ by 5–10 %. Limits and findings (`SmallText`, `TextTooSmall`) are defined in R-OCR-17. Upscaling cannot invent detail. If the decoder reduced the image to the pixel budget (`Downscaled`), the gate uses the raster that is actually read.
 7. **HDR and tone handling (R-OCR-18), in this order:**
    1. *Decode* (adapter): 8-bit sRGB, or the file is set aside as HDR-encoded (R-CAP-8).
    2. *Locate* uses only tone-invariant cues: text anchors, and luma-gradient edges with thresholds relative to the frame's own gradient percentiles. It never uses absolute luminance or colour.
@@ -67,25 +71,34 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
    4. *Normalization* (linear stretch p1 → 0, p99.5 → 1, optional gamma if the mid-tones are compressed) feeds the colour decisions and the classic geometry steps (card borders, scrollbar, glyph topology). By default the **recognizer gets the un-stretched crop**. A stretched recognizer input is an eval switch; M2 decides it from the eval results, possibly per tone class.
    5. *Confidence cap:* the scan still runs. Start rule: under `LowContrastCapture` or `ClippedHighlights` every numeric field gets at most "confirm". Once confidence exists (M3), the cap is kept or lifted **per finding and class**: for `LOW_CONTRAST` it is lifted only if "silently wrong" is 0 for that class; `PQ_SUSPECTED` and `ClippedHighlights` keep the cap. A preliminary experiment during planning (third-party PP-OCRv6 small export, unverified corpus entry) found no recognition loss from an affine washout at 6–10 px price height; clipping and bloom were not simulated. The finding text carries the capture advice for the detected class (R-DOC-1).
    6. *Colour decisions are relative within the panel:*
-      - Active tab: the tab whose fill has both the higher normalized luminance and the higher saturation, by a margin (setting). This is a comparison, not a reference colour. If the two measures disagree or the margin is not reached, the tab reader abstains, and the side comes from the section and label text ("IN STOCK"/"SHOP QUANTITY" vs. "SELLABLE CARGO"/"IN DEMAND").
+      - Active tab: the tab whose fill has both the higher normalized luminance and the higher saturation, by a margin (setting). This is a comparison, not a reference colour. If the two measures disagree or the margin is not reached, the tab reader abstains.
+        - **Text witness:** only text inside the located shop panel counts. That is section headers ("IN STOCK"/"OUT OF STOCK" → BUY, "SELLABLE CARGO"/"IN DEMAND" → SELL) and the per-card label "SHOP QUANTITY" (present on every complete card → BUY, absent on every complete card → SELL). The "YOUR INVENTORIES" panel lists IN DEMAND/NO DEMAND/CANNOT SELL in every capture and never counts.
+        - The side is resolved if the tab reader and the text witness agree, or if one of them abstains.
+        - If they disagree, the side is `Inconsistent`; if both abstain, it is `Ambiguous`. Either way both sides are the candidates, the field is 0.60 → select (level `SELECT`, §2.6) and nothing is preselected (R-UI-2).
+        - Selecting or correcting the side re-runs the validation of the rows against that side's priors.
       - Status colour: the nearest hue range for this side from the layout profile, with saturation measured relative to the panel's own saturation distribution. Hue tolerances are calibrated on paired captures; a simulated PQ-as-sRGB capture shifted hue by up to ≈ 10°.
       - UEX `commodities_status` colours are only a weak hint (*assumption*: they are web colours, not in-game colours).
-      - The status colour reader stays a **second reader** (R-OCR-10) and abstains on `CLIPPED` or `PQ_SUSPECTED` panels. The tab comparison stays active there because it is relative (the order held in the simulation), but its result then needs the text witness.
+      - The status colour reader stays a **witness only** (status-bar witness, R-OCR-10) and abstains on `CLIPPED` or `PQ_SUSPECTED` panels. The tab comparison stays active there because it is relative (the order held in the simulation), but its result then needs the text witness.
    7. Bright terminals and glare (predecessor fix in v0.6.8.4, F8/F15 context) are handled by the same per-panel analysis; the crop excludes areas outside the panel.
 
 ### 2.2 OCR
 
-- **Models:** PaddleOCR **PP-OCRv6 small** detection (DBNet) and recognition (CTC), ONNX export from Hugging Face (`PaddlePaddle/PP-OCRv6_small_{det,rec}_onnx`), Apache-2.0. SHA-256 is documented in `NOTICE`.
+- **Models:** PaddleOCR **PP-OCRv6 small** detection (DBNet) and recognition (CTC), ONNX export from Hugging Face (`PaddlePaddle/PP-OCRv6_small_{det,rec}_onnx`), Apache-2.0. The SHA-256 of every OCR asset (det model, rec model and the file that carries the character dictionary) is in `NOTICE` and in the checksum file (10 S-22).
   - According to basetool these are ~10 MB + ~21 MB, the dictionary has 18,708 entries.
-  - The exact files are downloaded and hashed ourselves when integrating them.
+  - The exact files are downloaded once at a pinned revision, hashed and committed when integrating them; whether the dictionary is a `.txt` or part of an inference config (e.g. `inference.yml`) is checked then.
 - **Start parameters** (from basetool, to be retuned on our own corpus):
   - shorter side ≥ 736, rounded to a multiple of 32
   - binarization 0.2, box threshold 0.45, unclip factor 1.4
   - recognition height 48
 - **Checks:**
-  - Number of dictionary classes against the model's output shape (protection against a wrong dictionary)
-  - Model hash on load
-- **Runtime:** ORT session lazy, close on inactivity; limit intra-op threads (the game runs in parallel).
+  - Number of dictionary classes against the model's output shape (plausibility check; it does not detect a reordered dictionary)
+  - Hash of every OCR asset (det, rec, dictionary) on load – the protection against a wrong or reordered dictionary
+- **Runtime** (typed `OcrRuntimeSettings` in `adapter-ocr`; ORT's defaults, one intra-op thread per physical core, affinitized and spinning, are never used):
+  - `intraOpThreads`: start value 1, set per session (`SessionOptions.setIntraOpNumThreads`). Sequential execution mode, so there is no inter-op pool. `session.intra_op.allow_spinning` = `0` (it only takes effect if `intraOpThreads` is raised above 1). Det and rec run one after the other on the OCR worker thread, so OCR uses at most *OCR pool size × `intraOpThreads`* cores (02 §7). That ORT then creates no extra threads is confirmed in M2.
+  - Sessions are created lazily and closed after `idleCloseAfter` (start value 5 min). Because the CPU memory arena keeps its peak until the session is closed, the arena and memory-pattern settings (`setCPUArenaAllocator`, `setMemoryPatternOptimization`) are decided together with `idleCloseAfter` from the M2 process-memory measurement (R-NF-3).
+  - Input tensors come from a direct, native-order buffer that is reused per OCR worker and sized from the detector tile limit, because ORT copies every non-direct buffer into a new direct buffer.
+  - A global ORT thread pool (environment-level threading options plus `disablePerSessionThreads()`) is only an M4 alternative, if measurement shows that R-OCR-12 needs more than one intra-op thread; it replaces the per-session settings and is never combined with them.
+  - Method and key names were checked against the ORT 1.30.0 Java source on 2026-10-08.
 - **Later option** (not 1.0): our own recognition model fine-tuned to the SC HUD font, if the corpus shows a need.
 
 ### 2.3 Layout
@@ -93,72 +106,186 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 - Delimit cards via the recurring structure: name at the top left, "… SCU" at the top right, price "/SCU" on the right below it, label "AVAILABLE CARGO SIZE" at the bottom.
 - Row clustering via vertical overlap, columns via x centers. Tolerances are given **relative** to the normalized width, not as fixed pixels.
 - Screen order (`screenOrder`) via the y position.
-- **Currency glyph separation:** inside the price token, the character boxes are split at gaps; a leading box whose width/height ratio and position match the `¤` glyph profile (calibrated on the corpus) is marked as the currency glyph.
+- **Card completeness:** a card is complete only if its top and bottom card borders are both detected inside the list viewport (from below the tab row to the panel's lower frame), with a margin relative to the card height (setting).
+  - Fallback, if a border is not detected: every field box of the card (name lines, SCU, price, cargo boxes) lies fully inside the viewport, with the same relative margin.
+  - Completeness is a property of the capture, decided here from geometry and never by a reader (§2.7).
+  - An incomplete card gets `PartialCard` and keeps it through fusion and stitching. It produces no row, and its field values are never used as a stitching witness or in conflict resolution. Its name may be used only for the gap check (§2.5b item 3), and only if the name line itself passed the margin test.
+  - Dimming is not a completeness criterion (R-OCR-15).
+  - A synthetic layout test masks the viewport top through the SCU line and the second name line of a two-line card (e.g. buy-4 "RECYCLED MATERIAL COMPOSITE") and expects `PartialCard` and no row.
+- **Field roles:** before any parsing, Layout assigns each text box, or segment of a glued token, to a card field by position and suffix. The token ending in `/SCU` (tolerant `/5CU`, or `SCU` without slash in the price position) is the price. The token ending in `SCU` at the top right of the card is the quantity. An OCR token without its suffix is not classified as that field, and a token is never parsed as both.
+- **Sections:** section headers are read only inside the located shop panel, below the tab row. They are never read from the "YOUR INVENTORIES" panel: its IN DEMAND/NO DEMAND/CANNOT SELL list appears in every capture, and that panel is used only for the location field. For each header, the name, the expand state ("x" expanded, "+" collapsed) and the y position are recorded. Each complete card gets the nearest header above it in the same capture; cards above the first visible header get their section in stitching (§2.5b item 4).
+- **Currency glyph separation:** inside the price token, the character boxes are split at gaps; a leading box whose width/height ratio and position match the `¤` glyph profile (calibrated on the corpus) is marked as the currency glyph. The box keeps its x-span. It is the witness for a strip in §2.4 step 3, not an instruction to strip.
 
 ### 2.4 Field parsers (pure, property-tested)
 
+The parsers get a **field-typed raw string** per card field. Deciding which token is the price or the quantity, and the unit and currency-glyph handling, are OCR-specific (Layout §2.3, price steps 1 and 3). Price steps 2, 4 and 5 form the **shared number parser**, which also reads the VLM's table cells (§2.7). A literal `?` or another unreadable mark gives `Unreadable`.
+
 - **Price** (procedural, not a single regex; an earlier regex version rejected e.g. `96705/SCU` and numbers without separators):
-  1. Strip the suffix `/SCU` (tolerant: `/5CU`, `SCU` without slash). If it is missing, the token is not a price.
+  1. Strip the unit suffix `/SCU` if present (tolerant: `/5CU`, `SCU` without slash). Layout (§2.3) has already classified the token as the price. VLM cells of the `price_per_scu` column carry no unit and skip this step.
   2. Remember an optional suffix `K`/`M`.
-  3. If the first character is a non-digit character (`¤`, `@`, `¢`, …), it is discarded. If it is a digit from the confusion set of the currency symbol (`9`, `8`, `0`, to be determined on the corpus), **two candidates** are created: with and without this digit. If the geometric separation (§2.3) yields a separate glyph box in front of the number, only "without" is used.
+  3. **Currency prefix (OCR tokens only).** If the first character is a non-digit character (`¤`, `@`, `¢`, …), it is discarded. If it is a digit from the confusion set of the currency symbol (`9`, `8`, `0`, to be determined on the corpus), the ¤ box from §2.3 decides by alignment. The first recognized character is mapped to its x-range: the span of the CTC frames that emitted it, scaled back to the line crop.
+     - If that span lies inside the ¤ box, the character is the glyph. Only "without" is kept, and the box is the witness for this strip.
+     - If the span starts to the right of the ¤ box, the recognizer already dropped the glyph. Only "with" is kept, i.e. the value as read; nothing is stripped.
+     - If no ¤ box was found, or the alignment is unclear (the span overlaps both, or the frame mapping is unavailable), both candidates are kept. The stripped one is then a repair under R-VAL-2b (0.75 without another witness).
+     - Comparing the recognized digit count with the number of character boxes after the ¤ box is only a secondary check, never the sole criterion.
+     - VLM values skip this step: the prompt removes the symbol, and the prior and deviation gate catch a leftover digit.
+     - Tests, written red first, using the corpus prices 8328, 8671 and 8585 (`pyro-gateway-stanton-01`):
+       - recognizer output `8,585` with a ¤ box left of the first digit's frames → 8585;
+       - `98,585` whose first character's frames lie inside the ¤ box → 8585;
+       - unclear alignment → {98585, 8585}, at most "confirm".
   4. **Letter–digit confusables** in the number part (B→8, O/D/Q→0, S→5, I/l/|→1, Z→2, G→6; the set is calibrated on the corpus) become digit candidates, and their positions are marked as confusable. Like the candidates of step 3, they go to the scoring with the witness rule (§2.5). A letter is read as a magnitude suffix only if it is exactly `K` or `M` at the end (step 2); `B` is never a suffix.
   5. Evaluate separators structurally:
      - Groups of exactly 3 digits after `,`/`.`/space count as thousands separators.
-     - A last separator followed by 1–2 digits is decimal.
+     - A last separator followed by 1–2 digits is decimal. A decimal part is valid with a `K`/`M` suffix (e.g. "1.5K"); without a suffix only if the active layout profile declares `decimalPrices: true` (data-driven, R-OCR-3). The current whole-aUEC profiles declare `false`, and there such a token yields `Inconsistent` (below the send threshold), because a lost last digit ("1,500" read as "1,50") would otherwise parse as 1.50.
      - Numbers without any separator are valid.
      - Contradictory patterns yield the finding `Unreadable`.
   6. All candidates go as `BigDecimal` to the scoring (§2.5); there the prior decides with the witness rule.
-- **SCU:** `(\d[\d,.\s]*)\s*SCU`, also inside glued tokens. The letter–digit confusable step of the price parser applies here too.
-- **Status:** against the status names from `commodities_status` and the localized names; the second reader is the status bar (fill level ≈ percentage band) or the text color.
+- **SCU** (procedural, like the price; OCR tokens per text box, never on concatenated row text):
+  1. Layout (§2.3) has assigned the token to the quantity. A token with `/SCU`, a currency glyph, or in the price position goes only to the price parser.
+  2. **Anchor:** the rightmost `SCU` or an OCR variant of it (`5CU`, `SCLI`; the set is calibrated on the corpus). Letters after the anchor belong to the name (`Compos0 SCUite`).
+  3. **Number span,** read right to left from the anchor:
+     - At most one non-digit character between the span and the anchor is skipped.
+     - If that character is in the letter–digit confusable set (price step 4, e.g. `i`/`l`/`|` → 1), two candidates are created: without it (the raw value) and as a digit. The position is then uncertain (§2.5 item 3); it is never dropped or converted silently.
+     - In a glued token, the commodity name prefix is resolved first (§2.5 item 1). The span starts where the matched name ends, and a letter of the matched name never becomes a digit.
+  4. The span goes to the shared number parser (price steps 2, 4 and 5).
+     - SCU is an integer, so a decimal-looking or contradictory pattern gives `Unreadable`.
+     - Whitespace counts as a thousands separator only before exactly 3 digits. A leading digit group that does not form a valid thousands group (e.g. `1 12,000` from "SIZE 1" next to "12,000 SCU") is cut off with a finding, never joined.
+  5. Without a clean span, the quantity is `Unreadable`; it is never sent empty (F6).
+
+  VLM cells of the `scu` column carry no unit and go to step 4 directly.
+
+  Unit tests (red first) plus jqwik properties:
+  - `Compos0iSCU` and `COMPOS0ISCU` → raw 0 with candidate 1, below the send threshold, never 501;
+  - `Compos0 SCUite` → 0;
+  - separate boxes "SIZE 1" and "12,000 SCU" → 12000;
+  - joined `SIZE 1 12,000 SCU` → 12000 with a finding, never 112000;
+  - `333 SCU` → 333;
+  - `3,237SCU` in the price position → price parser only;
+  - `0lSCU` → {0, 1}, uncertain.
+- **Status:** against the status names from `commodities_status` and the localized names; the status-bar witness (R-OCR-10) is the bar (fill level ≈ percentage band) or the text colour; it is not a `Reader` and does not take part in fusion.
 - **Cargo sizes:** number of boxes plus OCR, matched against the ascending subsets of {1,2,4,8,16,24,32}.
+  - A read set gets `Inconsistent` (below the send threshold) if it is not a contiguous run (assumption A22), if its box count does not match the read sizes, or – once the field meaning is verified ([06](06-uex-api.md) open point 26) – if its largest size exceeds the terminal's `max_container_size`.
+  - Such a set is never forced onto a run.
+  - Once the assumption is confirmed on the corpus, the matcher's vocabulary is restricted to the 28 contiguous runs; a reading that fits none stays `Inconsistent`.
 
 ### 2.5 Resolution and validation with UEX data
 
-1. **Terminal:**
-   - The location field is matched against all location names and yields the candidate terminals (`type=commodity`, `is_available_live`, not player-owned).
-   - If there are several terminals at one location, they are checked against the assortment (Jaccard of the recognized commodity IDs against the assortment from `commodities_prices`).
-   - In addition there is the session context.
-2. **Commodity:**
-   - First matched against the **terminal's assortment**, only then globally.
+1. **Commodity, global pass:**
+   - Every card name is matched against the full commodity vocabulary of the capture's environment (R-API-6: UEX names and localized `global.ini` names), never against an assortment first.
    - The score combines normalized Levenshtein with a prefix bonus.
-   - Minimum distance to the second best; otherwise `Ambiguous`.
+   - Minimum distance to the second best; otherwise `Ambiguous`. This margin and the near-duplicate rule are always evaluated on the global candidate set, so an assortment can never hide a near-duplicate.
    - **Rule for near-duplicate names:** If the best candidates differ only in a short token (e.g. "SIZE 1" vs. "SIZE 7", digits, Roman numerals), this token must have been read **exactly**. Confusable digits (1/7, 6/8 …) lead to `Ambiguous`. Additional witness: the price order according to the UEX prior (for Ship Ammunition the price rises with the size).
+2. **Terminal:**
+   - **Location match:** the location field is matched against all location names of the `ReferenceSnapshot` of the capture's mapped UEX environment (R-CAP-3a, R-API-6), with the same margin and near-duplicate rules as commodity names (a confusable digit as in "MIC-L1" vs. "MIC-L5" means `Ambiguous`).
+     - The matches yield that environment's candidate terminals: `type=commodity`, not player-owned, and available in that environment – `is_available_live = 1` for `live`; for `ptu` the PTU availability flag or endpoint from [06](06-uex-api.md) open point 19. Until that is verified, `ptu` candidates are not filtered by availability, so PTU-only terminals are never excluded; the LIVE flag is never applied to `ptu` captures.
+     - No match (e.g. a ship name) means no candidate: the terminal is unknown and the selection is mandatory (R-OCR-16).
+   - **Assortment check for every candidate, including a single one:**
+     - R is the set of commodity IDs of the scan that resolved unambiguously in item 1, so the check cannot confirm itself.
+     - A is the set of commodities that `commodities_prices` lists for the candidate on the captured side. How the side is encoded is checked in the M0 API spike ([06](06-uex-api.md) open point 26).
+     - The score is the containment, i.e. the share of R that is in A. Jaccard is not used, because one page shows only a few cards of a list that can have 30 entries.
+     - The misses are the members of R that are not in A.
+   - **Automatic resolution** requires all of the following:
+     - R has at least the minimum card count;
+     - the best candidate has no more misses than allowed;
+     - its containment exceeds that of the second-best candidate by at least the minimum margin.
+
+     The values live in the settings record `TerminalResolutionSettings` (start values: 3 cards, 0 misses, margin 0.25; calibrated on the corpus). A miss never excludes a candidate, because the UEX assortment can lag behind a patch and a commodity that is new at a terminal is valid data. A miss only prevents automatic selection, and the missing names are shown.
+   - Otherwise:
+     - A candidate with too many misses gets the finding `LocationAssortmentMismatch` ("Location field may show another inventory (ship or storage) or a misread location"). The terminal is `Ambiguous` and the selection is mandatory (R-VAL-4, R-OCR-16), also when it is the only candidate.
+     - Ties, and differences below the margin (typical for Gateway twins, F12), are `Ambiguous` with mandatory selection.
+     - The check **abstains** (neither confirms nor vetoes) when fewer commodities were recognized than the minimum card count, or when the assortment is empty or older than the staleness limit. A single candidate is then proposed at "confirm" (0.75) with the finding `NoReference` (reason "assortment check not possible"); several candidates stay `Ambiguous`.
+   - **Hints:** the session context (terminal and star system of the previous scans) and the theme (A13) only order the candidates in the selection and feed R-UI-14. They never resolve or veto a terminal.
+   - **Commodity, assortment pass:** runs only once the terminal is resolved, by recognition or by the user's selection. After a selection it re-runs as a pure function and never changes fields the user confirmed or corrected.
+     - If the global best is in the terminal's assortment for this side, it stays as it is.
+     - If it is not, and it beats the best assortment entry by at least the ambiguity margin, it is kept with the finding `UnexpectedCommodity` (R-UI-12) and needs a confirmation.
+     - If the two are within the margin, the field stays `Ambiguous`. Assortment entries are listed first, and nothing is preselected.
+     - The assortment never overrides a distinguishing token that was read exactly (near-duplicate rule).
+     - While the terminal is still ambiguous, no assortment preference is applied; the candidate terminals' assortments are shown only as hints. No prior-based repair takes place (`NO_REFERENCE`) until the terminal is resolved. Resolving it is a key change ([02](02-architecture.md) §3) that re-runs stages 4–6.
+   - **Tests** (red first):
+     - a single-terminal location whose page shows commodities mostly unknown at that terminal gives terminal `Ambiguous`, and `release()` is refused (`@Tag("R-OCR-16")`);
+     - jqwik property: a candidate missing a recognized commodity never outranks one that contains all of R, whatever the assortment sizes;
+     - golden test on `pyro-gateway-stanton-01`: expects Pyro Gateway (Stanton) or a mandatory selection, never the twin terminal;
+     - a name that is not in the assortment never resolves to an assortment neighbour.
 3. **Price prior:**
-   - Candidates (raw, without prefix character, confusable variants, K/M scaling) are scored against the last value or `price_*_avg_week` of this terminal and this commodity, tolerance `price_variation` %.
+   - **Candidates:** the raw value, K/M scaling, the currency-prefix variant if §2.4 step 3 kept both, and confusable variants **only at uncertain confusable positions**. The raw value is the digit string after §2.4 step 3. A stripped leading digit counts as raw only if the strip was witnessed there, so the raw value is never an unwitnessed repair.
+   - **Uncertain confusable position:** a digit position that meets both conditions:
+     - its digit is in the confusable set ({0,6,8,9}, calibrated on the corpus);
+     - its per-digit probability (§2.6) is below the digit threshold, or glyph topology (item 5) contradicts it.
+
+     A digit that came from a letter (§2.4 step 4) is always uncertain. The per-digit probability serves only as this gate, never as the field's confidence (R-VAL-1). A position is **resolved** when a witness singles out one digit there: glyph topology (item 5) or a VLM reading (§2.7).
+   - A read with no uncertain confusable position and no kept prefix variant is **clean**. No alternatives are generated for it, whatever other values would lie in the prior band, and a difference from the prior shows only in the Deviation dimension (§2.6).
+   - **Order:** glyph-topology vetoes remove candidates first. The remaining candidates are scored against the prior's reference value (the latest UEX value of this terminal and this commodity, `PricePrior.reference()`, [11](11-ddd-and-tdd.md) §A1) with the effective price tolerance (R-VAL-2). Repair scoring and the `DeviationAssessor` (§2.6) use the same reference and the same tolerance, so a candidate accepted as within tolerance is never `MAJOR` (property test). Variants of low-order digits usually differ by less than the tolerance, so the prior cannot decide between them; only a witness can.
    - If **exactly one** candidate lies within the tolerance, it is proposed.
-     - If it is the raw value, everything is clean.
-     - If it is a repaired value, it is only accepted **automatically** (0.85) if an independent witness agrees (glyph topology positive or second reader/VLM equal). Without a witness it gets 0.75, i.e. **below the send threshold**; the user confirms by key press (R-VAL-2b).
-   - If none or several lie within the tolerance, the raw value is proposed and flagged as `OutOfTolerance`/`Ambiguous`.
+     - If it is the raw value, it keeps the confidence of its reading (§2.6): 0.95 if clean, 0.85 if a witness resolved all its uncertain positions, otherwise 0.75.
+     - If it is a repaired value, it is accepted **automatically** (0.85) only if an independent witness agrees: glyph topology (item 5), the currency-glyph box (§2.4 step 3) or a VLM reading (§2.7). Without a witness it gets 0.75, i.e. **below the send threshold**, and the user confirms it by key press (R-VAL-2b).
+   - If several candidates lie within the tolerance, the field is `Ambiguous` (0.60, all candidates shown). If none does, the raw value is proposed with `OutOfTolerance`, and its confidence comes from the reading alone.
    - **Real price changes** are thus neither blocked nor silently "repaired back" to the old value.
-   - **Without a prior** (R-VAL-2a): commodity average with double tolerance; otherwise no repair.
-4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`.
-5. **Glyph topology** (hole counting for 0/6/8/9, concept from basetool, reimplemented) classifies a digit or **abstains**. Its role is defined once here and applies everywhere: a classification that **agrees** with a repair candidate counts as an independent witness (R-VAL-2b); a classification that **contradicts** it is a veto; abstention counts as neither.
+   - **Without a terminal prior** (R-VAL-2a): the commodity-wide average with twice the effective tolerance – the same band the deviation level uses (§2.6); a repair based on it still needs a witness (R-VAL-2b). It is not used where R-API-6 yields `NO_REFERENCE`. Otherwise no repair.
+   - Pinned by unit and golden tests, written red first:
+     - a clean read of 2850 with a prior of 2850 gives 0.95 and no `Ambiguous`;
+     - the same read with the 0 below the digit threshold and abstaining topology gives at most 0.75;
+     - a correct 7126 with a prior of 7120 gives 0.95 when the 6 is above the digit threshold and topology does not contradict it.
+4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`. Buy side, once A14 is confirmed: dimmed ⇔ SCU < smallest offered container size. A violation gives `Inconsistent` (confirm) and never changes a value. The rule is not used on the sell side (CHLORINE: 0 SCU, sizes 1–32, not dimmed). The cargo-size and MAX INVENTORY checks are defined in §2.4 and §1b.
+5. **Glyph topology** (concept from basetool, reimplemented) judges the candidates of one digit position; it does not read the digit.
+   - **Features**, measured on the tone-normalized crop (§2.1 item 7): the hole count (8 has two holes; 0, 6 and 9 have one) and, for one-hole glyphs, the vertical centre and height of the hole relative to the glyph box (lower → 6, upper → 9, tall and centred → 0). All measures are relative to the glyph box (R-OCR-17). The result is the set of digits that fit the glyph.
+   - **Judgement** against the candidates of the position:
+     - exactly one candidate fits → **witness** (independent, R-VAL-2b);
+     - no candidate fits → **veto**;
+     - several fit, or the features are unreliable (a hole is not closed, or the glyph height is below the R-OCR-17 confirm limit) → **abstain**, which counts as neither.
+   - Its role is defined once here and applies everywhere.
+   - **Coverage:** the hole count alone decides 6↔8, 0↔8 and 9↔8, including the main F2 case 6↔8. The pairs 0↔6, 0↔9 and 6↔9 depend on the hole position and may abstain; they then fall to 0.75 (confirm) unless the VLM is a witness (§2.7).
+   - Letter–digit confusables (§2.4 step 4) and the currency prefix (§2.4 step 3, where the glyph box is the witness) are not judged by topology.
+   - Each pair is pinned by a unit or golden test, including one proving that a 0→6 repair with abstaining topology is not sent automatically.
 
 ### 2.5b Stitching without overlap
 
-1. Captures of one group are sorted by **scrollbar position** (grouping by terminal, side, environment and time window is done by `ReportGrouper` in `reporting`, R-OCR-13). The fallback is the capture time.
-2. Cards are merged via the resolved `CommodityId`. If images overlap, that is an additional witness (values read twice must match), but not a prerequisite.
+1. **Grouping comes first:** `ReportGrouper` in `reporting` assigns each scan to a report group (terminal, side, environment, time window; R-OCR-13); a scan with an unresolved terminal or side, or with an uncertain capture time (`CaptureTimeUncertain`, R-CAP-5), forms its own group until that is resolved or the user merges it (R-OCR-13). Stitching then runs per group on the stored scans ([02](02-architecture.md) §4 stage 6), and runs again whenever the group changes (a capture joins, a terminal, side or capture time is resolved, split or merge, AI fusion). Within a group, captures are sorted by **scrollbar position**. The fallback is the capture time.
+2. Cards are merged via the resolved `CommodityId`. Overlap is not a prerequisite; values read twice are compared under item 5. Cards whose commodity is unresolved (`Ambiguous`, `Unreadable`) are carried in the `StitchedScan` with their candidate set and are never merged automatically (one candidate set may stand for two commodities, e.g. SIZE 1 and SIZE 7). They stay separate rows until the user selects a commodity ([02](02-architecture.md) §3). They are left out of the terminal assortment check (§2.5 item 2) and never make a candidate count as "not observed" (R-VAL-5).
 3. **Gap check:**
    - If the scrollbar sections do not cover the list without gaps, or if commodities are missing that UEX lists for the terminal, the report shows "possibly incomplete" together with the missing names.
    - Sending is still allowed; only what was read is then sent.
+4. **Sections across captures:**
+   - A card without a header above it in its own capture inherits the section that was open at the bottom of the preceding capture in scrollbar order, but only if the gap check (item 3) shows that the two captures are contiguous.
+   - Otherwise its section is unknown: finding `SectionUnknown`. The side ↔ section check then abstains, and R-VAL-5 offers no `is_missing` for that side.
+   - Until assumption A21 is verified, cards under SELLABLE CARGO or a shop-panel NO DEMAND section produce no report row (finding `Inconsistent`, reason "section not supported yet"), and their SCU is never merged into an IN DEMAND row.
+5. **Conflicting readings of one field from two captures.** This is the single rule; R-OCR-11 and 02 §4 stage 6 refer to it.
+   - Partial cards never take part (§2.3).
+   - Equal readings are no conflict. They confirm the merge, but they are not an independent witness under R-VAL-2b: they come from the same reader, whose errors are correlated (§2.7).
+   - Different readings whose capture times (R-CAP-5) are less than 60 s apart (setting), or where either reading is below the send threshold: the field is `Ambiguous` (0.60 → select). The reading farther from the viewport edge is pre-selected only as a suggestion.
+   - Different readings 60 s or more apart, both at or above the send threshold: the later reading is proposed with `Superseded`, and the earlier one is shown as the alternative. The confidence is capped at 0.75 → confirm: a trade in between can change values, but one of two confident readings is wrong.
+   - A field the user confirmed or corrected is never replaced by a new capture or a merge ([11](11-ddd-and-tdd.md) §A3, I7). A different new reading becomes the alternative, and the confirmation is suspended until the user decides.
 
 ### 2.6 Confidence (rule-based)
 
-**Send threshold: 0.80** (start value). Fields below it must be confirmed or corrected; a confirmation sets the field to "confirmed by the user".
+**Send threshold: 0.80** (start value; a user can only raise it, R-NF-5). Mandatory fields ([11](11-ddd-and-tdd.md) §A1) below it must be confirmed or corrected (a correction gives origin `USER`); an optional field below it is left out of the payload. A confirmation sets the field to "confirmed by the user".
 
 | State | Confidence (start values, to be calibrated on the corpus) |
 |---|---|
-| Read identically by OCR and VLM, validated | 0.97 |
-| Clean read (no unresolved confusable digit) | 0.95 |
-| Repaired, unambiguous, **with independent witness** | 0.85 |
-| VLM-only value (OCR unreadable), validated | 0.85 |
-| Repaired only via the prior (without witness), or confusable digit without any prior to check against (R-VAL-2a) | 0.75 → **confirm** |
-| Ambiguous / conflict between scans or readers | 0.60 → **select** |
+| Read identically by OCR and VLM (evaluated model, S-27), validated | 0.97 |
+| Clean read (no uncertain confusable position, §2.5 item 3) | 0.95 |
+| Repaired, or uncertain confusable position resolved, unambiguous, **with independent witness** (§2.5 item 3, §2.7) | 0.85 |
+| VLM-only value (OCR unreadable on a complete card, §2.7; evaluated model, S-27), validated | 0.85 |
+| Repaired only via the prior (without witness), or uncertain confusable position without witness, also when there is no prior to check against (R-VAL-2a) | 0.75 → **confirm** |
+| Superseded: later capture, 60 s or more after a differing confident reading (§2.5b item 5) | 0.75 → **confirm** |
+| Ambiguous / conflict between readers, or between captures less than 60 s apart or with a reading below the threshold (§2.5b item 5) | 0.60 → **select** |
 | Unreadable / implausible | 0.30 → **correct** |
 
-**Per-digit certainty:** a reading counts as "clean" only if two conditions hold. First, the **minimum** per-digit probability over the digits of the number part reaches the digit threshold (start value 0.80, setting); separators and the `/SCU` suffix do not count, and the line mean is not used. The per-digit probability is the highest softmax probability among the CTC frames that emitted that digit. Second, the reference glyph height is ≥ 8 px (R-OCR-17). Otherwise the field is rated like "confusable digit without witness" (0.75 → confirm). Reason: small text produces confidently wrong readings that a mean hides. The model probability can only lower the rule-based confidence, never raise it (R-VAL-1).
+The ladder values are release-calibrated, not user settings (R-NF-5). The numbers are not the only safeguard: a field with an `Ambiguous` or `Unreadable` finding, or a repair without an independent witness (`Repaired` records whether a witness agreed), is never sendable without a user decision, whatever its confidence and the send threshold (I2).
 
-**Caps from capture findings** (they only lower confidence): `UnvalidatedGameVersion` below the send threshold (R-OCR-19); `SmallText`, `LowContrastCapture` and `ClippedHighlights` at most 0.75 → confirm (R-OCR-17, R-OCR-18); `TextTooSmall` at most 0.30 → correct.
+**Per-digit certainty:** a reading counts as "clean" only if two conditions hold. First, the **minimum** per-digit probability over the digits of the number part reaches the digit threshold (start value 0.80, setting, can only be raised); separators and the `/SCU` suffix do not count, and the line mean is not used. The per-digit probability is the highest softmax probability among the CTC frames that emitted that digit. Second, the reference glyph height is ≥ 8 px (R-OCR-17). Otherwise the field is rated like an uncertain confusable position without witness (0.75 → confirm; §2.5 item 3). Reason: small text produces confidently wrong readings that a mean hides. The model probability can only lower the rule-based confidence, never raise it (R-VAL-1).
+
+**Caps from capture findings** (they only lower confidence): `UnvalidatedGameVersion` below the send threshold (R-OCR-19; applied to the fused value after §2.7 and re-evaluated whenever the report's game version changes); `SmallText`, `LowContrastCapture` and `ClippedHighlights` at most 0.75 → confirm (R-OCR-17, R-OCR-18); `TextTooSmall` at most 0.30 → correct.
+
+**User values:** reading confidence, per-digit certainty and the capture-finding caps apply only to fields with origin `RECOGNIZED`. A value the user typed, corrected or took over by keystroke has origin `USER` ([11](11-ddd-and-tdd.md) §A1). It has no reading confidence, passes the confidence part of the gate and is shown as "entered by user" (R-UI-4). Its deviation is assessed like any other value, so a `MAJOR` deviation still needs a confirmation.
+
+**Confidence level** (R-UI-4) is derived from the cause, not from the numeric start values, so recalibrating them never changes the UI mapping:
+
+- `CORRECT` if the value is missing or carries `Unreadable`, `TextTooSmall` or an implausible value (row "Unreadable / implausible" above);
+- otherwise `SELECT` if an `Ambiguous` finding has ≥ 2 candidates, or the field is a side whose readers disagree (§2.1 item 7);
+- otherwise `CONFIRM` if the confidence is below the send threshold;
+- otherwise `OK`.
+
+Fields with origin `USER` have level `OK` and are shown as "entered by user".
 
 Confidence deliberately does **not** depend on whether a value lies within the prior tolerance – that is the job of the deviation dimension below. (An earlier version also lowered confidence for out-of-tolerance values, counting the same fact twice.)
 
@@ -167,9 +294,13 @@ Confidence deliberately does **not** depend on whether a value lies within the p
 - *Confidence* says how reliably the value was **read**.
 - *Deviation* says how strongly the value deviates from the **previous UEX state** (R-UI-10).
 
-Both are computed separately (`Deviation`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`) and displayed separately. **Stale reference rule** (defined once here): if the prior is older than the staleness limit (default 7 days, R-UI-11), the level is lowered by one step (`MAJOR` → `MINOR`, `MINOR` → `EQUAL`) and the field shows "reference outdated"; `NO_REFERENCE` stays. The lowered level is the one that counts for I2. For the submission gate the **stricter** of the two applies: `MAJOR` always requires a confirmation, even with high reading confidence. A transposed number that was read cleanly but deviates strongly from the UEX value is therefore never sent unchecked.
+Both are computed separately (`Deviation`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`) and displayed separately. **Stale reference rule** (defined once here): if the prior is older than the staleness limit (default 7 days, R-UI-11; it can only be raised, because a shorter limit displays more `MINOR` deviations like `EQUAL`), the field shows "reference outdated" (`FieldAssessment.referenceOutdated`) and a `MINOR` deviation is displayed like `EQUAL`; `MAJOR` is never lowered, and `NO_REFERENCE` stays. I2, the submission gate and the R-VAL-7 comparison always use the unlowered level. For the submission gate the **stricter** of confidence and deviation applies: `MAJOR` always requires a confirmation, even with high reading confidence and against an outdated reference. A transposed number, a factor-10 or factor-1000 error or a lost digit that was read cleanly but deviates strongly from the UEX value is therefore never sent unchecked.
 
-The report confidence equals the worst mandatory field, not the mean, so that individual errors are not "averaged away".
+**Container sizes and prices without a terminal prior** (R-UI-10, R-VAL-2a): container sizes compare as a set – no prior set `NO_REFERENCE`, same set `EQUAL`, any difference `MINOR`, never `MAJOR`; they are assessed only if `container_sizes` is sent ([06](06-uex-api.md) open points 3 and 9). A price without a terminal prior is compared with the commodity-wide average where R-VAL-2a allows it: more than twice the effective tolerance away is `MAJOR` (the reference is shown as "commodity average"), otherwise `NO_REFERENCE`. The stale-reference rule does not apply to the average, which has no per-terminal age.
+
+**Worsening** (R-VAL-7) is an explicit method `Deviation.isWorseThan(previous)`, never an ordinal or `compareTo` comparison: `EQUAL` < `MINOR` < `MAJOR`; `NO_REFERENCE` → `MINOR` or `MAJOR` is worse; `NO_REFERENCE` → `EQUAL` and any level → `NO_REFERENCE` (the prior disappeared) are not worse. It compares unlowered levels and is property-tested (jqwik).
+
+The report confidence equals the worst mandatory field of the sent rows ([11](11-ddd-and-tdd.md) §A1), not the mean, so that individual errors are not "averaged away"; fields that are not sent do not count.
 
 ### 2.7 Optional AI second reader (VLM via Ollama, only while the game is closed)
 
@@ -184,15 +315,16 @@ The numbers come from the refinery domain; whether they transfer is checked by t
 **Flow:**
 
 1. While the game is running, the classic OCR delivers results immediately. Reports with warnings are queued for the AI; the user can still correct and send them manually at any time.
-2. When the game is closed (hysteresis), the AI queue processes the flagged or all **Draft** reports (never released, queued or submitted ones). The input is the perspective-corrected panel crops (shop panel, location field), limited to an edge of approx. 1000–1500 px.
-3. The result runs through the parser and vocabulary resolution (identical to OCR). Then OCR and VLM are **fused per field**, and only the fused result is validated once (prior, consistency, confidence). Afterwards the report is re-stitched.
-4. If the game starts (mode Automatic), the request is aborted and the model is unloaded; the jobs are retained.
+2. When the game is closed (hysteresis), the AI queue processes the flagged or all **Draft** reports (never released, queued or submitted ones). The input is the redacted working copies (shop panel, location field; R-CAP-7), limited to an edge of approx. 1000–1500 px.
+3. The answer parser fills the same field-typed `RawCard` fields by table column (`scu` → quantity, `price_per_scu` → price). The values then run through the same number parser and vocabulary resolution as OCR; unit and currency-glyph handling are OCR-specific (§2.4). Then OCR and VLM are **fused per field**, and only the fused result is validated once (prior, consistency, confidence). Afterwards the report is re-stitched.
+4. If the game starts (mode Automatic), the request is aborted and the model is unloaded; the running job returns to Pending and no job is lost ([02](02-architecture.md) §4b).
 
 **Prompt** (`adapter-vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioned):
 
 - describes the card layout (name, status text, quantity "… SCU", price "¤…/SCU", cargo boxes) and the active tab
 - requires exact transcription ("digit by digit, correct nothing, `?` for unreadable")
-- explicitly ignore the currency symbol and the balance
+- explicitly ignore the currency symbol and any balance (defence in depth only; the crops never contain the balance, R-SUB-7)
+- omit cards that are cut off at the top or bottom edge of the list (defence in depth; the response format stays unchanged)
 - Response format:
 
   ```
@@ -205,18 +337,32 @@ The numbers come from the refinery domain; whether they transfer is checked by t
 
 **Why Markdown instead of a JSON schema?** basetool measured free Markdown output plus a deterministic parser against schema-enforced JSON: 0.9872 vs. 0.9821, with fewer semantic errors. This has to be confirmed on our own corpus. Ollama supports structured output (`format`); that is a bake-off variant.
 
-**Fusion rules per field:**
+**Fusion rules per field.** Each reader contributes its candidate set from §2.4 and §2.5 item 3: the raw value, a kept currency-prefix variant, and confusable variants at uncertain positions. The rows are checked in this order:
 
 | OCR | VLM | Result |
 |---|---|---|
-| Value a | same value a | a, confidence 0.97 "double-confirmed" |
-| a | b ≠ a, differing in only one confusable position | If glyph topology classifies the digit (witness), that candidate wins with 0.85; if only the prior favours one candidate, it is proposed with **0.75 (confirm)** – never sendable on the prior alone (R-VAL-2b); otherwise `Ambiguous` (both candidates in the UI) |
-| a | b, strongly different | `Ambiguous` (both candidates in the UI); the candidate within the prior band is pre-selected as a suggestion, but the field stays below the send threshold |
-| unreadable | b | b as candidate; after validation 0.85 if plausible (this 0.85 applies only to a value read by the **VLM alone**), otherwise below the send threshold |
+| raw value a | same value a | a, confidence 0.97 "double-confirmed" |
+| a with repair candidates (currency-prefix strip or confusable variant) | b equal to exactly one non-raw OCR candidate | that candidate wins as `Repaired` with 0.85; the VLM is the independent witness (R-VAL-2b), and the prior is not needed. A glyph-topology veto at a substituted digit (§2.5 item 5) makes it `Ambiguous`. Example F1: OCR {96705, 6705} + VLM 6705 → 6705, `Repaired`, 0.85 |
+| a | b ≠ a, not an OCR candidate, differing in only one confusable position | If glyph topology is a witness for one of them (§2.5 item 5), that candidate wins with 0.85; if only the prior favours one candidate, it is proposed with **0.75 (confirm)** – never sendable on the prior alone (R-VAL-2b); otherwise `Ambiguous` (both candidates in the UI) |
+| a | b strongly different, or equal to several OCR candidates (e.g. after K/M scaling) | `Ambiguous` (both candidates in the UI); the candidate within the prior band is pre-selected as a suggestion, but the field stays below the send threshold |
+| unreadable, on a card that Layout marked complete (§2.3) | b | b as candidate; after validation 0.85 if plausible (this 0.85 applies only to a value read by the **VLM alone** on a complete card), otherwise below the send threshold. Without a complete card, see "Card completeness in fusion" |
 | a | unreadable | unchanged (OCR confidence) |
 | Commodity/terminal resolution differs | | always `Ambiguous` → mandatory selection |
 
-The AI **never** overwrites fields already confirmed or corrected by the user; deviations are only shown as a hint.
+- If both readers agree on one candidate, it is proposed even when it lies outside the prior tolerance. The difference from the prior is handled only by the Deviation dimension: a `MAJOR` deviation still needs a confirmation (R-UI-10). These rows set the reading confidence only.
+- The VLM witness is defined only here; §2.5 item 3 and R-VAL-2b refer to these rows.
+
+**Card completeness in fusion:** completeness is decided only by Layout, from the geometry of each capture (§2.3), never by a reader. Fusion fills only fields of cards that Layout marked complete, and VLM rows are attached to them by resolved `CommodityId` within the same capture. A VLM row without a complete layout card in that capture is discarded with `PartialCard` and never produces a row; at most, its name appears in the "possibly incomplete" list (§2.5b item 3). A VLM statement about completeness can only drop a card, never confirm one (§3: no model self-assessment). Golden test: the corpus captures sell-1 (HUMAN FOOD BARS) and buy-1/buy-2 (header-only cards), run in fusion mode with recorded VLM answers, produce no row for these cards.
+
+**Unevaluated models:** the 0.97 row and the 0.85 rows that rely on the VLM apply only to a model on the evaluated-model list (R-VLM-11, S-27). Any other model is a different digest of the recommended tag or a model the user picked. With such a model:
+
+- VLM agreement never raises a field above its OCR confidence;
+- a VLM-only value, or a repair witnessed only by the VLM, gets at most 0.75 (confirm);
+- the field gets the finding `UnevaluatedModel`.
+
+A user acknowledgement does not lift this cap; only a release that adds the digest after a bake-off does.
+
+AI re-reads and re-stitching **never** overwrite a field with origin `USER` or with a confirmation; a differing reading is only shown as a hint. A differing reading from a new capture follows §2.5b item 5.
 
 **Limits (honestly):**
 
@@ -253,7 +399,18 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
   - `container` (jpeg/png8/png16/bmp), `transfer` (sRGB/PQ/scRGB), `sourceFidelity` (`original`, `original-redacted-lossless`, `reencoded-unknown`);
   - `ladder` (`{"id": …, "factor": …, "step": …}`).
 
-  A `measured` object holds `priceCapHeightPx` (smallest fully visible card, source pixels, R-OCR-17), `displayHeightFraction` and `textHeightBand`. `tools/ocr-eval annotate` proposes these values from hand-placed anchors; a human confirms them. Unknown values are `null`, never guessed. The eval refuses captures without `conditions`; schema-1 entries are migrated with unknown fields set to `null`.
+  Outside `conditions`, schema version 2 also adds:
+  - per capture `capturedAt` (ISO 8601 with offset, `null` if unknown);
+  - per entry `expectedTerminalId` (UEX `id_terminal`) and per card `expectedCommodityId` (UEX `id_commodity`); the read names stay as displayed text. An entry without `gameVersion` or without IDs counts only as smoke for prior-dependent metrics;
+  - a `reference/` directory with recorded, anonymised raw UEX responses (same rules as the adapter-uex contract-test recordings): `/commodities`, `/terminals?type=commodity`, the location endpoints, `/commodities_status`, `/data_parameters`, `/game_versions` and `/commodities_prices` for the candidate terminals, plus `fetchedAt` and `priorProvenance` (`pre-capture`, or `post-capture` = may already contain the captured values). Until [06](06-uex-api.md) open point 7 allows publishing recorded UEX responses, `reference/` exists only in the private corpus.
+
+  A `measured` object holds `priceCapHeightPx` (smallest complete card, source pixels, R-OCR-17), `displayHeightFraction` and `textHeightBand`. `tools/ocr-eval annotate` proposes these values from hand-placed anchors; a human confirms them. Unknown values are `null`, never guessed. The eval refuses captures without `conditions`; schema-1 entries are migrated with unknown fields set to `null`. Schema version 2 also moves the section to the card:
+  - per capture, `sectionHeaders`: the headers actually visible, each with `name`, `expanded` and its screen position;
+  - per card, the true `section` after stitching (§2.5b item 4);
+  - for partial cards, `partialEdge` (`top` or `bottom`).
+
+  `pyro-gateway-stanton-01` is migrated so that buy-2 to buy-4 list no visible header and their cards carry the inherited section IN STOCK.
+- **Frozen reference data** (R-QA-3): ocr-eval builds each entry's `ReferenceSnapshot` only from its `reference/` recordings, through adapter-uex's DTO mapping with a file-backed replay instead of HTTP; it never uses the live API or the user's cache. The eval `Clock` is fixed per entry to `fetchedAt`, so prior ages, the stale-reference rule and the age rules give the same result on every run. Resolution is scored by ID. Metrics that depend on priors (repair, confidence after validation) gate only entries with a `pre-capture` snapshot; `post-capture` results are reported separately. Each entry also runs once with the priors removed (the R-VAL-2a/R-API-6 path). The eval disables the `UnvalidatedGameVersion` cap and reports per entry whether it would apply; otherwise entries of a not yet validated version would be trivially free of silently wrong fields (R-OCR-19). Re-freezing a snapshot is an explicit corpus change noted in the PR. An entry without `reference/` (every public entry until [06](06-uex-api.md) open point 7 allows publication) is evaluated in CI only up to the raw reads: locate, layout, raw-read comparison and metamorphic rules 3 and 4 (below). Gate (1) of R-QA-3 and the metamorphic send-threshold rules (rules 1 and 2, and the field limits for variants outside the envelope) need resolution, so for these entries they run in the local pre-release evaluation of the private corpus (release checklist step 2).
 - **Measure readers separately:** The eval runs for "OCR only", "VLM only (model X)" and "fusion". The model recommendation follows from the fusion result on the corpus, not from the model card. VLM runs are opt-in (`UEXDR_VLM_HOST`), because CI has no GPU.
 - **Corpus classes:** every `conditions` dimension, the text-height band (R-QA-2) and the theme form classes. The eval reports metrics and a status per class (R-QA-3), so that e.g. "4K + HDR + Game Bar PNG" cannot regress unnoticed behind a good average.
 - **Synthetic class variants** (`tools/ocr-eval`, deterministic, parameters in a versioned `transforms.json`). Classes without enough real captures are covered by transforms of real corpus images. Transforms are pure functions on `ImageRaster`; JPEG re-encoding goes through the encoder/decoder adapters. Each output is tagged `synthetic:<id>(<parameters>)`, and its price cap height is recomputed from the source's measured value and the scale factor.
@@ -273,13 +430,13 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
   - Synthetic variants are reported as their own classes and **never** count as coverage of an R-QA-2 class. They show robustness against the modelled effect only; in-engine low-resolution rendering, highlight bloom, hue shifts and tool-specific tone mapping still need real captures.
   - **Validity check:** for every real resolution or distance ladder (R-QA-2), the eval compares the `scale-box` variant of the highest-resolution capture with the real lower-resolution capture of the same view at equal price cap height (field accuracy and minimum per-digit probability). It reports the **reading limit** – the smallest price cap height at which price accuracy is still at the base step's level – once for synthetic and once for real. If the real limit is higher, the R-OCR-17 limits derived from synthetic variants are raised by the difference (rounded up to 0.5 px). Possible causes include the kiosk's render-to-texture resolution and TAA.
   - For each sweep step the eval also reports locate success and the anchor cap height after the locate downscale.
-- **Metamorphic gate** (CI on Windows and Linux, all public entries; needs no verified transcription). The reference is the verified expected value if the entry is verified, and otherwise the pipeline output on the unmodified capture `img`. The envelope is the variants with price cap height ≥ the R-OCR-17 confirm limit, plus all `tone-*`, `jpeg`, `canvas-wide` and `upscale-bilinear` variants. For every variant `T(img)` **inside the envelope**:
+- **Metamorphic gate** (CI on Windows and Linux, all public entries; needs no verified transcription; the send-threshold rules need a `reference/` snapshot, see "Frozen reference data" above). The reference is the verified expected value if the entry is verified, and otherwise the pipeline output on the unmodified capture `img`. The envelope is the variants with price cap height ≥ the R-OCR-17 confirm limit, plus all `tone-*`, `jpeg`, `canvas-wide` and `upscale-bilinear` variants. For every variant `T(img)` **inside the envelope**:
   1. every field at or above the send threshold on `T(img)` equals the reference; a confident field with a different value is a *metamorphic silently-wrong* and fails the build. If the reference field is unreadable or below the send threshold (unverified entry), a confident value on `T(img)` is reported for manual review and does not fail the build;
   2. fields that drop below the send threshold count as "flagged" and are reported, but do not fail the build;
   3. the located panel quad of `T(img)`, mapped back into source coordinates, deviates by at most 1 % of the panel diagonal from the quad on `img` (start value);
-  4. side, section, the number of complete cards and `screenOrder` are identical.
+  4. side, the visible section headers, the per-card sections, the number of complete cards and `screenOrder` are identical.
 
-  For variants **below the lower limit**, every scan carries `TextTooSmall` or a locate/not-a-terminal finding (R-OCR-16), and no numeric field reaches the send threshold. Variants between the lower and the confirm limit may only produce numeric fields at "confirm" or lower.
+  For variants **below the lower limit**, every scan carries `TextTooSmall` or the locate outcome `NotLocated` or `WrongScreen` (§2.1 item 3, R-OCR-16), and no numeric field reaches the send threshold. Variants between the lower and the confirm limit may only produce numeric fields at "confirm" or lower.
 
   **Staging:** from M2, rules 3 and 4 gate, and the raw field strings of `T(img)` are compared with those of `img` and reported. The M2 slice has no confidence yet, so the send-threshold rules (1, 2 and below the envelope) become gates in M3 together with confidence. The gate shows invariance, not correctness; correctness comes from verified golden entries. It lets CI test the R-OCR-17/R-OCR-18 claims with the single public entry that exists today.
 - **Capture protocol for pairs and ladders** (written in M2 as `docs/user/corpus-capture.md`, so contributors can follow it):
@@ -297,13 +454,14 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
   3. a 16-bit PNG with `cICP` 9/16/0/1 (PQ) is never read as sRGB: it is set aside with the R-CAP-8 reason;
   4. a JPEG with an APP2 ICC profile, a progressive JPEG and baseline JPEGs with 4:4:4 and 4:2:0 subsampling, all generated from the same source, decode to the source's sRGB values within a stated tolerance (start value: 3 code values mean absolute error);
   5. header-only stubs of JPEG XR, AVIF and OpenEXR are detected by magic bytes regardless of the file extension and get the R-CAP-8 "HDR format" message; JPEG data in a file named `.png` is decoded as JPEG;
-  6. an input above the pixel budget is reduced at decode time with the `Downscaled` finding; a 7680×4320 input stays within the heap budget (R-OCR-17, R-NF-3).
+  6. an input above the pixel budget is reduced at decode time with the `Downscaled` finding; a 7680×4320 input decodes within the heap limit (R-OCR-17, R-NF-3). The full resource test (decode, locate and ONNX Runtime under the shipped launcher options `-Xmx` and `-XX:MaxDirectMemorySize`) runs in `tools/ocr-eval` and reports the peak process memory;
+  7. a truncated PNG, a truncated JPEG, a PNG whose header declares more pixels than the hard limit and a PNG with an oversized `iCCP` chunk are set aside with a reason; the oversized ones without decoding pixel data (02 §9 "Untrusted input").
 - **Tone fixtures** (generated in tests from SDR corpus images, no HDR hardware needed): 8-bit untagged PQ-as-sRGB, linear ×1.5 and ×2.5 with clipping (SDR-brightness simulation), affine washout, PNG with `iCCP` (Display P3), and `gAMA` only. Expected: the R-CAP-8 outcome, the tone class of §2.1 item 7, and never a silently wrong field (golden tests).
 - **Washed-out detector metric:** the eval reports a confusion matrix of `LowContrastCapture` per tone class: real captures with Windows HDR off, real captures per HDR step and capture method, `tone-lift`, `tone-clip` and `tone-pq-as-srgb`. The expected label of each synthetic variant is computed from its transform parameters applied to the source's measured panel range, not by the detector itself. Gates (start values): no finding on any real normal-contrast capture with Windows HDR off (0 false positives, because users ignore a finding that fires on good captures; glare captures are labelled and reported separately); the finding is present on every synthetic variant whose expected label is "washed out". `tone-clip` results are reported separately, because a contrast stretch cannot restore clipped detail.
 - **Metrics per field type:**
   - exactly right
   - correctly flagged (wrong, but flagged)
   - **silently wrong** (wrong and classified as confident) – the most important metric, target ≈ 0
-  - runtime and peak heap (per resolution class)
+  - runtime, peak heap and peak process memory (per resolution class, R-NF-3)
 - **CI** checks the public, redacted partial corpus. The private corpus is included locally via an environment variable (`UEXDR_CORPUS_DIR`).
-- The first public entry is `pyro-gateway-stanton-01` (unverified, `sourceFidelity: reencoded-unknown`). The **Patch City screenshots** still have to be supplied as files (redact the balance first) or stored in the private corpus.
+- The first public entry is `pyro-gateway-stanton-01` (unverified, `sourceFidelity: reencoded-unknown`; its reference snapshot can only be recorded `post-capture`). The **Patch City screenshots** still have to be supplied as files (redact the balance first) or stored in the private corpus.

@@ -13,7 +13,7 @@ While the game is running, a lightweight local OCR does the work. Optionally, a 
 | [01 – Requirements](docs/plan/01-requirements.md) | Functional and non-functional requirements, assumptions |
 | [02 – Architecture](docs/plan/02-architecture.md) | Modules, data flow, domain model, platform integration |
 | [03 – Language decision (ADR)](docs/plan/03-language-decision.md) | Java vs. Rust, evaluation, decision: Java 27 + JavaFX 27 |
-| [04 – Roadmap](docs/plan/04-roadmap.md) | Milestones M0–M5 with acceptance criteria, risks |
+| [04 – Roadmap](docs/plan/04-roadmap.md) | Milestones M0–M5 with acceptance criteria, requirement coverage, risks |
 | [05 – SC-Datarunner-UEX bug analysis](docs/plan/05-datarunner-bug-analysis.md) | Known bugs of the predecessor and our fixes |
 | [06 – UEX API](docs/plan/06-uex-api.md) | Endpoints, payload, open verification points |
 | [07 – OCR concept](docs/plan/07-ocr-concept.md) | Pipeline, screenshot observations, lessons from basetool-sc-extractor |
