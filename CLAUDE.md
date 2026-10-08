@@ -8,12 +8,13 @@ Desktop-Client (Windows + Linux) zum Erfassen von Star-Citizen-Rohstoff-Terminal
 
 | Datei | Inhalt |
 |---|---|
-| `docs/plan/01-anforderungen.md` | Anforderungen mit IDs (`R-…`) und **Annahmen A1–A6** (unverifiziert!) |
+| `docs/plan/01-anforderungen.md` | Anforderungen mit IDs (`R-…`) und **Annahmen A1–A12** (unverifiziert!) |
 | `docs/plan/02-architektur.md` | Module, Abhängigkeitsrichtung, Domänenmodell, Threading |
 | `docs/plan/03-sprachentscheidung.md` | ADR Java vs. Rust, inklusive Lizenzhinweis zu basetool (GPL-3.0) |
 | `docs/plan/05-datarunner-fehleranalyse.md` | Bekannte Fehler des Vorbilds (F1–F30) und unsere Fixes |
 | `docs/plan/06-uex-api.md` | API-Notizen; **ungesicherte Punkte sind markiert** |
-| `docs/plan/07-ocr-konzept.md` | OCR-Pipeline und Screenshot-Beobachtungen |
+| `docs/plan/07-ocr-konzept.md` | OCR-Pipeline, Konfidenz und Sendeschwelle, KI-Fusion, Screenshot-Beobachtungen |
+| `docs/plan/08-review.md` | Review des Plans: gefundene Fehler und Lücken, was geändert wurde, was offen ist |
 
 Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht, aktualisiere das Dokument im selben Commit oder frage nach.
 
@@ -95,11 +96,14 @@ Vor jedem Commit muss `./gradlew check` grün sein.
 
 ## Architektur-Leitplanken
 
-- Abhängigkeiten nur in Pfeilrichtung (siehe `02-architektur.md`); `domain` hat keine Abhängigkeiten außer JSpecify.
+- Abhängigkeiten nur in Pfeilrichtung (siehe `02-architektur.md`); `domain` hat keine Abhängigkeiten außer JSpecify. `pipeline` hängt nur von `domain` ab und bekommt `ReferenceSnapshot`, `TextDetector` und `ReaderResult`s übergeben. Verdrahtet wird alles in `app`.
+- `sealed` nur innerhalb eines JPMS-Moduls; Interfaces, die andere Module implementieren (z. B. `Reader`), sind nicht `sealed`.
 - Pipeline-Stufen sind **reine Funktionen** auf unveränderlichen Records, ohne UI-, Netz- oder Dateisystemzugriff. Dadurch sind sie golden-testbar.
 - **Nichts still raten:**
   - Jeder unsichere Wert trägt ein `Finding` mit Grund-Code.
-  - Das Sende-Gate blockiert Felder unter dem Schwellwert und unklare Terminals.
+  - Das Sende-Gate blockiert Felder unter der Sendeschwelle (Startwert 0.80) und unklare Terminals.
+  - Reparaturen, die sich nur auf den UEX-Prior stützen, werden nie automatisch übernommen; dafür ist ein unabhängiger Zeuge nötig (R-VAL-2b).
+  - Vorgaben aus UEX werden in der manuellen Erfassung als Referenz angezeigt, nicht vorausgefüllt (R-MAN-2).
   - Wenn es mehrere Kandidaten gibt, wählt die App nichts still vor.
 - **UEX-Werte nicht hartkodieren:** Spielversion, Statusstufen und Toleranzen kommen aus der API bzw. dem Cache, niemals aus Konstanten (siehe F14).
 - Freie OCR-Strings erreichen nie die API; nur aufgelöste IDs aus dem UEX-Vokabular.

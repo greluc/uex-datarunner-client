@@ -56,9 +56,16 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
 
 ### 2.4 Feldparser (rein, property-getestet)
 
-- **Preis:** `^[¤@9]?\s*(\d{1,3}(?:[,.\s]\d{3})*(?:[.,]\d{1,2})?)\s*([KkMm])?\s*/\s*SCU$`
-  - Ein führendes Zeichen, das das Währungssymbol sein kann, wird **zweigleisig** behandelt: Kandidat mit und ohne dieses Zeichen.
-  - Die Entscheidung trifft der Prior (§2.5).
+- **Preis** (prozedural, kein einzelner Regex; eine frühere Regex-Fassung lehnte z. B. `96705/SCU` und Zahlen ohne Trenner ab):
+  1. Suffix `/SCU` (tolerant: `/5CU`, `SCU` ohne Slash) abtrennen. Fehlt es, ist das Token kein Preis.
+  2. Optionales Suffix `K`/`M` merken.
+  3. Ist das erste Zeichen ein Nicht-Ziffern-Zeichen (`¤`, `@`, `¢`, …), wird es verworfen. Ist es eine Ziffer aus der Verwechslungsmenge des Währungssymbols (`9`, `8`, `0`, am Korpus zu bestimmen), entstehen **zwei Kandidaten**: mit und ohne diese Ziffer. Liefert die geometrische Abtrennung (§2.1) eine eigene Glyphen-Box vor der Zahl, wird nur „ohne“ verwendet.
+  4. Trenner strukturell auswerten:
+     - Gruppen aus genau 3 Ziffern nach `,`/`.`/Leerzeichen gelten als Tausendertrenner.
+     - Ein letzter Trenner mit 1–2 Ziffern dahinter ist dezimal.
+     - Zahlen ganz ohne Trenner sind gültig.
+     - Widersprüchliche Muster ergeben das Finding `Unreadable`.
+  5. Alle Kandidaten gehen als `BigDecimal` an die Bewertung (§2.5); dort entscheidet der Prior mit Zeugen-Regel.
 - **SCU:** `(\d[\d,.\s]*)\s*SCU`, auch innerhalb verklebter Tokens.
 - **Status:** gegen die Statusnamen aus `commodities_status` und die lokalisierten Namen; Zweitleser ist der Statusbalken (Füllhöhe ≈ Prozentband) bzw. die Textfarbe.
 - **Cargo-Größen:** Anzahl der Kästchen plus OCR, abgeglichen mit den aufsteigenden Teilmengen von {1,2,4,8,16,24,32}.
@@ -75,21 +82,30 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
    - Mindestabstand zum Zweitbesten; sonst `Ambiguous`.
 3. **Preis-Prior:**
    - Kandidaten (roh, ohne Präfixzeichen, Confusable-Varianten, K/M-Skalierung) werden gegen den letzten Wert bzw. `price_*_avg_week` dieses Terminals und dieser Commodity bewertet, Toleranz `price_variation` %.
-   - Liegt **genau ein** Kandidat in der Toleranz, wird er übernommen (Finding `Repaired`, falls nicht roh).
+   - Liegt **genau ein** Kandidat in der Toleranz, wird er vorgeschlagen.
+     - Ist es der Rohwert, ist alles sauber.
+     - Ist es ein reparierter Wert, wird er nur dann **automatisch** übernommen (0.85), wenn ein unabhängiger Zeuge zustimmt (Glyph-Topologie positiv oder Zweitleser/VLM gleich). Ohne Zeugen gilt 0.75, also **unter der Sendeschwelle**; der Nutzer bestätigt per Tastendruck (R-VAL-2b).
    - Liegen keiner oder mehrere in der Toleranz, wird der rohe Wert vorgeschlagen und als `OutOfTolerance`/`Ambiguous` markiert.
-   - **Echte Preisänderungen** sind dadurch nicht blockiert: Der Nutzer bestätigt sie nur.
+   - **Echte Preisänderungen** werden so weder blockiert noch still auf den alten Wert „zurückrepariert“.
+   - **Ohne Prior** (R-VAL-2a): Commodity-Durchschnitt mit doppelter Toleranz; sonst keine Reparatur.
 4. **Konsistenz:** „Out of Stock“ ⇒ SCU 0; Seite ↔ Abschnitt; `is_buyable`/`is_sellable`.
 5. **Glyph-Topologie** (Lochzählung für 0/6/8/9, Konzept aus basetool, neu implementiert) arbeitet nur als **Veto** gegen Reparaturen.
 
 ### 2.6 Konfidenz (regelbasiert)
 
+**Sendeschwelle: 0.80** (Startwert). Felder darunter müssen bestätigt oder korrigiert werden; eine Bestätigung setzt das Feld auf „vom Nutzer bestätigt“.
+
 | Zustand | Konfidenz (Startwerte, am Korpus zu kalibrieren) |
 |---|---|
+| Von OCR und VLM übereinstimmend gelesen, validiert | 0.97 |
 | Sauber, im Prior-Band | 0.95 |
-| Repariert (eindeutig, mit Zeuge) | 0.85 |
-| Außerhalb der Toleranz, sonst plausibel | 0.70 → **prüfen** |
-| Mehrdeutig / Konflikt zwischen Scans | 0.60 → **prüfen** |
-| Unlesbar / unplausibel | 0.30 → **Fehler, Sendesperre** |
+| Sauber, aber ohne Prior (kein Referenzwert), ohne verwechselbare Ziffern | 0.85 |
+| Repariert, eindeutig, **mit unabhängigem Zeugen** | 0.85 |
+| Ein-Leser-Wert (anderer Leser unlesbar), validiert | 0.85 |
+| Repariert nur über den Prior (ohne Zeugen) | 0.75 → **bestätigen** |
+| Außerhalb der Toleranz, sonst plausibel | 0.70 → **bestätigen** |
+| Mehrdeutig / Konflikt zwischen Scans oder Lesern | 0.60 → **auswählen** |
+| Unlesbar / unplausibel | 0.30 → **korrigieren** |
 
 Die Report-Konfidenz entspricht dem schlechtesten Pflichtfeld, nicht dem Mittelwert, damit sich einzelne Fehler nicht „wegmitteln“.
 
@@ -107,7 +123,7 @@ Die Zahlen stammen aus der Refinery-Domäne; ob sie übertragbar sind, prüft da
 
 1. Während des Spiels liefert die klassische OCR sofort Ergebnisse. Reports mit Warnungen werden für die KI vorgemerkt; der Nutzer kann sie trotzdem jederzeit manuell korrigieren und senden.
 2. Wenn das Spiel geschlossen ist (Hysterese), arbeitet die KI-Queue die vorgemerkten bzw. alle ungesendeten Reports ab. Eingabe sind die perspektivkorrigierten Panel-Ausschnitte (Shop-Panel, Location-Feld), auf eine Kante von ca. 1000–1500 px begrenzt.
-3. Das Ergebnis läuft durch Parser, Vokabular-Auflösung und Validierung (identisch zur OCR), dann folgt die Fusion.
+3. Das Ergebnis läuft durch Parser und Vokabular-Auflösung (identisch zur OCR). Danach werden OCR und VLM **pro Feld fusioniert**, und erst das fusionierte Ergebnis wird einmal validiert (Prior, Konsistenz, Konfidenz). Danach wird der Report neu gestitcht.
 4. Startet das Spiel, wird der Request abgebrochen und das Modell entladen; die Jobs bleiben erhalten.
 
 **Prompt** (`vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioniert):
@@ -134,7 +150,7 @@ Die Zahlen stammen aus der Refinery-Domäne; ob sie übertragbar sind, prüft da
 | Wert a | gleicher Wert a | a, Konfidenz 0.97 „doppelt bestätigt“ |
 | a | b ≠ a, nur eine Confusable-Stelle verschieden | Glyph-Topologie und Prior entscheiden eindeutig, sonst `Ambiguous` (beide Kandidaten im UI) |
 | a | b, stark verschieden | Der Kandidat im Prior-Band gewinnt nur, wenn genau einer drin liegt; sonst `Ambiguous` |
-| unlesbar | b | b, wenn die Validierung ok ist, mit 0.85 (Ein-Leser-Wert); sonst `prüfen` |
+| unlesbar | b | b als Kandidat; nach der Validierung 0.85 (Ein-Leser-Wert), wenn plausibel, sonst unter der Sendeschwelle |
 | a | unlesbar | unverändert (OCR-Konfidenz) |
 | Commodity-/Terminal-Auflösung verschieden | | immer `Ambiguous` → Pflichtauswahl |
 

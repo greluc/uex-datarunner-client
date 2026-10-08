@@ -5,10 +5,11 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 ## M0 – Fundament und Verifikation
 
 - [ ] Projektinhaber entscheidet: Projekt- und Paketname, Lizenz (GPL-3.0 bei Code-Port aus basetool), JDK 27 vs. 25 LTS
+- [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, palantir-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
 - [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
 - [ ] **API-Spike** (kleine CLI im Modul `uex-api`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
-- [ ] Mit UEX klären, wie ein Open-Source-Client das App-Token handhaben soll
+- [ ] Mit UEX klären: App-Token für Open-Source-Clients, Nutzungsbedingungen, Annahmen A9–A12 (Umgebungs-Mapping, `scu_sell` vs. `scu_sell_stock`, zusammengesetzter Screenshot, Duplikatsperre)
 - [ ] Korpus anlegen: Patch-City-Screenshots plus weitere Terminals/Themes; Erwartungswerte transkribieren
 
 **Abnahme:** `./gradlew check` ist auf beiden OS grün; ein Test-Report mit `is_production=0` wurde erfolgreich übermittelt und die Antwort dokumentiert.
@@ -61,9 +62,21 @@ Setzt M3 voraus (gemeinsame Auflösung, Validierung und Stitching). Kann paralle
 
 **Abnahme:**
 
-- Spielstart bricht einen KI-Lauf innerhalb von ≤ 5 s ab und entlädt das Modell (Test mit simuliertem Prozess).
+- Spielstart bricht einen KI-Lauf innerhalb von ≤ 5 s ab (2-s-Takt während eines Laufs plus Abbruch) und entlädt das Modell (Test mit simuliertem Prozess).
 - Ohne Ollama gibt es keine Fehlermeldung.
 - Die Fusion senkt „still falsch“ und „markiert“ auf dem Korpus messbar gegenüber „nur OCR“. **Ist das nicht der Fall, wird das Feature nicht ausgeliefert** (Annahme A8).
+
+## Risiken
+
+| Risiko | Auswirkung | Gegenmaßnahme / Prüfung |
+|---|---|---|
+| UEX verlangt ein App-Token, das ein Open-Source-Client nicht sicher verteilen kann (A2) | **Projektblocker** für das Senden | M0: früh mit UEX klären; Option „Nutzer trägt eigenes App-Token ein“ |
+| Nutzungsbedingungen von UEX schließen Drittclients oder automatisierte Erfassung aus | Projektblocker | M0: Terms lesen und gegebenenfalls Freigabe einholen |
+| PP-OCR ist als Primärleser für Terminals zu ungenau | Viel Handkorrektur; Kernnutzen sinkt | M2 misst früh; Gegenmaßnahmen: Fine-Tuning des Erkennungsmodells, VLM-Zweitleser (M5) |
+| Spiel-Patch ändert das Terminal-Layout | Erkennung bricht | Datengetriebene Layout-Profile, Crop-Dumps, Korpus-Regressionstest; manueller Zuschnitt als Fallback |
+| Toolchain unterstützt JDK 27 nicht | Build blockiert | M0-Check; Fallback JDK 25 LTS |
+| Linux-Spezifika (Wine-Pfade, Spielerkennung, Secret Service, XWayland) weichen von den Annahmen ab | Linux-Funktionen eingeschränkt | Manuelle Konfiguration als Fallback überall; Tests auf echten Systemen in M4/M5 |
+| UEX-API ändert sich (Felder, Fehlercodes) | Senden schlägt fehl | Defensives Parsen, Kontrakt-Tests mit aufgezeichneten Antworten, verständliche Fehlermeldungen |
 
 ## Danach (1.x / später)
 
