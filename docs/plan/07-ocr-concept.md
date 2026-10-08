@@ -47,6 +47,16 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
    - Last fallback: manual.
 4. **Homography** to a normalized width (e.g. 1000 px for the shop panel), then bilinear resampling.
 5. **Theme-agnostic:** For recognition the max channel or luminance is used; color only serves for tab, status and hover.
+6. **Resolution and scale (R-OCR-17):**
+   - Anchor search runs on a box-filtered pyramid (1/4, 1/2) so that 1080p and 4K captures produce anchors of similar pixel size.
+   - The homography maps the panel to a **fixed working size**; layout tolerances are fractions of that size.
+   - Effective text height is measured on the anchors in the original image. Below the minimum, the scan is flagged "panel too small" (upscaling cannot invent detail; it may only help slightly above the minimum).
+   - Ultrawide: the panel can sit far off-centre; the anchor search covers the full width, there is no centre crop.
+7. **HDR and tone normalization (R-OCR-18):**
+   - Per located panel: luminance histogram, robust black point (e.g. 1st percentile) and white point (e.g. 99.5th percentile), linear stretch; optional gamma correction if the midtones are compressed (start values, calibrated on paired HDR/SDR captures).
+   - Washed-out detection: black point above a threshold and dynamic range below a threshold → finding "low-contrast capture (HDR?)". The scan still runs, but every numeric field gets at most the "confirm" level, because confusable digits become more likely.
+   - Colour decisions (active tab, status colour, hover, stock bar) use **hue and relative saturation** after normalization, never absolute RGB thresholds; status colours are compared with the colours from `commodities_status` per side.
+   - Bright terminals and glare (predecessor fix in v0.6.8.4, F8/F15 context) are handled by the same per-panel normalization; the crop excludes areas outside the panel.
 
 ### 2.2 OCR
 
@@ -214,6 +224,8 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
 
 - **Corpus structure:** `corpus/public/<id>/` (or `$UEXDR_CORPUS_DIR/<id>/` for the private part) with the images and one `expected.json` (source and redaction info, location, theme, game version, per capture: side, section, cards with all fields and `screenOrder`, partial/dimmed flags, `verified` flag). Format: see `corpus/public/pyro-gateway-stanton-01/expected.json`.
 - **Measure readers separately:** The eval runs for "OCR only", "VLM only (model X)" and "fusion". The model recommendation follows from the fusion result on the corpus, not from the model card. VLM runs are opt-in (`UEXDR_VLM_HOST`), because CI has no GPU.
+- **Corpus classes:** every entry is tagged with resolution, aspect ratio, HDR on/off, capture method and theme; the eval reports metrics per class (R-QA-3), so that e.g. "4K + HDR + Game Bar PNG" cannot regress unnoticed behind a good average.
+- **Paired HDR captures:** for at least two terminals the same view is captured with HDR on and off (each capture method), to calibrate the normalization (A16).
 - **Metrics per field type:**
   - exactly right
   - correctly flagged (wrong, but flagged)
