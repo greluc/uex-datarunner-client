@@ -1,4 +1,4 @@
-# Engineering Principles: Modularization, Maintainability, Clean Code
+# Engineering Principles: Modularisation, Maintainability, Clean Code
 
 > **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
 
@@ -15,7 +15,7 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 5. **Portability:** Windows and Linux.
 6. **Resource efficiency** alongside the running game.
 
-## 2. Modularization
+## 2. Modularisation
 
 | Rule | Enforcement |
 |---|---|
@@ -64,7 +64,7 @@ No suppression exists yet.
   - programming errors → exception, log at ERROR, diagnostics export
 - **User texts** only via keys in ResourceBundles, with English texts; error codes are mapped to keys centrally (one table, covered by tests: every known UEX code has a text).
 - **Logging:** SLF4J only; ONNX Runtime logs via `java.util.logging`, bridged with `jul-to-slf4j`. No `System.out`, `System.err` or `printStackTrace` in `main` source sets and no `java.util.logging` outside the bridge set-up in `app` (ArchUnit `GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS` and `NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING`); the CLI tools under `tools/` may write to the console.
-  - **Context** via MDC (`captureId`, `reportId`) – the one accepted `ThreadLocal`. The core binds the log context as one `ScopedValue<LogContext>` (`LogContext`: `@Nullable CaptureId`, `@Nullable ReportId`; record and key in `shared-kernel`). Neither the MDC nor `ScopedValue` bindings cross executor boundaries (`ScopedValue` inheritance needs `StructuredTaskScope`, which is preview in JDK 27 and banned), so `app` wraps **every** injected executor (virtual-thread I/O, bounded OCR, bounded JNI/SQLite, UI executor, the `HttpClient` executor) in one `ContextPropagatingExecutor`. At submit time it captures `KEY.isBound() ? KEY.get() : null`; in the task it re-binds with `ScopedValue.where(KEY, ctx).call(…)`/`.run(…)`, sets the MDC and clears it in `finally`; without a context the task runs unbound with an empty MDC. One parameterized test (platform pool, virtual-thread executor, direct executor) proves that the context is visible inside the task and the MDC is empty afterwards.
+  - **Context** via MDC (`captureId`, `reportId`) – the one accepted `ThreadLocal`. The core binds the log context as one `ScopedValue<LogContext>` (`LogContext`: `@Nullable CaptureId`, `@Nullable ReportId`; record and key in `shared-kernel`). Neither the MDC nor `ScopedValue` bindings cross executor boundaries (`ScopedValue` inheritance needs `StructuredTaskScope`, which is preview in JDK 27 and banned), so `app` wraps **every** injected executor (virtual-thread I/O, bounded OCR, bounded JNI/SQLite, UI executor, the `HttpClient` executor) in one `ContextPropagatingExecutor`. At submit time it captures `KEY.isBound() ? KEY.get() : null`; in the task it re-binds with `ScopedValue.where(KEY, ctx).call(…)`/`.run(…)`, sets the MDC and clears it in `finally`; without a context the task runs unbound with an empty MDC. One parameterised test (platform pool, virtual-thread executor, direct executor) proves that the context is visible inside the task and the MDC is empty afterwards.
   - **Content:** secrets, image data (the `/data_submit` `screenshot` field, Ollama `images`, raster bytes) and complete request or response bodies are never logged, at any level. At DEBUG, payloads are summarised (row count, byte sizes, SHA-256). `GameProcessMonitor` logs only matched/not matched plus the matched executable path, never other processes' command lines. Tests prove that the masking filter takes effect and that a DEBUG-level submit and VLM call log no Base64 image data.
 
 ## 5. Concurrency
@@ -85,8 +85,8 @@ No suppression exists yet.
 
 - **Views** are passive (layout, binding, CSS) and contain no logic.
 - **ViewModels** hold the UI state and call use cases; they are unit-testable without a window.
-- Formatting (numbers, Δ %, "3 days ago") lives in **one** place (formatter class) and is localized.
-- The display of deviation and confidence is derived via the CSS pseudo-classes listed in 02 §7 from `Field` (assessment, confirmation, origin); the ViewModel contains no thresholds, and there are no color values in Java code.
+- Formatting (numbers, Δ %, "3 days ago") lives in **one** place (formatter class) and is localised.
+- The display of deviation and confidence is derived via the CSS pseudo-classes listed in 02 §7 from `Field` (assessment, confirmation, origin); the ViewModel contains no thresholds, and there are no colour values in Java code.
 - **Dialogs only from user actions** (R-UI-16): dialogs and windows are opened only through one `ui` `DialogPresenter`. ArchUnit forbids constructing `Alert`/`Dialog`/`Stage` and calling the window-level `Stage.toFront`, `Window.requestFocus`, `Stage.setIconified`, `Stage.setMaximized` or `Stage.setAlwaysOnTop` outside it; `Node.requestFocus` only moves the focus owner within its scene and stays allowed for keyboard navigation (R-UI-17). ViewModel tests feed every background event type in and assert that no dialog request comes out, only state or notice changes. One TestFX test checks that a background event while the window is unfocused or minimised creates no new `Stage` and changes neither the focus nor the iconified state.
 - **Rendering load next to the game** (R-NF-3): no continuous animations and no indeterminate progress. ArchUnit forbids in `ui` the no-argument constructors of `ProgressBar` and `ProgressIndicator` (they create indeterminate controls) and calls to `Animation.setCycleCount` (repetition needs it; timers use the injected UI executor instead); ViewModel tests assert that progress values are never negative.
 
@@ -107,7 +107,7 @@ Approach: **Test-Driven Development** and outside-in; rules, exceptions and tool
 
 Further test rules:
 
-- **Test names** describe the behavior (`rejectsSubmissionWhenMajorDeviationUnconfirmed`); structure Given/When/Then; test data via builders instead of copy-paste.
+- **Test names** describe the behaviour (`rejectsSubmissionWhenMajorDeviationUnconfirmed`); structure Given/When/Then; test data via builders instead of copy-paste.
 - **Flaky tests** are not tolerated: fix the cause, do not disable them.
 - **Coverage gate (JaCoCo):** initial value ≥ 85 % lines for the core modules. There is no quota for adapters; integration tests instead. The quota serves to find gaps, not as an end in itself.
 

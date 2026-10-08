@@ -76,11 +76,11 @@ Error classes (R-SUB-11; every known code has exactly one class, whatever the HT
 | `GET /terminals?type=commodity` | Terminals: `id`, `name`, `nickname`, `displayname`, `code`, location IDs/names, `is_available_live`, `is_player_owned`, `max_container_size`; `is_available_live` filters the LIVE vocabulary only; PTU availability: open point 19 | 12 h |
 | `GET /commodities_prices?id_terminal=a,b,…` (≤ 10) | **Prior** per terminal: current values plus min/max/avg (week/month), `status_*`, `container_sizes`, `date_modified` (age of the prior; only the current values are used as the prior, [11](11-ddd-and-tdd.md) §A1; semantics: open point 23) | 30 min |
 | `GET /commodities_prices_all` | Compact complete snapshot (fallback/offline) | 30 min |
-| `GET /commodities_status` | Status levels 1–7 per side (`buy[]`/`sell[]`) with names, abbreviations, percentage band, colors | 1 day |
+| `GET /commodities_status` | Status levels 1–7 per side (`buy[]`/`sell[]`) with names, abbreviations, percentage band, colours | 1 day |
 | `GET /game_versions` | `{"live":"…","ptu":"…"}`; `ptu` can be `null` when no PTU is running [3P: uex-lib fixture]; the delay between a patch and the new value, and whether every patch that can change the terminal UI changes the version string, are unverified (A17; measured on the next patch day, result recorded here) | 1 day; additionally fetched at startup, before an import batch is versioned, on game start and ≤ 15 min before every send attempt (R-CAP-3b, R-SUB-5); every successful fetch updates the observed version history |
 | `GET /data_parameters` | Nested per the [3P] uex-lib fixture and the traffic-derived `dolejska-daniel/uexcorp-openapi` spec (unverified; structure: open point 22): `global.is_accepting_reports`, `global.is_accepting_ptu_reports`, `global.evaluation_period_days`, `global.game_version`/`game_version_ptu`; one object per report type (`commodity`, `item`, `vehicle_buy`, `vehicle_rent`) with its own `is_accepted` – a flag **per report type**, not per commodity; for `commodity`: `is_accepted` (0/1, reports of type `commodity` accepted), `price_variation`, `scu_variation`, `ttl`, `is_temporary_enabled` (**units unconfirmed**, A15) | 1 day for tolerances; **≤ 15 min before every send attempt** for `global.is_accepting_*` and `commodity.is_accepted` (R-SUB-5) |
 | `GET /star_systems`, `/planets`, `/moons`, `/orbits`, `/space_stations`, `/cities`, `/outposts` | Location names for the "YOUR INVENTORIES" field and disambiguation | 1 day |
-| `GET /user` | `is_datarunner`, `is_datarunner_banned`, `username` – key check (behavior with only `secret_key` **uncertain**) | – |
+| `GET /user` | `is_datarunner`, `is_datarunner_banned`, `username` – key check (behaviour with only `secret_key` **uncertain**) | – |
 
 ## Open points (M0 verification)
 
@@ -88,7 +88,7 @@ Error classes (R-SUB-11; every known code has exactly one class, whatever the HT
 2. Is an app bearer token additionally required for `data_submit`? If so: how does an open-source client distribute it (user token vs. embedded)? Best clarified with UEX.
 3. Is `status_*` mandatory? Is `container_sizes` per report or per row? The answer updates the "Mandatory field" definition in [11](11-ddd-and-tdd.md) §A1 in the same commit.
 4. Which hosts are operated by UEX (`api.uexcorp.space`, `api.uexcorp.uk`), and which of them accept POSTs? Confirm with UEX or the official documentation, not with third-party clients. Also record per endpoint whether `secret_key` and the app token are required (R-API-3).
-5. Behavior of `GET /user` with only the secret key
+5. Behaviour of `GET /user` with only the secret key
 6. Current error code list and units of `price_variation`, `scu_variation` and `ttl`; does UEX answer HTTP 401/403 without a status code (classified as account until verified, R-SUB-11); is `commodity.is_accepted` a flag for commodity reports as a whole (as the [3P] spec suggests; see point 22)?
 7. Terms of use (`https://uexcorp.space/about/legal`) for third-party clients, user agent convention; whether recorded UEX responses may be published in the public corpus and in test fixtures ([07](07-ocr-concept.md) §4)
 8. **Sell side:** Does the "… SCU" number in the terminal mean `scu_sell` or `scu_sell_stock`? (assumption A10) – **Indication** from the Pyro Gateway screenshots: the number appears together with a stock status (1,482 SCU, VERY LOW INVENTORY), so it rather points to the stock level (`scu_sell_stock`).
