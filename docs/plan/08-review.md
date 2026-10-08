@@ -25,7 +25,7 @@ All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`
 | B-2 | Fusion order contradictory (diagram: fusion → validation; text: validation → fusion) | Defined: per reader parse and resolve → fusion → validate **once** → stitching | 02 §4b, 07 §2.7 |
 | B-3 | **Send threshold** not defined anywhere; confidence values without meaning for the submission gate | Send threshold 0.80 as a term and in the confidence table | 01 Terms, 07 §2.6 |
 | B-4 | Prior-based repair could **silently "repair" real price changes back to old values**, and that with 0.85, i.e. sendable | Repairs automatic only with an independent witness, otherwise 0.75 → confirm | R-VAL-2b, 07 §2.5 |
-| B-5 | No behavior defined if **no prior** exists (new commodity at the terminal) | Fallback to the commodity average, otherwise no repair | R-VAL-2a |
+| B-5 | No behaviour defined if **no prior** exists (new commodity at the terminal) | Fallback to the commodity average, otherwise no repair | R-VAL-2a |
 | B-6 | Manual capture **prefilled UEX values**. This would allow outdated values to be sent as a fresh report by clicking through; a data quality problem for UEX. | Values are shown as a reference, not prefilled; only actively accepted rows are sent | R-MAN-2 |
 | B-7 | Manual reports have no screenshot, but new DataRunners need one (`screenshot_required`) | Screenshot can be attached, the requirement is shown in advance | R-MAN-5, A11 |
 | B-8 | A report consists of several scroll captures, but the API only accepts **one** screenshot | Compose the shop crops vertically (assumption A11) | R-SUB-7 |
@@ -54,7 +54,7 @@ All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`
 
 ## D. Deliberately left open (decision or verification needed)
 
-- **To be decided by the project owner:** project and package name, license, JDK 27 vs. 25 LTS.
+- **To be decided by the project owner:** project and package name, licence, JDK 27 vs. 25 LTS.
 - **To be clarified against the live API or with UEX:** A1, A2, A9–A12 as well as the open points in 06. This applies especially to `container_sizes`: the sizes differ per commodity in the game. If the field exists only per report, we should rather omit it than falsify it.
 - **To be measured on the corpus:** all thresholds (send threshold, confidence levels, tolerances, grouping window), runtime and RAM targets, VLM suitability (A8).
 - **To be tested on real systems:** Linux/Wine paths (A3), game detection (A7), XWayland, Secret Service. For libsecret via FFM, note that the store API is variadic; the FFM API supports this, but it increases the effort. An alternative would be D-Bus directly.
@@ -65,9 +65,9 @@ All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`
 - The second-biggest uncertainty is the **real OCR accuracy** of PP-OCR on terminal screenshots. That is why M2 (measurement) comes before building the complete pipeline.
 - The numbers from basetool (VLM speed, Markdown vs. JSON accuracy, recognition rates) come from a different domain (refinery). They are to be understood as starting values, not as a promise.
 
-## F. Addendum: modularization, maintainability and deviation marking
+## F. Addendum: modularisation, maintainability and deviation marking
 
-A second review focusing on modularization, clean code and best practices yielded the following (module names in sections A–E still refer to the old split):
+A second review focusing on modularisation, clean code and best practices yielded the following (module names in sections A–E still refer to the old split):
 
 | # | Finding | Change |
 |---|---|---|
@@ -76,7 +76,7 @@ A second review focusing on modularization, clean code and best practices yielde
 | F-3 | OS integration (secret store, process monitor, installation detection, truststore) was spread across `app` and `capture` | Bundled in `adapter-platform` |
 | F-4 | Best practices were named but not **enforced** | 09: rules with enforcement (JPMS, ArchUnit, Error Prone/NullAway, JaCoCo gate, Dependabot, PR checklist, Definition of Done); M0 sets up the gates before the first domain code |
 | F-5 | Time-dependent logic (cooldown, hysteresis, grouping) was not deterministically testable | `java.time.Clock` as an injected port |
-| F-6 | Deviations from the previous UEX value were only indirectly visible via the confidence. A **cleanly read but wrong** value (transposed digits in the source, wrong row) would have remained unmarked. | Separate dimension "deviation" with color marking, Δ display, age of the reference and mandatory confirmation for strong deviation (R-UI-10..12, 07 §2.6, 02 §7) |
+| F-6 | Deviations from the previous UEX value were only indirectly visible via the confidence. A **cleanly read but wrong** value (transposed digits in the source, wrong row) would have remained unmarked. | Separate dimension "deviation" with colour marking, Δ display, age of the reference and mandatory confirmation for strong deviation (R-UI-10..12, 07 §2.6, 02 §7) |
 
 ## G. Addendum: module cut by bounded context
 
@@ -179,9 +179,9 @@ Three reviewers looked at the earlier resolution/HDR plan (algorithm, measuremen
 | Scale gate | The gate used anchor height with a 10 px start value. A preliminary downscale experiment (third-party PP-OCRv6 small export, one unverified entry) showed that the price digits are the limiting glyph and that the limit lies lower | R-OCR-17: gate on the **price-digit cap height** (smallest fully visible card), start values < 6 px `TextTooSmall`, 6–8 px `SmallText`, ≥ 8 px normal; calibrated in M2 with the official export |
 | Anchor search | A fixed factor or a detector `max_side_limit` (PaddleOCR default 4000) can shrink anchors below legibility on ultrawide or distant captures | 07 §2.1 item 1: factor min(1, 1080/height), native-resolution retry, tiling instead of a size limit |
 | Large inputs | 7680×4320 DSR captures could exceed the heap budget | Pixel budget with decode-time box reduction and `Downscaled` finding; resource test |
-| Recognizer input | Recognition crops came from the resampled normalized panel; preprocessing parity with PaddleOCR training was not specified | Crops from the original raster; `INTER_LINEAR`, BGR, normalization and padding pinned by a golden test (07 §2.1 item 4) |
+| Recogniser input | Recognition crops came from the resampled normalised panel; preprocessing parity with PaddleOCR training was not specified | Crops from the original raster; `INTER_LINEAR`, BGR, normalisation and padding pinned by a golden test (07 §2.1 item 4) |
 | Colour decoding | `ImageIO.read` skips colour chunks; the JDK does not apply `iCCP`/`gAMA` and does not know `cICP`, so PQ PNGs would be read as washed-out sRGB | R-CAP-8: magic-byte detection, explicit colour metadata, PQ/HLG never read as sRGB, JXR/AVIF/EXR always listed with tool-specific hints; decode fixtures (07 §4) |
-| Tone handling | One "washed out" finding mixed recoverable low contrast with lost detail; the stretched panel was also fed to the recognizer | Tone classes `NORMAL`/`LOW_CONTRAST`/`PQ_SUSPECTED`/`CLIPPED`; findings `LowContrastCapture` and `ClippedHighlights`; recognizer gets the un-stretched crop by default; colour decisions relative within the panel |
+| Tone handling | One "washed out" finding mixed recoverable low contrast with lost detail; the stretched panel was also fed to the recogniser | Tone classes `NORMAL`/`LOW_CONTRAST`/`PQ_SUSPECTED`/`CLIPPED`; findings `LowContrastCapture` and `ClippedHighlights`; recogniser gets the un-stretched crop by default; colour decisions relative within the panel |
 | Confidence | A line-mean OCR score hides one uncertain digit; letters like B/O/S inside numbers were not handled | Per-digit minimum probability (07 §2.6); letter–digit confusables (07 §2.4) |
 | Measurement | Corpus classes had no minimum sample sizes; "0 silently wrong" on a few fields looked like proof; HDR and resolution could not be tested without the hardware | R-QA-2 ladders and text-height bands; R-QA-3 class status and rule-of-three bound; synthetic class variants, metamorphic gate, capture protocol, schema version 2 (07 §4) |
 | User guidance | HDR and framing advice was one phrase; hints could nag on every capture | R-DOC-1 capture tips (each marked "verified on game version X"); non-modal per-source hints (R-OCR-18); "Check a screenshot" (R-CAP-9) |
@@ -269,7 +269,7 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   - The state inventory follows the current model: report states including `Discarded`, job phases without "failed", the Capture states, the AI job states, the `BlockReason` set and the `ReportFinding` list of 02 §3, the pseudo-class set of 02 §7, the watched-folder state enabled/disabled (R-CAP-1e). The prompt still says I1–I6.
   - R-UI-16 replaces the R-CAP-1 aside on dialogs, and R-UI-17 replaces the untraced accessibility criteria; automatic high contrast stays an owner decision.
 - **Owner questions** (each with the default applied in the plan):
-  1. PTU reports keep the `UnvalidatedGameVersion` cap until verified PTU captures exist, so every recognized field needs a confirmation or the per-session lift. Acceptable for PTU DataRunners?
+  1. PTU reports keep the `UnvalidatedGameVersion` cap until verified PTU captures exist, so every recognised field needs a confirmation or the per-session lift. Acceptable for PTU DataRunners?
   2. A major deviation against a prior older than 7 days always needs a confirmation; only minor deviations are visually suppressed. Acceptable?
   3. The commodity-wide average is a coarse deviation reference for commodities new at a terminal (beyond twice the tolerance: major deviation, confirmation). Keep it, or use the average only as a repair aid?
   4. May recorded UEX reference data be published in the public corpus? Until UEX clears it (06 open point 7), `reference/` stays private, so CI cannot gate prior-dependent metrics on public entries.
@@ -280,11 +280,11 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   9. Should manual entry offer "mark as missing" (`is_missing`) on the user's statement alone, without scan coverage? Default: not offered.
   10. Side and environment are editable in a Draft (re-running resolution and validation and offering a merge). Or should they be display-only, so that a wrong value can only be fixed by discarding and re-importing?
   11. May an installed and a portable instance run at the same time for one OS user? Default: no, a per-user lock refuses the second instance.
-  12. With fewer than 3 recognized commodities, a single location candidate is proposed at "confirm" (one key press). Should it be accepted automatically instead?
+  12. With fewer than 3 recognised commodities, a single location candidate is proposed at "confirm" (one key press). Should it be accepted automatically instead?
   13. A model not on the evaluated list stays usable, but its readings always need confirmation. Or should Automatic mode refuse such a model?
   14. A later capture (60 s or more later) that differs from a confident earlier reading is proposed and needs a confirmation (before, the later capture won automatically). Acceptable?
   15. A VLM reading from an evaluated model counts as an independent witness for an OCR repair. Or should only glyph topology be a witness?
-  16. One recognized commodity missing from the terminal's UEX assortment prevents automatic terminal selection (0 misses allowed, configurable). Keep, given that the assortment can lag after patches?
+  16. One recognised commodity missing from the terminal's UEX assortment prevents automatic terminal selection (0 misses allowed, configurable). Keep, given that the assortment can lag after patches?
   17. A commodity outside the terminal's UEX assortment for this side (`UnexpectedCommodity`) always needs a confirmation. Keep?
   18. Until the SELLABLE CARGO section is verified, its cards produce no report rows. Acceptable, or offer them after a confirmation?
   19. A non-loopback Ollama host over plain HTTP is allowed after a warning. Or accept only HTTPS?
@@ -309,7 +309,7 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
 ## L. Governance and licence decisions (2026-10-08)
 
 - The owner decided the open governance points; [ADR-0003](../adr/0003-licence-and-contributions.md) records them. Open points live only in [docs/adr/0000-open-points.md](../adr/0000-open-points.md).
-- §D "license" is answered: GPL-3.0-or-later (O-1, O-2). Porting from basetool-sc-extractor and basetool follows the porting rules in CLAUDE.md, and 03 §5 carries a status line.
+- §D "licence" is answered: GPL-3.0-or-later (O-1, O-2). Porting from basetool-sc-extractor and basetool follows the porting rules in CLAUDE.md, and 03 §5 carries a status line.
 - Contributions: a DCO 1.1 sign-off on every commit plus the CLA with a public roster; Conventional Commits; no squash merges (O-4, O-5, O-29).
 - §K "Deferred", licence and brand review:
   - The licence rule by category is the CLAUDE.md "Stack rules" (S-29, S-34, 09 §9).

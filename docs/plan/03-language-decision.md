@@ -12,7 +12,7 @@
 |---|---|---|---|
 | K1 | GUI for data-heavy review/edit forms (tables, comboboxes with search, image crops with overlays, keyboard operation) | **5** | Core of the user experience. Most bugs of the original are UX/review problems (see [05](05-datarunner-bug-analysis.md)). |
 | K2 | ONNX Runtime for PaddleOCR (detection + recognition) | **5** | Core of the recognition |
-| K3 | Image processing (crop, color, homography/perspective, downscale) | 3 | Own implementation remains manageable |
+| K3 | Image processing (crop, colour, homography/perspective, downscale) | 3 | Own implementation remains manageable |
 | K4 | HTTP/JSON, caching, rate limit | 2 | Trivial in both languages |
 | K5 | Packaging/distribution Windows + Linux | 3 | Installers or portable builds |
 | K6 | Resource consumption next to the running game | 3 | Star Citizen needs a lot of RAM/VRAM |
@@ -68,9 +68,9 @@
 | K4 HTTP/JSON | 2 | 5 | 5 | `java.net.http` + Jackson 3 vs. `reqwest` + `serde`: equivalent |
 | K5 Distribution | 3 | 3 | **5** | `jpackage` creates one package per OS with runtime (considerably larger, build per OS required). Rust: one binary plus the ONNX Runtime lib. |
 | K6 Resources | 3 | 3 | **5** | The JVM needs more RAM. It can be limited via `-Xmx`, G1 and Compact Object Headers (JEP 534, default from JDK 27), but stays above Rust. **Concrete numbers must be measured; they are not estimated here.** |
-| K7 Reuse | 3 | **5** | 3 | basetool runs on the JVM with the same ORT Java API: concepts (not code, see license) can be transferred directly. Taking over code requires GPL-3.0 (see below). |
+| K7 Reuse | 3 | **5** | 3 | basetool runs on the JVM with the same ORT Java API: concepts (not code, see licence) can be transferred directly. Taking over code requires GPL-3.0 (see below). |
 | K8 Secret store | 2 | 3 | **5** | Java has no cross-platform keyring. Solution: a small custom binding via the **FFM API** to Windows Credential Manager and libsecret. Rust: `keyring` ready-made. |
-| K9 Iteration | 4 | **5** | 3 | Incremental compilation, hot reload of CSS and fast UI prototyping favor Java. Rust compile times with ORT plus GUI are noticeably longer. |
+| K9 Iteration | 4 | **5** | 3 | Incremental compilation, hot reload of CSS and fast UI prototyping favour Java. Rust compile times with ORT plus GUI are noticeably longer. |
 | **Total (weighted)** | | **128** | **113–118** | |
 
 Calculation Java: 25+25+9+10+9+9+15+6+20 = 128.
@@ -102,7 +102,7 @@ The exact score is less important than the two criteria with the highest weight:
 
 **Addendum (optional AI recognition):** The local VLM is connected via the Ollama HTTP API (`java.net.http` + Jackson). This is equally easy in both languages and does not change the rating. Game detection uses the JDK (`ProcessHandle`, `/proc`) plus a small FFM call on Windows (Toolhelp snapshot, R-VLM-2); in Rust it would need a crate such as `sysinfo`.
 
-## 5. License notice (consequence for reuse)
+## 5. Licence notice (consequence for reuse)
 
 > **Status: answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08).** The project owner decided the project licence: **GPL-3.0-or-later**. Code from basetool-sc-extractor (GPL-3.0-or-later) and from basetool (GPL-3.0-only) may now be ported under the porting rules in [CLAUDE.md](../../CLAUDE.md); a file with basetool code stays GPL-3.0-only unless its copyright holders relicense it. The "only by concept" rule below and the licence remark in K7 (§3) are therefore superseded; this section is kept unchanged as the decision context.
 
@@ -112,4 +112,4 @@ basetool-sc-extractor is licensed under **GPL-3.0-or-later**.
 - **Ideas, thresholds and measurement results** may be freely re-implemented.
 - The **PP-OCRv6 models** are licensed under Apache-2.0 and may be used directly.
 
-**Open decision for the project owner:** determine the project's license (recommendation: GPL-3.0-or-later if code from basetool is to be ported; otherwise freely selectable). Until then we implement **only by concept** and do not copy any code.
+**Open decision for the project owner:** determine the project's licence (recommendation: GPL-3.0-or-later if code from basetool is to be ported; otherwise freely selectable). Until then we implement **only by concept** and do not copy any code.
