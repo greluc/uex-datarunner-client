@@ -1,98 +1,98 @@
-# Supply-Chain-Sicherheit
+# Supply Chain Security
 
-Ziel: Weder eine kompromittierte Abhängigkeit, ein manipuliertes Build-Werkzeug oder eine CI-Aktion noch ein unterwandertes Release-Artefakt soll unbemerkt Code auf die Rechner der Nutzer bringen. Der Client verarbeitet einen UEX-Secret-Key und läuft neben dem Spiel – ein kompromittierter Build wäre ein direkter Angriff auf die Nutzer.
+Goal: Neither a compromised dependency, a tampered build tool or CI action, nor a subverted release artifact should bring code onto users' machines unnoticed. The client handles a UEX secret key and runs alongside the game – a compromised build would be a direct attack on the users.
 
-**Ehrliche Grenze:** Supply-Chain-Sicherheit ist Risikoreduktion, keine Garantie. Die folgenden Maßnahmen verhindern vor allem *unbemerkte* Änderungen (manipulierte Artefakte, umgehängte Tags, still nachgezogene Versionen). Gegen einen Maintainer, der eine bösartige, korrekt signierte Version veröffentlicht, helfen nur Abkühlzeit, Review und eine kleine Zahl von Abhängigkeiten.
+**Honest limit:** Supply chain security is risk reduction, not a guarantee. The following measures primarily prevent *unnoticed* changes (tampered artifacts, re-pointed tags, silently bumped versions). Against a maintainer who publishes a malicious, correctly signed version, only a cooldown period, review and a small number of dependencies help.
 
-## 1. Bedrohungsmodell
+## 1. Threat model
 
-| # | Angriffsweg | Beispiel |
+| # | Attack vector | Example |
 |---|---|---|
-| T1 | Manipuliertes oder ausgetauschtes Artefakt im Repository bzw. auf dem Transportweg | Artefakt wird nach der Veröffentlichung ersetzt; Mirror liefert andere Bytes |
-| T2 | Bösartige **neue Version** einer echten Abhängigkeit (Account-Übernahme beim Maintainer) | Patch-Release mit Schadcode wird automatisch übernommen |
-| T3 | Typosquatting oder Dependency-Confusion über zusätzliche Repositories | gleichnamiges Paket in JitPack oder `mavenLocal` |
-| T4 | Manipulierter **Gradle-Wrapper** (`gradle-wrapper.jar`) bzw. manipulierte Gradle-Distribution | geänderte JAR im PR |
-| T5 | Kompromittierte **GitHub Action** (Tag wird auf bösartigen Commit umgehängt) | Vorfall um `tj-actions/changed-files` (März 2025) |
-| T6 | Manipulierte **Binär-Assets**: ONNX-Modelle, native Bibliotheken, JDK des Builds | ausgetauschtes Modell von Hugging Face; JDK-Download |
-| T7 | Manipulation **nach** dem Build (Release-Dateien ersetzt) | Installer im Release wird ausgetauscht |
-| T8 | Native Bibliotheken, die zur Laufzeit in ein **gemeinsames Temp-Verzeichnis** entpackt werden (DLL-/SO-Planting) | sqlite-jdbc und ONNX Runtime entpacken Natives standardmäßig nach `java.io.tmpdir` |
-| T9 | Laufzeit-Nachladen von Code oder Modellen aus unversionierten Quellen | Modell-Download „latest“; Auto-Update ohne Signaturprüfung |
-| T10 | Optionale KI-Modelle über Ollama (vom Nutzer geladen) | manipuliertes Modell in einer fremden Registry |
+| T1 | Tampered or replaced artifact in the repository or in transit | Artifact is replaced after publication; a mirror delivers different bytes |
+| T2 | Malicious **new version** of a genuine dependency (maintainer account takeover) | Patch release with malicious code is adopted automatically |
+| T3 | Typosquatting or dependency confusion via additional repositories | Package with the same name in JitPack or `mavenLocal` |
+| T4 | Tampered **Gradle wrapper** (`gradle-wrapper.jar`) or tampered Gradle distribution | Modified JAR in a PR |
+| T5 | Compromised **GitHub Action** (tag is re-pointed to a malicious commit) | Incident involving `tj-actions/changed-files` (March 2025) |
+| T6 | Tampered **binary assets**: ONNX models, native libraries, the build's JDK | Replaced model from Hugging Face; JDK download |
+| T7 | Tampering **after** the build (release files replaced) | Installer in the release is swapped |
+| T8 | Native libraries that are extracted at runtime into a **shared temp directory** (DLL/SO planting) | sqlite-jdbc and ONNX Runtime extract natives to `java.io.tmpdir` by default |
+| T9 | Runtime loading of code or models from unversioned sources | Model download "latest"; auto-update without signature verification |
+| T10 | Optional AI models via Ollama (downloaded by the user) | Tampered model in a third-party registry |
 
-## 2. Maßnahmen
+## 2. Measures
 
-### 2.1 Abhängigkeiten auflösen (T1–T3)
+### 2.1 Resolving dependencies (T1–T3)
 
-| ID | Maßnahme | Umsetzung |
+| ID | Measure | Implementation |
 |---|---|---|
-| S-1 | **Nur zwei Repositories:** Maven Central für Bibliotheken, Gradle Plugin Portal nur für Plugins. Kein `mavenLocal()`, kein JitPack, keine Snapshot-Repos. | `settings.gradle.kts`: `dependencyResolutionManagement { repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS }`; Repository-Content-Filter (`exclusiveContent`/`content { includeGroup… }`) für das Plugin Portal |
-| S-2 | **Nur feste Versionen** aus dem Version-Catalog; keine dynamischen Versionen (`+`, `latest.release`, Ranges), keine `SNAPSHOT`s | `resolutionStrategy { failOnDynamicVersions(); failOnChangingVersions() }` in `build-logic` für alle Konfigurationen |
-| S-3 | **Dependency-Locking** für alle Konfigurationen inklusive Buildscript-Classpath; transitive Versionen sind eingefroren | `dependencyLocking { lockAllConfigurations() }`; `gradle.lockfile` eingecheckt; Änderung nur per `--write-locks` in einem eigenen Commit |
-| S-4 | **Dependency-Verification:** SHA-256-Prüfsumme **und** PGP-Signatur jedes Artefakts (Bibliotheken, Plugins, transitive) | `gradle/verification-metadata.xml` mit `verify-metadata` und `verify-signatures` = `true`; vertrauenswürdige Schlüssel in `gradle/verification-keyring.keys` (eingecheckt). Ein Build mit unbekanntem Artefakt oder Schlüssel **bricht ab**. |
-| S-5 | **Neue Schlüssel oder Prüfsummen nur mit Review:** Aktualisierung über `./gradlew --write-verification-metadata pgp,sha256 --export-keys help` in einem eigenen PR. Der Diff zeigt jeden neuen Schlüssel bzw. Hash; neue Schlüssel-Fingerprints werden gegen die Projektseite bzw. die Release-Ankündigung des Herausgebers geprüft und im PR dokumentiert. | `CODEOWNERS`: `gradle/verification-metadata.xml`, `gradle/verification-keyring.keys`, `gradle/libs.versions.toml`, `*.lockfile`, `.github/workflows/**` → Review durch den Maintainer Pflicht |
-| S-6 | Artefakte ohne Signatur (falls unvermeidbar) nur mit Prüfsumme und **expliziter Begründung** in `verification-metadata.xml` (Kommentar „warum kein PGP“) | Review |
+| S-1 | **Only two repositories:** Maven Central for libraries, Gradle Plugin Portal only for plugins. No `mavenLocal()`, no JitPack, no snapshot repos. | `settings.gradle.kts`: `dependencyResolutionManagement { repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS }`; repository content filter (`exclusiveContent`/`content { includeGroup… }`) for the Plugin Portal |
+| S-2 | **Only fixed versions** from the version catalog; no dynamic versions (`+`, `latest.release`, ranges), no `SNAPSHOT`s | `resolutionStrategy { failOnDynamicVersions(); failOnChangingVersions() }` in `build-logic` for all configurations |
+| S-3 | **Dependency locking** for all configurations including the buildscript classpath; transitive versions are frozen | `dependencyLocking { lockAllConfigurations() }`; `gradle.lockfile` checked in; changes only via `--write-locks` in a separate commit |
+| S-4 | **Dependency verification:** SHA-256 checksum **and** PGP signature of every artifact (libraries, plugins, transitive) | `gradle/verification-metadata.xml` with `verify-metadata` and `verify-signatures` = `true`; trusted keys in `gradle/verification-keyring.keys` (checked in). A build with an unknown artifact or key **fails**. |
+| S-5 | **New keys or checksums only with review:** update via `./gradlew --write-verification-metadata pgp,sha256 --export-keys help` in a separate PR. The diff shows every new key or hash; new key fingerprints are checked against the publisher's project page or release announcement and documented in the PR. | `CODEOWNERS`: `gradle/verification-metadata.xml`, `gradle/verification-keyring.keys`, `gradle/libs.versions.toml`, `*.lockfile`, `.github/workflows/**` → review by the maintainer mandatory |
+| S-6 | Artifacts without a signature (if unavoidable) only with a checksum and an **explicit justification** in `verification-metadata.xml` (comment "why no PGP") | Review |
 
 ### 2.2 Updates (T2)
 
-| ID | Maßnahme | Umsetzung |
+| ID | Measure | Implementation |
 |---|---|---|
-| S-7 | **Abkühlzeit für neue Versionen:** Dependabot schlägt Versions-Updates frühestens **7 Tage** nach Veröffentlichung vor. Kompromittierte Releases werden erfahrungsgemäß oft innerhalb von Tagen entdeckt. **Sicherheits-Updates** sind davon ausgenommen. | `.github/dependabot.yml`: `cooldown: default-days: 7` (ohne Angabe gilt laut GitHub-Doku ein Standard von 3 Tagen); Ökosysteme `gradle` und `github-actions` |
-| S-8 | Updates einzeln oder in kleinen Gruppen, nie automatisch gemergt; jedes Update aktualisiert Lockfile **und** Verification-Metadata im selben PR (Dependabot kann das nicht selbst → manueller Folge-Commit) | Review-Checkliste in 09 §11 erweitert |
-| S-9 | Bei jedem Update kurz prüfen: Changelog, neue transitive Abhängigkeiten (Diff im Lockfile), neuer Signaturschlüssel? | PR-Vorlage |
+| S-7 | **Cooldown period for new versions:** Dependabot proposes version updates no earlier than **7 days** after publication. Experience shows that compromised releases are often discovered within days. **Security updates** are exempt from this. | `.github/dependabot.yml`: `cooldown: default-days: 7` (if not specified, the GitHub docs state a default of 3 days); ecosystems `gradle` and `github-actions` |
+| S-8 | Updates individually or in small groups, never auto-merged; every update updates the lockfile **and** the verification metadata in the same PR (Dependabot cannot do this itself → manual follow-up commit) | Review checklist in 09 §11 extended |
+| S-9 | For every update, briefly check: changelog, new transitive dependencies (diff in the lockfile), new signing key? | PR template |
 
-### 2.3 Build-Werkzeuge (T4, T6)
+### 2.3 Build tools (T4, T6)
 
-| ID | Maßnahme | Umsetzung |
+| ID | Measure | Implementation |
 |---|---|---|
-| S-10 | **Gradle-Wrapper absichern:** `distributionSha256Sum` in `gradle/wrapper/gradle-wrapper.properties`; CI prüft `gradle-wrapper.jar` gegen die offiziellen Prüfsummen | `gradle/actions/wrapper-validation` (gradle/actions v6.4.0, per Commit-SHA gepinnt) in jedem Workflow vor dem ersten Gradle-Aufruf |
-| S-11 | **JDK des Release-Builds** nicht über den Toolchain-Auto-Download beziehen, sondern explizit über `actions/setup-java` (Distribution Temurin, feste Version) | `org.gradle.java.installations.auto-download=false` in CI; lokal darf Foojay genutzt werden, Releases entstehen **nur** in CI |
-| S-12 | Keine Build-Skripte aus dem Netz (`apply(from = "https://…")`), keine Plugins außerhalb des Catalogs | ArchUnit kann das nicht prüfen → Review plus CI-Grep auf `apply(from` mit URL |
+| S-10 | **Secure the Gradle wrapper:** `distributionSha256Sum` in `gradle/wrapper/gradle-wrapper.properties`; CI checks `gradle-wrapper.jar` against the official checksums | `gradle/actions/wrapper-validation` (gradle/actions v6.4.0, pinned by commit SHA) in every workflow before the first Gradle invocation |
+| S-11 | Do not obtain the **JDK of the release build** via the toolchain auto-download, but explicitly via `actions/setup-java` (distribution Temurin, fixed version) | `org.gradle.java.installations.auto-download=false` in CI; locally Foojay may be used, releases are built **only** in CI |
+| S-12 | No build scripts from the network (`apply(from = "https://…")`), no plugins outside the catalog | ArchUnit cannot check this → review plus CI grep for `apply(from` with a URL |
 
 ### 2.4 CI/CD (T5, T7)
 
-| ID | Maßnahme | Umsetzung |
+| ID | Measure | Implementation |
 |---|---|---|
-| S-13 | **Actions per vollständigem Commit-SHA pinnen** (Version als Kommentar), nie per Tag oder Branch | `uses: actions/checkout@<40-hex-sha> # v7.0.1`; Dependabot (`github-actions`) aktualisiert SHA und Kommentar |
-| S-14 | **Minimale Rechte:** `permissions: contents: read` als Workflow-Default; Schreibrechte nur im Release-Job (`contents: write`, `id-token: write`, `attestations: write`) | Workflow-Review; kein `pull_request_target` mit Checkout von PR-Code |
-| S-15 | Release-Builds nur aus **geschützten Tags** auf geschütztem `main`; Release-Job in einer GitHub-Environment mit Freigabe | Branch-/Tag-Protection, Environment „release“ |
-| S-16 | **Build-Provenienz (SLSA):** Jedes Release-Artefakt bekommt eine signierte Attestierung | `actions/attest-build-provenance` (v4.2.2, SHA-gepinnt); Nutzer können mit `gh attestation verify` prüfen |
-| S-17 | **Prüfsummen** (`SHA256SUMS`) für alle Artefakte; Anleitung zur Prüfung im README | Release-Job |
-| S-18 | **SBOM** (CycloneDX) für jedes Release, als Release-Asset | Gradle-Plugin `org.cyclonedx.bom` 3.5.0 |
-| S-19 | **Schwachstellen-Scan** in jedem PR und täglich: Lockfiles gegen OSV | `google/osv-scanner` v2.6.0 auf `gradle.lockfile`/`verification-metadata.xml`; bekannte kritische/hohe Schwachstellen in Laufzeit-Abhängigkeiten **blockieren** den Merge (Ausnahmen nur dokumentiert mit Ablaufdatum) |
-| S-20 | Dependency-Graph an GitHub melden, damit Dependabot-Alerts auch transitive Gradle-Abhängigkeiten sehen | `gradle/actions/dependency-submission` |
-| S-21 | Optional: Code-Signing der Windows-Installer (Authenticode) gegen SmartScreen-Warnungen und Manipulation | Kostet ein Zertifikat → Entscheidung des Projektinhabers; bis dahin Attestierung plus Prüfsummen |
+| S-13 | **Pin actions by full commit SHA** (version as a comment), never by tag or branch | `uses: actions/checkout@<40-hex-sha> # v7.0.1`; Dependabot (`github-actions`) updates SHA and comment |
+| S-14 | **Minimal permissions:** `permissions: contents: read` as the workflow default; write permissions only in the release job (`contents: write`, `id-token: write`, `attestations: write`) | Workflow review; no `pull_request_target` with checkout of PR code |
+| S-15 | Release builds only from **protected tags** on protected `main`; release job in a GitHub environment with approval | Branch/tag protection, environment "release" |
+| S-16 | **Build provenance (SLSA):** every release artifact gets a signed attestation | `actions/attest-build-provenance` (v4.2.2, SHA-pinned); users can verify with `gh attestation verify` |
+| S-17 | **Checksums** (`SHA256SUMS`) for all artifacts; verification instructions in the README | Release job |
+| S-18 | **SBOM** (CycloneDX) for every release, as a release asset | Gradle plugin `org.cyclonedx.bom` 3.5.0 |
+| S-19 | **Vulnerability scan** in every PR and daily: lockfiles against OSV | `google/osv-scanner` v2.6.0 on `gradle.lockfile`/`verification-metadata.xml`; known critical/high vulnerabilities in runtime dependencies **block** the merge (exceptions only documented with an expiry date) |
+| S-20 | Report the dependency graph to GitHub so that Dependabot alerts also see transitive Gradle dependencies | `gradle/actions/dependency-submission` |
+| S-21 | Optional: code signing of the Windows installers (Authenticode) against SmartScreen warnings and tampering | Costs a certificate → decision of the project owner; until then attestation plus checksums |
 
-### 2.5 Binär-Assets und Laufzeit (T6, T8, T9, T10)
+### 2.5 Binary assets and runtime (T6, T8, T9, T10)
 
-| ID | Maßnahme | Umsetzung |
+| ID | Measure | Implementation |
 |---|---|---|
-| S-22 | **ONNX-Modelle** werden mit fester Hugging-Face-Revision (Commit-Hash, nicht `main`) bezogen. SHA-256 steht in `NOTICE` und in einer Prüfdatei; ein Gradle-Task prüft vor dem Packen, die App prüft beim Laden. Abweichung = Abbruch mit klarer Meldung. | `adapter-ocr` (Laden), `build-logic` (Build-Prüfung) |
-| S-23 | **Keine Laufzeit-Downloads von Code oder OCR-Modellen.** Optional nachladbare Modelle (z. B. weitere Schriftsysteme, R-L10N-3) nur aus fest konfigurierten URLs mit fest hinterlegtem SHA-256 | Review; `adapter-ocr` |
-| S-24 | **Natives nicht ins gemeinsame Temp entpacken:** sqlite-jdbc und ONNX Runtime laden ihre Natives aus einem app-eigenen Verzeichnis (im jlink-Image mitgeliefert bzw. in ein nutzereigenes, nicht weltbeschreibbares Verzeichnis entpackt) | System-Properties für die Native-Pfade (z. B. `org.sqlite.tmpdir`); **die exakten Property-Namen für ONNX Runtime in M0 prüfen** |
-| S-25 | **Update-Hinweis ohne Auto-Update:** Die App zeigt nur „neue Version verfügbar“ mit Link zur GitHub-Release-Seite; sie lädt und startet nichts selbst | `adapter-platform` |
-| S-26 | **TLS überall**, kein Abschalten der Zertifikatsprüfung (auch nicht „zum Debuggen“) | ArchUnit-Regel: Implementierungen von `X509TrustManager`/`HostnameVerifier` nur in der einen, reviewten Composite-Klasse für `Windows-ROOT` |
-| S-27 | **Ollama-Modelle (optional):** Die App zeigt den Modell-Digest aus `/api/tags` an. Der Nutzer kann ein Modell auf einen Digest **pinnen**; ein abweichender Digest erzeugt eine Warnung. Modelle nur aus der offiziellen Ollama-Registry empfehlen. Die Integrität des Downloads selbst liegt bei Ollama, nicht bei uns. | `adapter-vlm`, R-VLM-7 |
+| S-22 | **ONNX models** are obtained at a fixed Hugging Face revision (commit hash, not `main`). The SHA-256 is recorded in `NOTICE` and in a checksum file; a Gradle task verifies before packaging, the app verifies when loading. Mismatch = abort with a clear message. | `adapter-ocr` (loading), `build-logic` (build check) |
+| S-23 | **No runtime downloads of code or OCR models.** Optionally downloadable models (e.g. additional writing systems, R-L10N-3) only from fixed, configured URLs with a fixed, stored SHA-256 | Review; `adapter-ocr` |
+| S-24 | **Do not extract natives into the shared temp:** sqlite-jdbc and ONNX Runtime load their natives from an app-specific directory (shipped in the jlink image or extracted into a user-owned, non-world-writable directory) | System properties for the native paths (e.g. `org.sqlite.tmpdir`); **check the exact property names for ONNX Runtime in M0** |
+| S-25 | **Update notice without auto-update:** the app only shows "new version available" with a link to the GitHub release page; it downloads and launches nothing by itself | `adapter-platform` |
+| S-26 | **TLS everywhere**, no disabling of certificate verification (not even "for debugging") | ArchUnit rule: implementations of `X509TrustManager`/`HostnameVerifier` only in the one reviewed composite class for `Windows-ROOT` |
+| S-27 | **Ollama models (optional):** the app shows the model digest from `/api/tags`. The user can **pin** a model to a digest; a differing digest produces a warning. Recommend models only from the official Ollama registry. The integrity of the download itself is Ollama's responsibility, not ours. | `adapter-vlm`, R-VLM-7 |
 
-### 2.6 Repository und Prozess
+### 2.6 Repository and process
 
-| ID | Maßnahme |
+| ID | Measure |
 |---|---|
-| S-28 | Branch-Protection für `main`: PR-Pflicht, grüne CI, Review durch CODEOWNERS, kein Force-Push; 2FA für alle Maintainer |
-| S-29 | **Wenige Abhängigkeiten** (09 §9): Jede neue Abhängigkeit braucht eine Begründung, eine Lizenzprüfung und einen Blick auf den Wartungszustand. Gibt es einen PGP-Schlüssel auf Central? Wie viele Maintainer? |
-| S-30 | **Reproduzierbarkeit:** Archive mit `isPreserveFileTimestamps = false` und `isReproducibleFileOrder = true`. Ehrlich: jpackage-Installer (MSI/deb) sind nicht bitgenau reproduzierbar; die Attestierung (S-16) ersetzt das teilweise. |
-| S-31 | Sicherheitsmeldungen: `SECURITY.md` mit Meldeweg (privat via GitHub Security Advisories) |
+| S-28 | Branch protection for `main`: PR required, green CI, review by CODEOWNERS, no force push; 2FA for all maintainers |
+| S-29 | **Few dependencies** (09 §9): every new dependency needs a justification, a license check and a look at its maintenance status. Is there a PGP key on Central? How many maintainers? |
+| S-30 | **Reproducibility:** archives with `isPreserveFileTimestamps = false` and `isReproducibleFileOrder = true`. Honestly: jpackage installers (MSI/deb) are not bit-for-bit reproducible; the attestation (S-16) partially compensates for this. |
+| S-31 | Security reports: `SECURITY.md` with a reporting channel (privately via GitHub Security Advisories) |
 
-## 3. Was das konkret bringt
+## 3. What this achieves in practice
 
-| Bedrohung | Abgedeckt durch | Restrisiko |
+| Threat | Covered by | Residual risk |
 |---|---|---|
-| T1 manipuliertes Artefakt | S-3, S-4 (Hash + Signatur) | gering |
-| T2 bösartige neue Version | S-7 Abkühlzeit, S-8/S-9 Review, S-19 Scan | **mittel** – korrekt signierte Schadversion eines echten Maintainers wird nur durch Zeit und Review erkannt |
-| T3 Typosquatting/Confusion | S-1, S-2, S-5 | gering |
-| T4 Wrapper/Gradle | S-10 | gering |
-| T5 Actions | S-13, S-14 | gering |
-| T6 Modelle/Natives/JDK | S-4, S-11, S-22 | gering |
-| T7 Manipulation nach Build | S-16, S-17 | gering, sofern Nutzer prüfen; ohne Code-Signing (S-21) prüfen das die wenigsten |
-| T8 Native-Planting | S-24 | gering nach Umsetzung |
-| T9 Laufzeit-Nachladen | S-23, S-25 | gering |
-| T10 Ollama-Modelle | S-27 | **mittel** – liegt außerhalb unserer Kontrolle; Funktion ist optional und lokal |
+| T1 tampered artifact | S-3, S-4 (hash + signature) | low |
+| T2 malicious new version | S-7 cooldown period, S-8/S-9 review, S-19 scan | **medium** – a correctly signed malicious version from a genuine maintainer is only detected through time and review |
+| T3 typosquatting/confusion | S-1, S-2, S-5 | low |
+| T4 wrapper/Gradle | S-10 | low |
+| T5 actions | S-13, S-14 | low |
+| T6 models/natives/JDK | S-4, S-11, S-22 | low |
+| T7 tampering after build | S-16, S-17 | low, provided users verify; without code signing (S-21) very few do |
+| T8 native planting | S-24 | low after implementation |
+| T9 runtime loading | S-23, S-25 | low |
+| T10 Ollama models | S-27 | **medium** – outside our control; the feature is optional and local |

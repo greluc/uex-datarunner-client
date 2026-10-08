@@ -1,16 +1,16 @@
-# OCR-Testkorpus
+# OCR Test Corpus
 
-Dieses Verzeichnis enthält den **öffentlichen** Teil des Golden-Korpus (siehe `docs/plan/07-ocr-konzept.md` §4). Der private Teil liegt außerhalb des Repos und wird über `UEXDR_CORPUS_DIR` eingebunden.
+This directory contains the **public** part of the golden corpus (see `docs/plan/07-ocr-concept.md` §4). The private part lives outside the repo and is included via `UEXDR_CORPUS_DIR`.
 
-## Regeln
+## Rules
 
-- Kontostand („CURRENT BALANCE“) ist **immer geschwärzt**, bevor ein Bild hier landet. Keine Spielernamen, keine Chat-Fenster.
-- Pro Eintrag gibt es ein Verzeichnis `<location>-<nr>/` mit den Bildern und `expected.json`.
-- `expected.json` bleibt auf `"verified": false`, bis ein Mensch die Transkription unabhängig geprüft hat. Nicht verifizierte Einträge zählen in der Eval nur als „Smoke“, nicht als Golden-Metrik.
-- Bevorzugt werden **Original-Screenshots** (verlustfrei, Originalauflösung). Per Chat hochgeladene Bilder sind vermutlich skaliert und neu komprimiert; das wird in `source` vermerkt.
+- The balance ("CURRENT BALANCE") is **always redacted** before an image ends up here. No player names, no chat windows.
+- Each entry has a directory `<location>-<nr>/` with the images and `expected.json`.
+- `expected.json` stays at `"verified": false` until a human has independently checked the transcription. Unverified entries count in the eval only as "smoke", not as a golden metric.
+- **Original screenshots** (lossless, original resolution) are preferred. Images uploaded via chat are probably scaled and recompressed; this is noted in `source`.
 
-## Einträge
+## Entries
 
-| Eintrag | Inhalt | Status |
+| Entry | Content | Status |
 |---|---|---|
-| `pyro-gateway-stanton-01` | Pyro Gateway (Stanton), blaues Theme: 4× Buy (gescrollt, ohne Überlappung), 1× Sell | transkribiert, nicht verifiziert |
+| `pyro-gateway-stanton-01` | Pyro Gateway (Stanton), blue theme: 4× Buy (scrolled, without overlap), 1× Sell | transcribed, not verified |
