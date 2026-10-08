@@ -15,17 +15,17 @@ flowchart LR
         P[1 Vorverarbeitung<br/>Locate + Perspektive] --> O[2 OCR<br/>PP-OCR det+rec via ORT]
         O --> L[3 Layout<br/>Karten, Felder, Tab/Abschnitt]
         L --> R[4 Auflösung<br/>Terminal, Commodities gegen Vokabular]
-        R --> V[5 Validierung/Reparatur<br/>Prior, Confusables, Konsistenz]
+        R --> FU[4b Fusion<br/>nur wenn 2. Leser vorhanden]
+        FU --> V[5 Validierung/Reparatur<br/>Prior, Confusables, Konsistenz]
         V --> S[6 Stitching<br/>→ Report-Entwurf]
     end
 
     subgraph KI["Optional: KI-Zweitleser"]
         GM[Spiel-Monitor<br/>StarCitizen.exe?] -->|Spiel geschlossen| VQ[(KI-Queue)]
-        VQ --> VL[VLM via Ollama<br/>localhost]
-        VL --> F[Fusion<br/>OCR ⨯ VLM]
+        VQ --> VL[VLM via Ollama<br/>localhost<br/>liest pro Capture]
     end
-    S -. Reports mit Warnungen .-> VQ
-    F --> V
+    S -. Captures vorgemerkter Reports .-> VQ
+    VL -- Parser + Auflösung --> FU
 
     subgraph Ref["Referenzdaten"]
         API[UEX API 2.0] <--> C[(SQLite-Cache)]
@@ -37,6 +37,7 @@ flowchart LR
 
     S --> UI[Review-UI]
     M --> UI
+    M -. dieselbe Validierung .-> V
     UI --> SUBQ[Sende-Queue<br/>Rate-Limit, Cooldown]
     SUBQ --> API
     SUBQ --> H[(Historie SQLite)]
@@ -70,13 +71,15 @@ Abhängigkeiten (nur in Pfeilrichtung):
 
 ```
 app → submission → uex-api → domain
-app → pipeline → ocr → domain
-pipeline → refdata → uex-api
+app → pipeline → domain       (pipeline kennt weder ocr noch vlm noch refdata direkt)
+app → ocr → domain            (ocr implementiert das Interface `Reader`)
+app → vlm → domain            (vlm implementiert ebenfalls `Reader`)
+app → refdata → uex-api       (refdata erzeugt unveränderliche `ReferenceSnapshot`s, Typ in domain)
 app → capture → domain
-app → vlm → domain            (vlm liefert Leser-Ergebnisse; die Fusion liegt in pipeline)
-pipeline → domain             (pipeline kennt vlm NICHT, nur das Interface `Reader`)
-tools/ocr-eval → pipeline, refdata, vlm
+tools/ocr-eval → pipeline, ocr, vlm, refdata
 ```
+
+`app` verdrahtet alles (Composition Root). Die Pipeline bekommt `ReferenceSnapshot` und `ReaderResult`s als Parameter. Damit bleibt sie frei von I/O und ist mit Golden-Daten testbar, wie in Leitprinzip 3 gefordert. In einer früheren Fassung hing `pipeline` direkt an `refdata` und `ocr`; das widersprach diesem Prinzip.
 
 Package-Root: `space.uexdatarunner.<modul>` (Platzhalter – Projektname und Reverse-Domain sind vom Projektinhaber festzulegen).
 
@@ -90,10 +93,16 @@ public enum TradeSide { BUY, SELL }                 // Buy-Tab / "Local Market V
 public record TerminalId(int value) {}
 public record CommodityId(int value) {}
 
-/** UEX-Statusstufe 1..7 (commodities_status), seitenabhängige Bezeichnung. */
+/** UEX-Statusstufe; gültige Codes und Namen kommen aus commodities_status (ReferenceSnapshot), nicht aus Konstanten. */
 public record InventoryStatus(int code) {
-    public InventoryStatus { if (code < 1 || code > 7) throw new IllegalArgumentException("status " + code); }
+    public InventoryStatus { if (code < 1) throw new IllegalArgumentException("status " + code); }
 }
+// Prüfung gegen die geladenen Stufen: ReferenceSnapshot.statusLevels(side).contains(code)
+
+/** Unveränderlicher Stand der UEX-Referenzdaten für einen Pipeline-Lauf. */
+public record ReferenceSnapshot(Instant fetchedAt, Map<CommodityId, Commodity> commodities,
+                                Map<TerminalId, Terminal> terminals, StatusLevels statusLevels,
+                                DataParameters parameters, Map<TerminalId, List<PricePrior>> priors) {}
 
 /** Ein Feldwert samt Herkunft und Bewertung – Kern des "nichts still raten"-Prinzips. */
 public record Field<T>(@Nullable T value, Confidence confidence, List<Finding> findings, @Nullable Region source) {}
@@ -117,6 +126,8 @@ public record ReportDraft(Field<TerminalId> terminal, TradeSide side, GameEnviro
 
 Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfassung:
 
+Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `ocr` abhängt, bekommt sie dafür das Interface `TextDetector` (in `domain`) injiziert; `ocr` implementiert es.
+
 | Stufe | Eingabe → Ausgabe | Wichtigste Techniken |
 |---|---|---|
 | 1 Locate | `BufferedImage` → Panel-Quad(s) | Box-Filter-Downscale; Farb- und Luminanzanker (theme-agnostisch); Text-Anker aus einem Grob-OCR-Pass („SHOP INVENTORY“, „YOUR INVENTORIES“); Homographie auf Normgröße; manueller Fallback |
@@ -135,6 +146,7 @@ public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean
 public enum ImportMode { MANUAL, AUTOMATIC }
 ```
 
+- **Arbeitskopien** (R-CAP-7): Nach dem Locate werden die normalisierten Panel-Ausschnitte im App-Datenverzeichnis abgelegt; alle späteren Schritte (Review, VLM, Upload) arbeiten darauf.
 - **`FolderScanner`** (rein bis auf das Dateisystem-Listing): Er listet die Kandidaten (`Files.walk` bzw. `Files.list`, Endungsfilter), gleicht sie gegen das **Verarbeitet-Register** ab (Pfad, Größe und mtime als schneller Schlüssel, Inhalts-Hash als Identität) und liefert die neuen Dateien. Ihn nutzen der Button „Einlesen“ und der Nachhol-Scan.
 - **`FolderWatcher`** pro Ordner im Modus `AUTOMATIC`:
   - `WatchService` auf einem Virtual Thread; bei `OVERFLOW` folgt ein Voll-Scan.
@@ -147,11 +159,21 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - **Leser-Abstraktion** (in `domain`):
 
   ```java
-  public sealed interface Reader permits OcrReader, VlmReader {}
+  public enum ReaderKind { OCR, VLM }
+  /** Bewusst NICHT sealed: Implementierungen liegen in anderen JPMS-Modulen (ocr, vlm),
+   *  und sealed-Typen in benannten Modulen erlauben nur Subtypen im selben Modul. */
+  public interface Reader { ReaderResult read(NormalizedPanel panel) throws ReaderException; }
   public record ReaderResult(ReaderKind kind, List<RawCard> cards, @Nullable RawHeader header, Duration took) {}
   ```
 
-  Die klassische OCR und das VLM liefern dieselbe Rohstruktur. Die Stufen 4–6 (Auflösung, Validierung, Stitching) sind für beide identisch, und die **Fusion** vergleicht pro Feld (Regeln in [07](07-ocr-konzept.md) §2.7).
+  Die klassische OCR und das VLM liefern dieselbe Rohstruktur. **Reihenfolge:**
+
+  1. Parsen und Auflösen (Stufe 4) läuft **pro Leser**.
+  2. Danach folgt die **Fusion** pro Feld zu Kandidaten (Regeln in [07](07-ocr-konzept.md) §2.7).
+  3. Validierung, Reparatur und Konfidenz (Stufe 5) laufen **einmal** auf dem fusionierten Ergebnis.
+  4. Zum Schluss folgt das Stitching (Stufe 6).
+
+  Das VLM liest pro Capture; nach einem KI-Lauf wird der betroffene Report neu gestitcht.
 
 - **`GameProcessMonitor`** (`capture`):
   - Prüft periodisch auf einem Virtual Thread `ProcessHandle.allProcesses()` (Windows: Pfad `…\Bin64\StarCitizen.exe`; Linux: Wine-/Proton-Kommandozeile, Annahme A7).
@@ -167,7 +189,8 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   | Immer | OCR + KI (Warnung) | OCR + KI |
 
 - **KI-Queue** (`vlm`):
-  - Ein Job nach dem anderen (das VLM nutzt die GPU exklusiv), persistiert in SQLite als „KI ausstehend“.
+  - Ein Job pro Capture, einer nach dem anderen (das VLM nutzt die GPU exklusiv), persistiert in SQLite als „KI ausstehend“.
+  - Während ein Job läuft, prüft der Spiel-Monitor im 2-s-Takt statt im 5-s-Takt.
   - Beim Wechsel auf `RUNNING`: laufenden Request abbrechen (`HttpClient`-Future `cancel`), Modell entladen (`keep_alive: 0`), Jobs zurück in die Queue.
   - Wenn die Queue leer ist: Modell nach kurzer Zeit entladen (Standard `keep_alive` 5 min).
 
@@ -189,17 +212,19 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
 - **Payload-Bau:** pro Report eine Liste `prices[]`. Buy-Zeilen enthalten `price_buy`/`scu_buy`/`status_buy`, Sell-Zeilen die `_sell`-Felder. Dazu kommen `container_sizes` und `screenshot` (Base64 ohne `data:`-Präfix), `game_version` und `is_production`.
 - **Queue:**
+  - persistent in SQLite (Zustände: eingereiht → gesendet / fehlgeschlagen / verworfen); nach einem Neustart erst nach Freigabe durch den Nutzer
   - Virtual Threads
   - `Semaphore` (Standard 2)
   - Token-Bucket 120/min
   - Retry mit exponentiellem Backoff bei 429/5xx/IO, unter Beachtung von `Retry-After`
-- **Cooldown:** Schlüssel ist (Terminal, Commodity, Seite, Umgebung); persistent; die UI zeigt die Restzeit.
+- **Cooldown:** Schlüssel ist (Terminal, Commodity, Umgebung) – konservativ ohne Seite, bis Annahme A12 geklärt ist; persistent; die UI zeigt die Restzeit. Kommt trotzdem `duplicated_report`, wird das als Cooldown behandelt, nicht als Fehler.
+- **Screenshot pro Report:** Mehrere Captures werden zu einem Bild zusammengesetzt (R-SUB-7).
 - **Historie:** `ids_reports`, Zeitstempel, Payload-Hash, Antwort-Status; Link `https://uexcorp.space/data/info/id/<id>`.
 
 ## 7. UI (`app`, JavaFX 27)
 
 - **MVVM:** Views in Java-Code oder FXML; ViewModels mit JavaFX-Properties; Services über Konstruktor-Injektion (kein DI-Framework).
-- **Threading:** Pipeline und Netzwerk laufen in einem `ExecutorService` auf Virtual Threads. UI-Updates passieren ausschließlich über `Platform.runLater`. CPU-lastige OCR läuft in einem **begrenzten** Plattform-Thread-Pool (Standard: `min(2, cores/2)`), damit das Spiel nicht ausgebremst wird.
+- **Threading:** Pipeline und Netzwerk laufen in einem `ExecutorService` auf Virtual Threads. UI-Updates passieren ausschließlich über `Platform.runLater`. CPU-lastige OCR läuft in einem **begrenzten** Plattform-Thread-Pool (Standard: `max(1, min(2, cores / 2))`), damit das Spiel nicht ausgebremst wird.
 - **Ansichten:**
   1. Eingang/Queue
   2. Report-Editor (Tabelle plus Screenshot-Pane mit Highlight der Quellregion)

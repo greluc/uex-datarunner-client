@@ -17,6 +17,7 @@ Während des Spiels arbeitet eine schlanke, lokale OCR. Optional prüft ein loka
 | [05 – Fehleranalyse SC-Datarunner-UEX](docs/plan/05-datarunner-fehleranalyse.md) | Bekannte Fehler des Vorbilds und unsere Fixes |
 | [06 – UEX API](docs/plan/06-uex-api.md) | Endpoints, Payload, offene Verifikationspunkte |
 | [07 – OCR-Konzept](docs/plan/07-ocr-konzept.md) | Pipeline, Screenshot-Beobachtungen, Lehren aus basetool-sc-extractor |
+| [08 – Review](docs/plan/08-review.md) | Prüfung des Plans: korrigierte Fehler, geschlossene Lücken, offene Punkte |
 
 ## Hinweis
 

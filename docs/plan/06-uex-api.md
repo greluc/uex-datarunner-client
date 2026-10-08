@@ -76,3 +76,10 @@ Doku-Slug: `post_data_submit`.
 5. Verhalten von `GET /user` nur mit Secret-Key
 6. Aktuelle Fehlercode-Liste und Einheiten von `price_variation`, `scu_variation` und `ttl`
 7. Nutzungsbedingungen (`https://uexcorp.space/about/legal`) für Drittclients, User-Agent-Konvention
+8. **Sell-Seite:** Bedeutet die „… SCU“-Zahl im Terminal `scu_sell` oder `scu_sell_stock`? (Annahme A10)
+9. **`container_sizes`:** Im Spiel unterscheiden sich die Größen **pro Commodity** (Patch City: Omnapoxy 1–16, Human Food Bars 8–32). Gibt es das Feld nur pro Report, muss entschieden werden, ob es dann weggelassen wird (Vorschlag, statt Informationen zu vermischen) oder ob pro Commodity einzeln gesendet wird.
+10. **Screenshot:** Wird ein aus mehreren Scroll-Ausschnitten zusammengesetztes Bild akzeptiert? Werden manuelle Reports ohne Screenshot angenommen? (Annahme A11)
+11. **Duplikatsperre:** Gilt die 5-Minuten-Sperre pro (Terminal, Commodity) oder zusätzlich pro Seite? (Annahme A12)
+12. **`is_missing`:** Welche Felder sind bei `is_missing = 1` nötig bzw. erlaubt?
+13. **Umgebungen:** Wie ordnet UEX HOTFIX/EPTU/TECH-PREVIEW zu? (Annahme A9)
+14. **Mischen in einem Payload:** Ein Payload kann laut Beispielen Buy- und Sell-Zeilen enthalten. Wir senden trotzdem **einen Report pro Seite**, weil jeder Report einen eigenen Screenshot der jeweiligen Seite hat.

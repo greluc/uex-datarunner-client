@@ -17,7 +17,8 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 |---|---|
 | **Capture** | Ein Screenshot |
 | **Scan** | Ein Capture nach der OCR-Analyse |
-| **Report** | Die Zusammenfassung aller Scans eines Terminals und einer Seite (Kaufen = „Buy“, Verkaufen = „Local Market Value“) innerhalb eines Zeitfensters. Der Report ist die Einheit, die an `POST /data_submit` geht. |
+| **Report** | Die Zusammenfassung aller Scans eines Terminals und einer Seite (Kaufen = „Buy“, Verkaufen = „Local Market Value“) innerhalb eines Zeitfensters (Gruppierungsregel R-OCR-13). Der Report ist die Einheit, die an `POST /data_submit` geht. |
+| **Sendeschwelle** | Mindestkonfidenz, ab der ein Feld ohne Bestätigung gesendet werden darf (Startwert 0.80, siehe [07](07-ocr-konzept.md) §2.6). Felder darunter müssen bestätigt oder korrigiert werden. |
 | **Prior** | Der UEX-Referenzwert (letzter oder durchschnittlicher Preis, SCU, Status) für die Kombination aus Terminal und Commodity |
 
 ## Scope
@@ -32,14 +33,17 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| R-CAP-1 | **Nutzerdefinierte Bildordner:** beliebig viele Ordner hinzufügen, entfernen und (de)aktivieren. Pro Ordner einstellbar: Umgebung (LIVE/PTU/EPTU/HOTFIX/TECH-PREVIEW/manuell), Unterordner einbeziehen (ja/nein), Dateitypen (Standard `png`, `jpg`, `jpeg`), optional „nur Dateien neuer als …“. Die SC-Screenshot-Ordner werden beim Onboarding nur **vorgeschlagen**; der Nutzer bestätigt sie. | M |
+| R-CAP-1 | **Nutzerdefinierte Bildordner:** beliebig viele Ordner hinzufügen, entfernen und (de)aktivieren. Pro Ordner einstellbar: Umgebung (**automatisch aus dem Pfad** – Standard – oder fest LIVE/PTU/EPTU/HOTFIX/TECH-PREVIEW oder **bei jedem Bild fragen**), Unterordner einbeziehen (ja/nein), Dateitypen (Standard `png`, `jpg`, `jpeg`), optional „nur Dateien neuer als …“. Die SC-Screenshot-Ordner werden beim Onboarding nur **vorgeschlagen**; der Nutzer bestätigt sie. | M |
 | R-CAP-1a | **Manuell einlesen (Standard):** Ein Klick auf **„Einlesen“** (global für alle aktiven Ordner oder pro Ordner) liest alle Dateien ein, die noch nicht verarbeitet wurden. Ergebnis: „n neue Bilder übernommen, m übersprungen“. Optional gibt es eine Vorschau-Liste zum Abwählen einzelner Dateien. | M |
 | R-CAP-1b | **Automatisch einlesen (opt-in pro Ordner):** Ist es aktiviert, werden neu angelegte Dateien sofort übernommen. Technik: `WatchService` (`ENTRY_CREATE`/`ENTRY_MODIFY`) plus Polling-Fallback (Standard 2 s), wenn der WatchService unzuverlässig ist (Wine-Prefixe, Netzlaufwerke) oder nicht registriert werden kann. Beim Start und nach dem Aktivieren läuft ein Nachhol-Scan für Dateien, die angelegt wurden, während die App geschlossen oder der Modus aus war (abschaltbar). | M |
 | R-CAP-1c | **Erst lesen, wenn fertig geschrieben:** Eine Datei gilt als vollständig, wenn ihre Größe und `lastModified` für eine Ruhezeit (Standard 750 ms) stabil sind und sie sich als Bild dekodieren lässt. Teil-Dateien werden erneut versucht (mit Backoff, maximal 30 s) und danach als Fehler mit Grund angezeigt. | M |
 | R-CAP-1d | **Verarbeitet-Register** (SQLite): Pfad, Größe, `lastModified` und Inhalts-Hash jeder eingelesenen Datei. Dadurch liest weder „Einlesen“ noch der Watcher dieselbe Datei doppelt, auch nach Umbenennen oder Kopieren (Hash). Pro Datei gibt es die Aktion „Erneut einlesen“. | M |
 | R-CAP-1e | Status pro Ordner sichtbar: Modus (manuell/automatisch), überwacht ja/nein (und warum nicht, z. B. Ordner fehlt bzw. keine Rechte), Polling aktiv, letzte Datei, Zahl offener Dateien. Fehlt ein Ordner, wird er markiert und nicht stillschweigend entfernt. | M |
 | R-CAP-2 | Weitere Eingangswege: Drag & Drop, Strg+V, Datei-Dialog (Mehrfachauswahl), optional Zwischenablage-Überwachung mit Fingerprint-Deduplizierung | M |
-| R-CAP-3 | Die Umgebung wird aus dem Ordnerpfad abgeleitet, die Spielversion aus UEX (`game_versions`). Ist die Umgebung unbekannt, fragt die App nach; einen hartkodierten Fallback gibt es nicht. | M |
+| R-CAP-3 | Die Umgebung wird aus dem Ordnerpfad abgeleitet (oder fest pro Ordner gesetzt), die Spielversion aus UEX (`game_versions`). Ist die Umgebung unbekannt, fragt die App nach; einen hartkodierten Fallback gibt es nicht. | M |
+| R-CAP-3a | **Umgebungs-Mapping auf UEX:** UEX kennt nur `live` und `ptu`. Standard-Mapping: LIVE und HOTFIX → `live`, PTU/EPTU/TECH-PREVIEW → `ptu`. Konfigurierbar; das Mapping ist gegen UEX zu verifizieren (Annahme A9). Werden für das Ziel keine Reports angenommen (`is_accepting_*`), wird das Senden gesperrt. | M |
+| R-CAP-3b | **Spielversion zum Aufnahmezeitpunkt:** Beim Einlesen wird die zum Aufnahmezeitpunkt gültige Version festgehalten (gecachter Stand von `game_versions`). Hat sich die Version zwischen Aufnahme und Senden geändert (Patch-Tag), warnt die App und verlangt eine Bestätigung bzw. verwirft den Report. | M |
+| R-CAP-7 | **Arbeitskopien:** Die App speichert pro Capture die perspektivkorrigierten Panel-Ausschnitte (nicht den Vollbild-Screenshot) in ihrem Datenverzeichnis. Upload, KI-Nachprüfung und Review funktionieren damit auch, wenn das Original verschoben oder gelöscht wurde. Aufbewahrung: bis 7 Tage nach erfolgreichem Senden (einstellbar). | M |
 | R-CAP-4 | Automatische Erkennung der SC-Installation: RSI-Launcher-Log `Launching Star Citizen … from (…)`, laufender Prozess `Bin64/StarCitizen.exe`, Standardpfade. Unter Linux zusätzlich Wine-/Proton-Prefixe (siehe Annahme A3). | S |
 | R-CAP-5 | Aufnahmezeit aus dem Dateinamen (Regex), Fallback auf `lastModified`. Duplikate erkennt die App per Inhalts-Hash. | M |
 | R-CAP-6 | Optionale Aufräumfunktion: Originale nach erfolgreichem Senden löschen oder archivieren. Standard ist **aus**. | S |
@@ -49,7 +53,8 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | ID | Anforderung | Prio |
 |---|---|---|
 | R-MAN-1 | Terminal-Auswahl per Suchfeld (Fuzzy über Name, Nickname, Location, System), Filter nach Sternsystem, „zuletzt verwendet“ | M |
-| R-MAN-2 | Nach der Terminalwahl wird die Liste der bekannten Commodities des Terminals (aus `commodities_prices`) mit aktuellen UEX-Werten vorbefüllt. Der Nutzer bestätigt oder ändert nur die Abweichungen. | M |
+| R-MAN-2 | Nach der Terminalwahl erscheint die Liste der bekannten Commodities des Terminals (aus `commodities_prices`). Die aktuellen UEX-Werte werden **als Referenz neben dem Eingabefeld** angezeigt (inkl. Alter des Werts), **nicht als vorausgefüllter Wert**. Nur aktiv eingegebene oder per Tastendruck ausdrücklich übernommene Zeilen werden gesendet. So landen keine veralteten Werte ungeprüft als „frische“ Meldung bei UEX. | M |
+| R-MAN-5 | Manuelle Reports können einen Screenshot anhängen. Ist ein Screenshot für den Nutzer Pflicht (Evaluationsphase neuer DataRunner, `screenshot_required`), wird das vorab angezeigt und das Senden ohne Bild gesperrt (Annahme A11). | M |
 | R-MAN-3 | Vollständige Tastaturbedienung: Tab/Enter, Zahlen-Shortcuts für die Statusstufen 1–7 | M |
 | R-MAN-4 | Manuelle Reports durchlaufen dieselbe Validierung (VAL) wie OCR-Reports | M |
 
@@ -69,6 +74,7 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | R-OCR-10 | Zweitleser für den Status: Farbe und Füllhöhe des vertikalen Lagerbalkens bzw. die Farbe des Statustexts, abgeglichen mit dem OCR-Statustext | S |
 | R-OCR-11 | Stitching mehrerer gescrollter Screenshots eines Terminals bzw. einer Seite. Abgeschnittene Karten am Rand werden nur übernommen, wenn die Felder vollständig sind. Bei Konflikten wird der Wert bevorzugt, der weiter vom Viewport-Rand entfernt gelesen wurde. | M |
 | R-OCR-12 | Verarbeitung im Hintergrund (begrenzte Parallelität), die UI blockiert nie. Ziel: < 3 s pro Screenshot auf einer Mittelklasse-CPU (**Zielwert, wird gemessen**). | M |
+| R-OCR-13 | **Report-Gruppierung:** Scans gehören zu einem Report, wenn Terminal, Seite und Umgebung gleich sind und der zeitliche Abstand zum vorherigen Scan der Gruppe ≤ 10 min beträgt (einstellbar). Der Nutzer kann Reports im UI teilen und zusammenführen. Ein Scan mit unklarem Terminal bildet eine eigene Gruppe, bis das Terminal geklärt ist. | M |
 
 ## Optionale KI-Erkennung (VLM)
 
@@ -95,6 +101,8 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 |---|---|---|
 | R-VAL-1 | Regelbasierte Konfidenz pro Feld; Konfidenzwerte des Modells werden nicht direkt verwendet. Jede Warnung hat einen Grund-Code, der im UI angezeigt wird. | M |
 | R-VAL-2 | Plausibilität gegen den UEX-Prior: Abweichung > `price_variation` % bzw. > `scu_variation` (aus `data_parameters`) führt zu einer Warnung, nicht zum Blockieren | M |
+| R-VAL-2a | **Kein Prior vorhanden** (neue Commodity am Terminal, keine Historie): Ersatzweise wird der Commodity-weite Durchschnitt (`commodities.price_buy`/`price_sell`) mit doppelter Toleranz genutzt. Fehlt auch der, erfolgt keine Prior-basierte Reparatur; das Feld trägt das Finding „kein Referenzwert“ und liegt unter der Sendeschwelle, wenn es eine verwechselbare Ziffer enthält. | M |
+| R-VAL-2b | **Reparaturen nur mit unabhängigem Zeugen automatisch:** Eine Reparatur, die sich nur auf den Prior stützt, liegt unter der Sendeschwelle (Bestätigung per Tastendruck). Automatisch übernommen wird sie nur, wenn ein unabhängiger Zeuge zustimmt (Glyph-Topologie, Zweitleser/VLM). Begründung: Der Prior ist ein möglicherweise veralteter Wert; sonst würden echte Preisänderungen still auf alte Werte „zurückrepariert“. | M |
 | R-VAL-3 | Konsistenzregeln: Status ↔ SCU (z. B. „Out of Stock“ ⇒ 0 SCU), Seite ↔ Abschnitt, Commodity ist an diesem Terminal kauf- bzw. verkaufbar (`is_buyable`/`is_sellable`) | M |
 | R-VAL-4 | Terminal-Ambiguität: Gibt es mehrere Kandidaten, ist die Auswahl Pflicht; die App wählt nichts still vor | M |
 | R-VAL-5 | Fehlende Commodities: Commodities, die laut UEX am Terminal geführt werden, aber auf keinem Scan auftauchen, werden angezeigt. Optional kann der Nutzer sie als `is_missing` markieren. | S |
@@ -111,18 +119,19 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 | R-UI-6 | Manueller Zuschnitt und Ecken-Korrektur, wenn die Lokalisierung scheitert | M |
 | R-UI-7 | Eigenes Theme (hell/dunkel), HiDPI, frei skalierbare Fenster | M |
 | R-UI-8 | Startet sofort; Laden im Hintergrund mit Statuszeile; offline nutzbar mit dem gecachten Datenstand (Senden erst bei Verbindung) | M |
+| R-UI-9 | Tray-Modus mit Benachrichtigung „n neue Screenshots“ | K |
 
 ## Übermittlung (SUB)
 
 | ID | Anforderung | Prio |
 |---|---|---|
 | R-SUB-1 | `POST /data_submit` mit `id_terminal`, `type`, `is_production`, `game_version`, `prices[]` (getrennte Buy- und Sell-Zeilen), optional `container_sizes`, `screenshot`, `details` | M |
-| R-SUB-2 | Sende-Queue: Rate-Limit-konform (120 req/min global, max. 500 Zeilen pro Report), begrenzte Parallelität, Retry mit Backoff nur bei 429/5xx/Netzfehlern | M |
+| R-SUB-2 | Sende-Queue: Rate-Limit-konform (120 req/min global, max. 500 Zeilen pro Report), begrenzte Parallelität, Retry mit Backoff nur bei 429/5xx/Netzfehlern. Die Queue ist **persistent** (SQLite): Reports, die offline oder vor einem Absturz eingereiht wurden, gehen nicht verloren und werden nach dem Neustart erst nach erneuter Freigabe gesendet. | M |
 | R-SUB-3 | Sendesperre bei ungeklärten Feldern oder unklarem Terminal | M |
-| R-SUB-4 | Persistente Historie (SQLite): Report-IDs (`ids_reports`), Zeitpunkt, Payload-Hash, 5-Minuten-Cooldown pro Terminal/Commodity/Seite; Rückzug über `data_remove` | M |
-| R-SUB-5 | Vor dem Senden: `data_parameters` prüfen (`is_accepting_reports` bzw. `is_accepting_ptu_reports`, `commodity.is_accepted`) | M |
+| R-SUB-4 | Persistente Historie (SQLite): Report-IDs (`ids_reports`), Zeitpunkt, Payload-Hash, 5-Minuten-Cooldown pro Terminal/Commodity/Umgebung (konservativ **ohne** Seite, bis die UEX-Regel geklärt ist – Annahme A12); Rückzug über `data_remove`. Optional zeigt die Historie den Bearbeitungsstatus bei UEX (`data_info`). | M |
+| R-SUB-5 | Vor dem Senden: `data_parameters` prüfen (`is_accepting_reports` bzw. `is_accepting_ptu_reports`, `commodity.is_accepted`). Dafür wird ein Stand von höchstens 15 min verwendet (nicht der Tages-Cache), weil sich diese Flags am Patch-Tag ändern. | M |
 | R-SUB-6 | Mapping aller bekannten UEX-Fehlercodes auf lokalisierte Meldungen mit Handlungsempfehlung | M |
-| R-SUB-7 | Upload-Screenshot: perspektivkorrigierter Ausschnitt „SHOP INVENTORY“ plus Location-Feld, **Kontostand immer geschwärzt**, JPEG oder PNG < 10 MB (Ziel ~1–2 MP) | M |
+| R-SUB-7 | Upload-Screenshot: perspektivkorrigierter Ausschnitt „SHOP INVENTORY“ plus Location-Feld, **Kontostand immer geschwärzt**, JPEG oder PNG < 10 MB (Ziel ~1–2 MP). Besteht ein Report aus mehreren gescrollten Captures, die API aber nur **ein** `screenshot`-Feld hat, werden die Shop-Ausschnitte vertikal zu einem Bild zusammengesetzt (Annahme A11: von UEX akzeptiert). | M |
 | R-SUB-8 | Testmodus (`is_production=0`), umschaltbar in den Einstellungen und für Entwicklung und CI standardmäßig aktiv | M |
 
 ## UEX-Anbindung (API)
@@ -156,7 +165,7 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 
 | ID | Anforderung | Prio |
 |---|---|---|
-| R-NF-1 | Windows 10/11 x64 und Linux x64 (glibc-Distros, X11 und Wayland über XWayland) | M |
+| R-NF-1 | Windows 10/11 x64 und Linux x64 (glibc-Distros, X11; unter Wayland über XWayland – native Wayland-Unterstützung von JavaFX ist nicht belegt, XWayland-Betrieb ist in M4 zu testen) | M |
 | R-NF-2 | Distribution: Windows MSI und portables ZIP; Linux `.deb` und portables `tar.gz` (App-Image von jpackage); jeweils mit gebündelter Runtime | M |
 | R-NF-3 | Ressourcen: Heap begrenzt (Startwert `-Xmx512m`, durch Messung festzulegen), ONNX-Session wird nach Inaktivität freigegeben | S |
 | R-NF-4 | Secret-Key nur im OS-Keystore (Windows Credential Manager, Linux Secret Service). Fallback ist eine Datei mit Rechten 0600 nach expliziter Warnung. Niemals in Logs. | M |
@@ -177,3 +186,7 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 | A6 | Die Patch-City-Screenshots (2000×1125) sind möglicherweise skaliert. Ziel-Auflösungen müssen mit Original-Screenshots getestet werden. |
 | A7 | Unter Linux ist das laufende Spiel über `ProcessHandle.info().command()`/`arguments()` des Wine-/Proton-Prozesses anhand von `StarCitizen.exe` erkennbar. Auf echten Installationen (Wine, Proton, Lutris) zu prüfen; Fallback ist ein Scan von `/proc/*/cmdline`. |
 | A8 | Ein lokales VLM liest Rohstoff-Terminals genauer als die klassische OCR oder ergänzt sie sinnvoll. Belegt ist das bisher nur für Refinery-Panels (basetool); für unseren Fall wird es erst durch das Bake-off in M5 geprüft. Ist der Nutzen gering, bleibt das Feature klein oder entfällt. |
+| A9 | UEX ordnet HOTFIX-Reports `live` und EPTU/TECH-PREVIEW-Reports `ptu` zu (bzw. akzeptiert diese überhaupt). |
+| A10 | Auf der **Sell-Seite** entspricht die angezeigte „… SCU“-Zahl dem UEX-Feld `scu_sell`. UEX kennt zusätzlich `scu_sell_stock`; welches Feld die Zahl im Terminal meint, ist unklar. Auf der Buy-Seite entspricht „SHOP QUANTITY“ vermutlich `scu_buy`. |
+| A11 | Ein aus mehreren Scroll-Ausschnitten zusammengesetzter Screenshot wird von UEX akzeptiert; manuelle Reports ohne Screenshot werden für etablierte DataRunner angenommen. |
+| A12 | Die 5-Minuten-Duplikatsperre von UEX gilt pro (Terminal, Commodity) – ob die Seite (Buy/Sell) unterschieden wird, ist offen. |
