@@ -20,10 +20,9 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 ## M1 – Reference data, manual capture, submission (first usable release 0.1)
 
-- [ ] `domain`: value objects, ports; `application`: use cases submission (queue, cooldown, send threshold), deviation assessment (R-UI-10), manual capture – tested with fakes of the ports
+- [ ] `shared-kernel`, `game`, `reference-data` (snapshot, vocabulary indexes, fuzzy matcher – property-tested); `reporting` (Report aggregate, submission gate, deviation assessment R-UI-10, manual capture use cases); `submission` (queue, cooldown); `workflows` (reporting → submission) – all tested with fakes of the ports
 - [ ] `adapter-uex`: client, DTO mapping, envelope, error codes, rate limiter, host fallback; contract tests with recorded responses
-- [ ] `adapter-storage`: SQLite, migrations, repositories (queue, history, cache)
-- [ ] `adapter-refdata`: cache, TTL refresh, vocabulary indexes, fuzzy matcher (property-tested)
+- [ ] `adapter-storage`: SQLite, migrations, repositories (reports, queue, cooldown, history), reference-data cache with TTL refresh
 - [ ] `adapter-platform`: secret store (FFM: Credential Manager / libsecret), paths, truststore
 - [ ] `ui`: onboarding (key → `/user` check), settings, **manual capture** (R-MAN-*) with deviation marking (R-UI-10..12), history, diagnostics
 - [ ] `app`: composition root, configuration
@@ -41,8 +40,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 ## M3 – Pipeline and review UI (release 0.5)
 
-- [ ] `pipeline`: locate, layout, field parser, resolution, validation, repair, stitching, confidence
-- [ ] `adapter-capture` + `application`: user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
+- [ ] `recognition`: locate, layout, field parser, resolution, validation, repair, stitching, confidence
+- [ ] `capture` + `adapter-files` + `workflows` (capture → recognition → reporting): user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
 - [ ] `ui`: queue view, report editor with image crops and source highlight, deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"
 - [ ] Upload screenshot: cropping, redact balance (test!)
 
@@ -63,8 +62,8 @@ Requires M3 (shared resolution, validation and stitching). Can run in parallel t
 - [ ] `adapter-platform`: `GameProcessMonitor` (Windows and Linux/Wine, hysteresis); verify assumption A7 on real systems
 - [ ] `adapter-vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), host allowlist, cancellation and unloading (`keep_alive: 0`)
 - [ ] Prompt v1 plus deterministic answer parser (golden tests with recorded answers, without Ollama in CI)
-- [ ] `pipeline`: fusion rules (07 §2.7), property-tested
-- [ ] `application`: AI queue (persisted), `RecognitionPolicy`; `ui`: settings (Off / Automatic / Always), UI: status "AI pending / running / done", display of both candidates on contradiction, model management with pull progress
+- [ ] `recognition`: fusion rules (07 §2.7), property-tested
+- [ ] `workflows`: AI queue (persisted), `RecognitionPolicy`; `ui`: settings (Off / Automatic / Always), UI: status "AI pending / running / done", display of both candidates on contradiction, model management with pull progress
 - [ ] **Bake-off** on the corpus: models (including `qwen3-vl:8b-instruct`, `qwen3-vl:4b-instruct`), Markdown vs. `format` output, image size; metrics "OCR only" / "VLM only" / "fusion", runtime, VRAM
 
 **Acceptance criteria:**

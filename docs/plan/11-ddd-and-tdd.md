@@ -47,9 +47,9 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 
 **Implementation in code:**
 
-- The contexts are **packages** in `domain` and `application` (`…domain.reporting`, `…application.reporting` etc.); the recognition logic lives in the `pipeline` module.
-- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `GameEnvironment`) live in the **Shared Kernel** `…domain.shared`. It is kept small; changes there require particular care.
-- **Rule:** Contexts reference other aggregates only by ID and communicate via domain events or application services, never via direct object references. This is enforced via ArchUnit.
+- Each context is its **own Gradle/JPMS module** (`capture`, `recognition`, `reporting`, `submission`, `reference-data`, `game`) containing its domain model and application services; cross-context processes live in `workflows`. Decision and trade-offs: [ADR-002](../adr/0002-modules-by-bounded-context.md); context map: [02 §2](02-architecture.md).
+- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `GameEnvironment`) live in the **Shared Kernel** module `shared-kernel`. It is kept small; changes there require particular care.
+- **Rule:** Contexts reference other aggregates only by ID and communicate via domain events or application services, never via direct object references. This is enforced by JPMS (only `api` packages are exported) and ArchUnit.
 
 ### A3. Aggregates and invariants
 
@@ -83,21 +83,21 @@ Immutable records with validation in the compact constructor, equality by value,
 
 Stateless domain logic that belongs to no single aggregate (pure functions):
 
-- **Recognition** (in `pipeline`): `CommodityResolver`, `TerminalResolver`, `PriceCandidateEvaluator`, `ReaderFusion`, `Stitcher`
+- **Recognition** (module `recognition`): `CommodityResolver`, `TerminalResolver`, `PriceCandidateEvaluator`, `ReaderFusion`, `Stitcher`
 - **Reporting**: `DeviationAssessor` (→ `FieldAssessment`), `ReportGrouper`, `SubmissionGate`
 
 ### A6. Domain events
 
 `CaptureImported`, `CaptureScanned`, `ReportDraftCreated`, `ReportReleased`, `ReportSubmitted`, `SubmissionRejected`, `ReportWithdrawn`, `GameStateChanged`, `ReferenceDataRefreshed`.
 
-- Events are immutable records in `domain`.
-- They are delivered **in-process and synchronously** via a small dispatcher in `application`, without a framework.
+- Events are immutable records in the `api` package of the context that publishes them (base type in `shared-kernel`).
+- They are delivered **in-process and synchronously** via a small dispatcher in `workflows`, without a framework.
 - **Aggregates are immutable** (records): a command such as `report.confirm(…)` returns `Outcome.Ok(newState, events)` or `Outcome.Refused(reason)`. The application service stores the new state via the repository and then publishes the events. This makes aggregates testable without mocks and thread-safe.
 - Events make the flows testable: "Given events / When command / Then events".
 
 ### A7. Repositories and Anti-Corruption-Layer
 
-- **One repository per aggregate** (port in `domain`, implementation in `adapter-storage`). There are no repositories for entities within an aggregate.
+- **One repository per aggregate** (port in the owning context module, implementation in `adapter-storage`). There are no repositories for entities within an aggregate.
 - **ACL to UEX** (`adapter-uex`):
   - UEX DTOs (snake_case, numbers as strings, 0/1 flags, status strings) are translated into value objects at the boundary.
   - UEX error codes become sealed `SubmissionError` types.
@@ -107,7 +107,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 
 ### A8. Marking and enforcement
 
-- Our own dependency-free marker annotations in `domain` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
+- Our own dependency-free marker annotations in `shared-kernel` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
 - **No jMolecules:** that would be an additional dependency in the core (checked: `org.jmolecules:jmolecules-ddd` 2.0.1). Five annotations of our own do the same job here.
 - **ArchUnit rules:**
   - `@ValueObject` and `@DomainEvent` are records.
@@ -122,8 +122,8 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 
 | Area | Approach |
 |---|---|
-| `domain`, `pipeline`, `application` | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
-| Adapters (`adapter-uex`, `adapter-storage`, `adapter-refdata`, `adapter-capture`) | **Test-first, as far as possible:** contract and integration tests (WireMock, real SQLite file, real temp directory) first, then the implementation |
+| Core modules (context modules, `shared-kernel`, `workflows`) | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
+| Adapters (`adapter-uex`, `adapter-storage`, `adapter-files`) | **Test-first, as far as possible:** contract and integration tests (WireMock, real SQLite file, real temp directory) first, then the implementation |
 | `adapter-ocr`, `adapter-vlm` and OCR thresholds | **Spike & Stabilize:** exploration in the eval harness is allowed (result: measurements, no merge). Before the merge, the desired behavior is pinned down with golden and unit tests that fail without the change. |
 | `ui` | ViewModels via TDD (without a window); views (layout, CSS) without TDD, critical flows via TestFX after implementation |
 | `adapter-platform` (FFM, process list) | Thin wrappers behind ports; the port is tested via a fake, the native side via integration tests on the target OS (CI matrix) |
@@ -131,7 +131,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 
 ### B2. Outside-in per use case
 
-1. **Acceptance test** at the `application` level (domain language, fakes for all ports), derived from the requirement. The test name or tag refers to the requirement ID, e.g. `@Tag("R-UI-10")`.
+1. **Acceptance test** at the application-service level of the context module (or `workflows` for cross-context use cases) (domain language, fakes for all ports), derived from the requirement. The test name or tag refers to the requirement ID, e.g. `@Tag("R-UI-10")`.
 2. Unit tests for aggregates, value objects and domain services follow from it.
 3. Finally come the adapters with their contract tests.
 
@@ -156,8 +156,8 @@ void majorPriceDeviationBlocksReleaseUntilConfirmed() {
 - **Fakes before mocks:** for every port there is a handwritten fake implementation in the Gradle `java-test-fixtures` source set of the respective module. All tests share these fixtures. Mockito only for interaction checks that a fake cannot sensibly represent.
 - **Test data builders** (`aDraftReport()`, `aCapture()`, `aSnapshot()`) in the same test fixtures, instead of copying test data.
 - **Property-based tests** (jqwik) for parser, fuzzy matcher, fusion, `DeviationAssessor` and the invariants of the `Report` (e.g. "after `correct`, a field is never confirmed").
-- **Golden tests** for the pipeline against the corpus (`corpus/`).
-- **Mutation testing** (PIT) for `domain`, `pipeline` and `application`, to check whether the tests really find bugs – with TDD, the honest check against "tests that assert nothing":
+- **Golden tests** for the `recognition` pipeline against the corpus (`corpus/`).
+- **Mutation testing** (PIT) for the core modules, to check whether the tests really find bugs – with TDD, the honest check against "tests that assert nothing":
   - Initial value for the mutation score ≥ 70 %; it is fixed after the first measurement and may only rise.
   - Runs in the PR for changed classes and fully nightly.
   - Versions checked: PIT 1.30.0, Gradle plugin `info.solidsoft.pitest` 1.19.0, `pitest-junit5-plugin` 1.2.3. **That the JUnit 5 plugin works together with JUnit 6 and JDK 27 has not been checked** → M0.
