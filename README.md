@@ -1,27 +1,27 @@
 # UEX Datarunner Client
 
-Plattformübergreifender Desktop-Client (Windows + Linux) für Star-Citizen-DataRunner. Er erfasst Daten von Rohstoff-Terminals – **manuell oder per Screenshot-OCR** – und übermittelt sie an [UEX Corp](https://uexcorp.space). Aktuelle UEX-Daten dienen dabei als Vorgabewerte und Plausibilitätsgrenzen für die Erkennung.
+Cross-platform desktop client (Windows + Linux) for Star Citizen DataRunners. It captures commodity terminal data – **manually or via screenshot OCR** – and submits it to [UEX Corp](https://uexcorp.space). Current UEX data serves as default values and plausibility bounds for recognition.
 
-Während des Spiels arbeitet eine schlanke, lokale OCR. Optional prüft ein lokales KI-Modell (über Ollama) die Ergebnisse nach, sobald das Spiel geschlossen ist.
+While the game is running, a lightweight local OCR does the work. Optionally, a local AI model (via Ollama) re-checks the results once the game is closed.
 
-> Status: **Planung**. Es gibt noch keinen lauffähigen Code.
+> Status: **planning**. There is no runnable code yet.
 
 ## Plan
 
-| Dokument | Inhalt |
+| Document | Contents |
 |---|---|
-| [01 – Anforderungen](docs/plan/01-anforderungen.md) | Funktionale und nicht-funktionale Anforderungen, Annahmen |
-| [02 – Architektur](docs/plan/02-architektur.md) | Module, Datenfluss, Domänenmodell, Plattform-Integration |
-| [03 – Sprachentscheidung (ADR)](docs/plan/03-sprachentscheidung.md) | Java vs. Rust, Bewertung, Entscheidung: Java 27 + JavaFX 27 |
-| [04 – Roadmap](docs/plan/04-roadmap.md) | Meilensteine M0–M5 mit Abnahmekriterien, Risiken |
-| [05 – Fehleranalyse SC-Datarunner-UEX](docs/plan/05-datarunner-fehleranalyse.md) | Bekannte Fehler des Vorbilds und unsere Fixes |
-| [06 – UEX API](docs/plan/06-uex-api.md) | Endpoints, Payload, offene Verifikationspunkte |
-| [07 – OCR-Konzept](docs/plan/07-ocr-konzept.md) | Pipeline, Screenshot-Beobachtungen, Lehren aus basetool-sc-extractor |
-| [08 – Review](docs/plan/08-review.md) | Prüfung des Plans: korrigierte Fehler, geschlossene Lücken, offene Punkte |
-| [09 – Engineering-Prinzipien](docs/plan/09-engineering-prinzipien.md) | Modularisierung, Clean Code, Tests, Definition of Done – mit Durchsetzung |
-| [10 – Supply-Chain-Sicherheit](docs/plan/10-supply-chain-security.md) | Bedrohungsmodell, Absicherung von Abhängigkeiten, Build, CI und Releases |
-| [11 – DDD und TDD](docs/plan/11-ddd-und-tdd.md) | Fachsprache, Bounded Contexts, Aggregate und Invarianten; testgetriebenes Vorgehen |
+| [01 – Requirements](docs/plan/01-requirements.md) | Functional and non-functional requirements, assumptions |
+| [02 – Architecture](docs/plan/02-architecture.md) | Modules, data flow, domain model, platform integration |
+| [03 – Language decision (ADR)](docs/plan/03-language-decision.md) | Java vs. Rust, evaluation, decision: Java 27 + JavaFX 27 |
+| [04 – Roadmap](docs/plan/04-roadmap.md) | Milestones M0–M5 with acceptance criteria, risks |
+| [05 – SC-Datarunner-UEX bug analysis](docs/plan/05-datarunner-bug-analysis.md) | Known bugs of the predecessor and our fixes |
+| [06 – UEX API](docs/plan/06-uex-api.md) | Endpoints, payload, open verification points |
+| [07 – OCR concept](docs/plan/07-ocr-concept.md) | Pipeline, screenshot observations, lessons from basetool-sc-extractor |
+| [08 – Review](docs/plan/08-review.md) | Plan review: corrected errors, closed gaps, open points |
+| [09 – Engineering principles](docs/plan/09-engineering-principles.md) | Modularisation, clean code, tests, definition of done – with enforcement |
+| [10 – Supply-chain security](docs/plan/10-supply-chain-security.md) | Threat model, securing dependencies, build, CI and releases |
+| [11 – DDD and TDD](docs/plan/11-ddd-and-tdd.md) | Ubiquitous language, bounded contexts, aggregates and invariants; test-driven approach |
 
-## Hinweis
+## Disclaimer
 
-Inoffizielles Community-Projekt, nicht mit UEX Corp oder Cloud Imperium Games / Roberts Space Industries verbunden.
+Unofficial community project, not affiliated with UEX Corp or Cloud Imperium Games / Roberts Space Industries.
