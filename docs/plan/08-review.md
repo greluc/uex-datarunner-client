@@ -297,6 +297,8 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   28. R-NF-3 is raised from S to M, because R-OCR-17 relies on its memory budget and release 0.5 ships automatic OCR. Confirm?
   29. Which PC is the reference machine (CPU model, cores, RAM), and which frame-time tolerance (p95 delta of the game with the app importing against the app closed) is acceptable for 1.0?
   30. Re-import is offered only for captures that belong to no active report. Should a capture of a Draft also be re-readable in place, keeping confirmations like the AI re-read?
+  31. Until the first successful `game_versions` fetch (e.g. an offline first start), new captures wait in `Imported` and are neither versioned nor scanned; that fetch moves them to `Ready` or `EnvironmentPending` (R-CAP-3b, R-UI-13, 02 §4a). Acceptable, or should OCR run earlier and the version be assigned later?
+  32. The R-CAP-10 confirmation of a manual report is stored on the Report (`EnvironmentConfirmation`: observed running channel and time; revoked by an environment change). The release use case passes the running channel's environment from `game` in `ReleaseContext`, and the gate refuses with `EnvironmentUnconfirmed` while they differ and no confirmation for that channel exists (02 §3, 11 §A3 I2). Agreed?
 
   One further question from the review (should an outdated reference weaken only the display marking, so that a `MAJOR` deviation still needs a confirmation?) is answered by the stale-reference rule above and is therefore not listed.
 
