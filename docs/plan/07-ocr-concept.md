@@ -1,168 +1,168 @@
-# OCR-Konzept
+# OCR concept
 
-## 1. Beobachtungen an echten Screenshots (Patch City, Pyro)
+## 1. Observations on real screenshots (Patch City, Pyro)
 
-Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local-Market-Value-Tab, gescrollt) zeigen das aktuelle Terminal-Layout. Was wir daraus ableiten:
+The five screenshots supplied by the project owner (2000×1125, Buy and Local Market Value tab, scrolled) show the current terminal layout. What we infer from them:
 
-| Element | Beobachtung | Konsequenz |
+| Element | Observation | Consequence |
 |---|---|---|
-| Kopf | „COMMODITIES“ oben links; „CURRENT BALANCE: ¤9,484,456 aUEC“ oben rechts | Kopf dient als Anker. **Kontostand nie übertragen**, im Upload schwärzen. |
-| Linkes Panel „YOUR INVENTORIES“ | Dropdown mit der aktuellen Location („PATCH CITY“), darunter IN DEMAND / NO DEMAND / CANNOT SELL | **Location-Feld = beste Quelle für die Terminal-Zuordnung** (Text in Großbuchstaben, gespreizt) |
-| Rechtes Panel „SHOP INVENTORY“ | Tabs „Buy“ und „Local Market Value“; der aktive Tab ist kräftig orange-rot gefüllt, der inaktive dunkel | Seite (BUY/SELL) über den Tab-Hintergrund bestimmen (Farbe bzw. Luminanz), zusätzlich über den OCR-Text |
-| Abschnitte | Buy: „IN STOCK“ (aufgeklappt), unten „OUT OF STOCK“ (zugeklappt, „+“). Sell: „SELLABLE CARGO“, „IN DEMAND“ | Abschnitt pro Karte merken; Konsistenzregeln |
-| Karte | Icon · vertikaler Statusbalken (Farbe/Füllhöhe) · Name · Statustext (farbig) · rechts „SHOP QUANTITY“ (nur Buy) · „333 SCU“ · „¤3,237/SCU“ · „AVAILABLE CARGO SIZE (SCU)“ mit Kästchen [1][2][4][8][16][24][32] | Feldpositionen relativ zur Karte; Zweitleser für den Status aus Balken und Farbe |
-| Währungssymbol | `¤` steht direkt vor der Zahl, ohne Leerzeichen | Ursache für das „9“-Präfix im Original (F1): geometrisch abtrennen |
-| Zahlen | Tausendertrenner Komma („6,000“, „¤36,000/SCU“), ganze aUEC | Strukturparser (F3/F4) |
-| Lange Namen | „Recycled Material Composite“ überlappt mit „0 SCU“ → zusammengeklebt „Compos0iSCU“ | Namensauflösung per Fuzzy-Präfix, SCU-Regex innerhalb des Tokens (F6) |
-| Scrollen | Am oberen und unteren Rand abgeschnittene Karten (z. B. nur „AVAILABLE CARGO SIZE“ ohne Namen; Karte ohne Cargo-Zeile) | Randkarten nur mit vollständigen Feldern übernehmen; Merge über Commodity-ID |
-| Abgedunkelte Karten | Fluorine (2 SCU, Kisten 8–32) und DynaFlex (13 SCU, Kisten 16–32) sind abgedunkelt. Zuerst als „Ausblendung am Viewport-Rand“ gedeutet; **korrigiert** nach den Pyro-Gateway-Screenshots (§1b): Dort ist IRON mitten in der Liste abgedunkelt (4 SCU < kleinste Kiste 8). | Hypothese A14: abgedunkelt = in keiner Kistengröße kaufbar. Kontrastnormalisierung pro Karte; die Abdunklung ist **kein** Randeffekt. Bei Duplikaten gilt trotzdem: die Lesung weiter vom Rand bevorzugen (abgeschnittene Randkarten). |
-| Hover-Hervorhebung | Eine Karte hat roten Hintergrund (Maus darüber) | Kontrastnormalisierung pro Karte, nicht global |
-| Schrift | Ziffern im HUD-Stil (z. B. „16“ ähnelt „lb“, „4“ ähnelt „Ч“) | Cargo-Größen über eine geschlossene Menge {1,2,4,8,16,24,32} und die Reihenfolge klassifizieren, nicht frei lesen |
-| Störungen | HUD-Elemente am Rand („94%“), Szene in der Mitte | Auf das Panel zuschneiden, bevor gelesen wird |
-| Perspektive | Leicht schräg bzw. perspektivisch | Homographie auf Normgröße |
+| Header | "COMMODITIES" at the top left; "CURRENT BALANCE: ¤9,484,456 aUEC" at the top right | The header serves as an anchor. **Never transmit the balance**, redact it in the upload. |
+| Left panel "YOUR INVENTORIES" | Dropdown with the current location ("PATCH CITY"), below it IN DEMAND / NO DEMAND / CANNOT SELL | **Location field = best source for the terminal assignment** (text in capital letters, letter-spaced) |
+| Right panel "SHOP INVENTORY" | Tabs "Buy" and "Local Market Value"; the active tab is filled with a strong orange-red, the inactive one is dark | Determine the side (BUY/SELL) via the tab background (color or luminance), additionally via the OCR text |
+| Sections | Buy: "IN STOCK" (expanded), below "OUT OF STOCK" (collapsed, "+"). Sell: "SELLABLE CARGO", "IN DEMAND" | Remember the section per card; consistency rules |
+| Card | Icon · vertical status bar (color/fill level) · name · status text (colored) · on the right "SHOP QUANTITY" (Buy only) · "333 SCU" · "¤3,237/SCU" · "AVAILABLE CARGO SIZE (SCU)" with boxes [1][2][4][8][16][24][32] | Field positions relative to the card; second reader for the status from bar and color |
+| Currency symbol | `¤` sits directly in front of the number, without a space | Cause of the "9" prefix in the original (F1): separate it geometrically |
+| Numbers | Thousands separator comma ("6,000", "¤36,000/SCU"), whole aUEC | Structure parser (F3/F4) |
+| Long names | "Recycled Material Composite" overlaps with "0 SCU" → glued together "Compos0iSCU" | Name resolution via fuzzy prefix, SCU regex inside the token (F6) |
+| Scrolling | Cards cut off at the top and bottom edges (e.g. only "AVAILABLE CARGO SIZE" without a name; card without the cargo row) | Accept edge cards only with complete fields; merge via commodity ID |
+| Dimmed cards | Fluorine (2 SCU, containers 8–32) and DynaFlex (13 SCU, containers 16–32) are dimmed. First interpreted as "fade-out at the viewport edge"; **corrected** after the Pyro Gateway screenshots (§1b): there, IRON is dimmed in the middle of the list (4 SCU < smallest container 8). | Hypothesis A14: dimmed = not buyable in any container size. Contrast normalization per card; the dimming is **not** an edge effect. For duplicates the following still applies: prefer the reading further from the edge (cut-off edge cards). |
+| Hover highlight | One card has a red background (mouse over it) | Contrast normalization per card, not global |
+| Font | Digits in HUD style (e.g. "16" resembles "lb", "4" resembles "Ч") | Classify cargo sizes via a closed set {1,2,4,8,16,24,32} and the order, do not read them freely |
+| Interference | HUD elements at the edge ("94%"), scene in the middle | Crop to the panel before reading |
+| Perspective | Slightly skewed or in perspective | Homography to a normalized size |
 
-## 1b. Beobachtungen: Pyro Gateway (Stanton), blaues Theme
+## 1b. Observations: Pyro Gateway (Stanton), blue theme
 
-Fünf weitere Screenshots (4× Buy gescrollt, 1× Sell) liegen als erster öffentlicher Korpus-Eintrag in `corpus/public/pyro-gateway-stanton-01/` (Kontostand geschwärzt, Transkription noch **nicht** von einem Menschen verifiziert).
+Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first public corpus entry in `corpus/public/pyro-gateway-stanton-01/` (balance redacted, transcription **not yet** verified by a human).
 
-| Element | Beobachtung | Konsequenz |
+| Element | Observation | Consequence |
 |---|---|---|
-| Theme und Schrift | Blau, **Großbuchstaben, Monospace-artige Schrift**, anders als Patch City (orange, gemischte Schreibweise, gerundete Schrift) | Mindestens zwei Schrift- und Layout-Profile; Matching case-insensitiv; der Korpus muss beide abdecken |
-| Location-Feld | „PYRO GATEWAY“ – **ohne** Systemzusatz, obwohl das Terminal „Pyro Gateway (Stanton)“ ist | Bestätigt F12: Der Location-Text allein ist nicht eindeutig. Disambiguierung über das Sortiment, den Sitzungskontext und schwach über das Theme (Hypothese A13: blau = Stanton-Seite); im Zweifel Pflichtauswahl. |
-| Scrollen **ohne Überlappung** | Die 4 Buy-Screenshots schließen genau seitenweise aneinander an; keine Karte erscheint doppelt | Stitching darf **nicht** auf Überlappung angewiesen sein. Reihenfolge und Lücken kommen aus dem **Scrollbalken** (Position und Länge des Schiebers rechts) und dem UEX-Sortiment. Mögliche Lücken zwischen zwei Bildern werden als Warnung angezeigt. |
-| Teilkarten | Am unteren Rand nur der Kartenkopf sichtbar (buy-1, buy-2); auf der Sell-Seite ist der Preis von HUMAN FOOD BARS halb abgeschnitten („¤490/SCU“) | Eine Karte zählt nur, wenn ihre Unterkante sichtbar ist. Ein halb lesbarer Preis darf **nicht** übernommen werden. |
-| Fast gleiche Namen | „SHIP AMMUNITION – SIZE 1“ … „SIZE 7“ unterscheiden sich nur durch eine Ziffer; Namen umbrechen auf zwei Zeilen | Fuzzy-Matching allein ist hier gefährlich (siehe §2.5, Regel für Nachbarnamen) |
-| Statusfarben | Buy: „VERY LOW INVENTORY“ **rot**; Sell: „VERY LOW INVENTORY“ **grün** | Die Farbe ist zwischen den Seiten invertiert (passt zu `commodities_status`). Der Zweitleser für den Status über die Farbe muss die Seite kennen. |
-| Sell-Seite | Mengenangabe ohne „SHOP QUANTITY“, aber mit Lagerstatus (1,482 SCU, VERY LOW INVENTORY) | Indiz, dass die Zahl den Lagerbestand des Terminals meint (A10: eher `scu_sell_stock` als `scu_sell` – mit UEX klären) |
-| Maximalwerte | Viele Waren 12,000 SCU, Argon 24,000 SCU bei „MAX INVENTORY“ | Plausibilitätszeuge: „MAX INVENTORY“ ⇒ SCU entspricht dem bekannten Maximum dieses Terminals bzw. dieser Ware (aus der UEX-Historie) |
+| Theme and font | Blue, **capital letters, monospace-like font**, unlike Patch City (orange, mixed case, rounded font) | At least two font and layout profiles; matching case-insensitive; the corpus must cover both |
+| Location field | "PYRO GATEWAY" – **without** a system suffix, although the terminal is "Pyro Gateway (Stanton)" | Confirms F12: the location text alone is not unambiguous. Disambiguation via the assortment, the session context and weakly via the theme (hypothesis A13: blue = Stanton side); when in doubt, mandatory selection. |
+| Scrolling **without overlap** | The 4 Buy screenshots join exactly page by page; no card appears twice | Stitching must **not** rely on overlap. Order and gaps come from the **scrollbar** (position and length of the thumb on the right) and the UEX assortment. Possible gaps between two images are shown as a warning. |
+| Partial cards | At the bottom edge only the card header is visible (buy-1, buy-2); on the Sell side the price of HUMAN FOOD BARS is half cut off ("¤490/SCU") | A card only counts if its bottom edge is visible. A half-readable price must **not** be accepted. |
+| Nearly identical names | "SHIP AMMUNITION – SIZE 1" … "SIZE 7" differ only by one digit; names wrap onto two lines | Fuzzy matching alone is dangerous here (see §2.5, rule for near-duplicate names) |
+| Status colors | Buy: "VERY LOW INVENTORY" **red**; Sell: "VERY LOW INVENTORY" **green** | The color is inverted between the sides (consistent with `commodities_status`). The second reader for the status via color must know the side. |
+| Sell side | Quantity without "SHOP QUANTITY", but with stock status (1,482 SCU, VERY LOW INVENTORY) | Indication that the number means the terminal's stock level (A10: rather `scu_sell_stock` than `scu_sell` – clarify with UEX) |
+| Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | Plausibility witness: "MAX INVENTORY" ⇒ SCU equals the known maximum of this terminal or this commodity (from the UEX history) |
 
-## 2. Pipeline im Detail
+## 2. Pipeline in detail
 
-### 2.1 Vorverarbeitung und Locate
+### 2.1 Preprocessing and locate
 
-1. **Downscale per Box-Filter** auf ~1/4 für die Ankersuche. basetool hat gemessen, dass Bikubik schraffierte UI-Elemente verliert: 25 % vs. 83 % Trefferquote.
-2. **Grob-OCR** (nur Detektion plus Erkennung auf dem Downscale bzw. auf Kacheln) findet die Text-Anker „SHOP INVENTORY“, „YOUR INVENTORIES“, „COMMODITIES“ und „AVAILABLE CARGO SIZE“. Ihre Positionen definieren die Panel-Geometrie.
-3. **Panel-Rahmen:** Die orangefarbenen Rahmenlinien des Panels werden per Kantendetektion und Linien-Fit gesucht, um die vier Ecken für die Homographie zu bestimmen.
-   - Fallback: Ecken aus den Text-Ankern plus Layout-Profil.
-   - Letzter Fallback: manuell.
-4. **Homographie** auf eine Normbreite (z. B. 1000 px für das Shop-Panel), dann bilineare Neuabtastung.
-5. **Theme-agnostisch:** Für die Erkennung wird der Max-Kanal bzw. die Luminanz genutzt; Farbe dient nur für Tab, Status und Hover.
+1. **Downscale via box filter** to ~1/4 for the anchor search. basetool measured that bicubic loses hatched UI elements: 25 % vs. 83 % hit rate.
+2. **Coarse OCR** (detection plus recognition only, on the downscaled image or on tiles) finds the text anchors "SHOP INVENTORY", "YOUR INVENTORIES", "COMMODITIES" and "AVAILABLE CARGO SIZE". Their positions define the panel geometry.
+3. **Panel frame:** The orange frame lines of the panel are searched for via edge detection and line fitting to determine the four corners for the homography.
+   - Fallback: corners from the text anchors plus layout profile.
+   - Last fallback: manual.
+4. **Homography** to a normalized width (e.g. 1000 px for the shop panel), then bilinear resampling.
+5. **Theme-agnostic:** For recognition the max channel or luminance is used; color only serves for tab, status and hover.
 
 ### 2.2 OCR
 
-- **Modelle:** PaddleOCR **PP-OCRv6 small** Detektion (DBNet) und Erkennung (CTC), ONNX-Export von Hugging Face (`PaddlePaddle/PP-OCRv6_small_{det,rec}_onnx`), Apache-2.0. SHA-256 wird in `NOTICE` dokumentiert.
-  - Laut basetool sind das ~10 MB + ~21 MB, das Wörterbuch hat 18.708 Einträge.
-  - Die exakten Dateien werden beim Einbinden selbst heruntergeladen und gehasht.
-- **Startparameter** (aus basetool, am eigenen Korpus nachzutunen):
-  - kürzere Seite ≥ 736, auf ein Vielfaches von 32 gerundet
-  - Binarisierung 0.2, Box-Schwelle 0.45, Unclip-Faktor 1.4
-  - Erkennungshöhe 48
-- **Prüfungen:**
-  - Anzahl der Wörterbuchklassen gegen die Ausgabeform des Modells (Schutz vor falschem Wörterbuch)
-  - Modell-Hash beim Laden
-- **Laufzeit:** ORT-Session lazy, bei Inaktivität schließen; Intra-Op-Threads begrenzen (das Spiel läuft parallel).
-- **Spätere Option** (nicht 1.0): ein eigenes, auf die SC-HUD-Schrift feinjustiertes Erkennungsmodell, falls der Korpus Bedarf zeigt.
+- **Models:** PaddleOCR **PP-OCRv6 small** detection (DBNet) and recognition (CTC), ONNX export from Hugging Face (`PaddlePaddle/PP-OCRv6_small_{det,rec}_onnx`), Apache-2.0. SHA-256 is documented in `NOTICE`.
+  - According to basetool these are ~10 MB + ~21 MB, the dictionary has 18,708 entries.
+  - The exact files are downloaded and hashed ourselves when integrating them.
+- **Start parameters** (from basetool, to be retuned on our own corpus):
+  - shorter side ≥ 736, rounded to a multiple of 32
+  - binarization 0.2, box threshold 0.45, unclip factor 1.4
+  - recognition height 48
+- **Checks:**
+  - Number of dictionary classes against the model's output shape (protection against a wrong dictionary)
+  - Model hash on load
+- **Runtime:** ORT session lazy, close on inactivity; limit intra-op threads (the game runs in parallel).
+- **Later option** (not 1.0): our own recognition model fine-tuned to the SC HUD font, if the corpus shows a need.
 
 ### 2.3 Layout
 
-- Karten über die wiederkehrende Struktur abgrenzen: Name links oben, „… SCU“ rechts oben, Preis „/SCU“ rechts darunter, Label „AVAILABLE CARGO SIZE“ unten.
-- Zeilen-Clustering über vertikale Überlappung, Spalten über x-Zentren. Toleranzen werden **relativ** zur Normbreite angegeben, keine festen Pixel.
-- Bildschirmreihenfolge (`screenOrder`) über die y-Position.
+- Delimit cards via the recurring structure: name at the top left, "… SCU" at the top right, price "/SCU" on the right below it, label "AVAILABLE CARGO SIZE" at the bottom.
+- Row clustering via vertical overlap, columns via x centers. Tolerances are given **relative** to the normalized width, not as fixed pixels.
+- Screen order (`screenOrder`) via the y position.
 
-### 2.4 Feldparser (rein, property-getestet)
+### 2.4 Field parsers (pure, property-tested)
 
-- **Preis** (prozedural, kein einzelner Regex; eine frühere Regex-Fassung lehnte z. B. `96705/SCU` und Zahlen ohne Trenner ab):
-  1. Suffix `/SCU` (tolerant: `/5CU`, `SCU` ohne Slash) abtrennen. Fehlt es, ist das Token kein Preis.
-  2. Optionales Suffix `K`/`M` merken.
-  3. Ist das erste Zeichen ein Nicht-Ziffern-Zeichen (`¤`, `@`, `¢`, …), wird es verworfen. Ist es eine Ziffer aus der Verwechslungsmenge des Währungssymbols (`9`, `8`, `0`, am Korpus zu bestimmen), entstehen **zwei Kandidaten**: mit und ohne diese Ziffer. Liefert die geometrische Abtrennung (§2.1) eine eigene Glyphen-Box vor der Zahl, wird nur „ohne“ verwendet.
-  4. Trenner strukturell auswerten:
-     - Gruppen aus genau 3 Ziffern nach `,`/`.`/Leerzeichen gelten als Tausendertrenner.
-     - Ein letzter Trenner mit 1–2 Ziffern dahinter ist dezimal.
-     - Zahlen ganz ohne Trenner sind gültig.
-     - Widersprüchliche Muster ergeben das Finding `Unreadable`.
-  5. Alle Kandidaten gehen als `BigDecimal` an die Bewertung (§2.5); dort entscheidet der Prior mit Zeugen-Regel.
-- **SCU:** `(\d[\d,.\s]*)\s*SCU`, auch innerhalb verklebter Tokens.
-- **Status:** gegen die Statusnamen aus `commodities_status` und die lokalisierten Namen; Zweitleser ist der Statusbalken (Füllhöhe ≈ Prozentband) bzw. die Textfarbe.
-- **Cargo-Größen:** Anzahl der Kästchen plus OCR, abgeglichen mit den aufsteigenden Teilmengen von {1,2,4,8,16,24,32}.
+- **Price** (procedural, not a single regex; an earlier regex version rejected e.g. `96705/SCU` and numbers without separators):
+  1. Strip the suffix `/SCU` (tolerant: `/5CU`, `SCU` without slash). If it is missing, the token is not a price.
+  2. Remember an optional suffix `K`/`M`.
+  3. If the first character is a non-digit character (`¤`, `@`, `¢`, …), it is discarded. If it is a digit from the confusion set of the currency symbol (`9`, `8`, `0`, to be determined on the corpus), **two candidates** are created: with and without this digit. If the geometric separation (§2.1) yields a separate glyph box in front of the number, only "without" is used.
+  4. Evaluate separators structurally:
+     - Groups of exactly 3 digits after `,`/`.`/space count as thousands separators.
+     - A last separator followed by 1–2 digits is decimal.
+     - Numbers without any separator are valid.
+     - Contradictory patterns yield the finding `Unreadable`.
+  5. All candidates go as `BigDecimal` to the scoring (§2.5); there the prior decides with the witness rule.
+- **SCU:** `(\d[\d,.\s]*)\s*SCU`, also inside glued tokens.
+- **Status:** against the status names from `commodities_status` and the localized names; the second reader is the status bar (fill level ≈ percentage band) or the text color.
+- **Cargo sizes:** number of boxes plus OCR, matched against the ascending subsets of {1,2,4,8,16,24,32}.
 
-### 2.5 Auflösung und Validierung mit UEX-Daten
+### 2.5 Resolution and validation with UEX data
 
 1. **Terminal:**
-   - Das Location-Feld wird gegen alle Location-Namen gematcht und liefert die Kandidaten-Terminals (`type=commodity`, `is_available_live`, nicht player-owned).
-   - Bei mehreren Terminals an einer Location wird mit dem Sortiment abgeglichen (Jaccard der erkannten Commodity-IDs gegen das Sortiment aus `commodities_prices`).
-   - Hinzu kommt der Sitzungskontext.
+   - The location field is matched against all location names and yields the candidate terminals (`type=commodity`, `is_available_live`, not player-owned).
+   - If there are several terminals at one location, they are checked against the assortment (Jaccard of the recognized commodity IDs against the assortment from `commodities_prices`).
+   - In addition there is the session context.
 2. **Commodity:**
-   - Zuerst wird gegen das **Sortiment des Terminals** gematcht, erst dann global.
-   - Der Score kombiniert normalisiertes Levenshtein mit Präfix-Bonus.
-   - Mindestabstand zum Zweitbesten; sonst `Ambiguous`.
-   - **Regel für Nachbarnamen:** Unterscheiden sich die besten Kandidaten nur in einem kurzen Token (z. B. „SIZE 1“ vs. „SIZE 7“, Ziffern, römische Zahlen), muss dieses Token **exakt** gelesen sein. Verwechselbare Ziffern (1/7, 6/8 …) führen zu `Ambiguous`. Zusätzlicher Zeuge: die Preis-Reihenfolge laut UEX-Prior (bei Ship Ammunition steigt der Preis mit der Größe).
-3. **Preis-Prior:**
-   - Kandidaten (roh, ohne Präfixzeichen, Confusable-Varianten, K/M-Skalierung) werden gegen den letzten Wert bzw. `price_*_avg_week` dieses Terminals und dieser Commodity bewertet, Toleranz `price_variation` %.
-   - Liegt **genau ein** Kandidat in der Toleranz, wird er vorgeschlagen.
-     - Ist es der Rohwert, ist alles sauber.
-     - Ist es ein reparierter Wert, wird er nur dann **automatisch** übernommen (0.85), wenn ein unabhängiger Zeuge zustimmt (Glyph-Topologie positiv oder Zweitleser/VLM gleich). Ohne Zeugen gilt 0.75, also **unter der Sendeschwelle**; der Nutzer bestätigt per Tastendruck (R-VAL-2b).
-   - Liegen keiner oder mehrere in der Toleranz, wird der rohe Wert vorgeschlagen und als `OutOfTolerance`/`Ambiguous` markiert.
-   - **Echte Preisänderungen** werden so weder blockiert noch still auf den alten Wert „zurückrepariert“.
-   - **Ohne Prior** (R-VAL-2a): Commodity-Durchschnitt mit doppelter Toleranz; sonst keine Reparatur.
-4. **Konsistenz:** „Out of Stock“ ⇒ SCU 0; Seite ↔ Abschnitt; `is_buyable`/`is_sellable`.
-5. **Glyph-Topologie** (Lochzählung für 0/6/8/9, Konzept aus basetool, neu implementiert) arbeitet nur als **Veto** gegen Reparaturen.
+   - First matched against the **terminal's assortment**, only then globally.
+   - The score combines normalized Levenshtein with a prefix bonus.
+   - Minimum distance to the second best; otherwise `Ambiguous`.
+   - **Rule for near-duplicate names:** If the best candidates differ only in a short token (e.g. "SIZE 1" vs. "SIZE 7", digits, Roman numerals), this token must have been read **exactly**. Confusable digits (1/7, 6/8 …) lead to `Ambiguous`. Additional witness: the price order according to the UEX prior (for Ship Ammunition the price rises with the size).
+3. **Price prior:**
+   - Candidates (raw, without prefix character, confusable variants, K/M scaling) are scored against the last value or `price_*_avg_week` of this terminal and this commodity, tolerance `price_variation` %.
+   - If **exactly one** candidate lies within the tolerance, it is proposed.
+     - If it is the raw value, everything is clean.
+     - If it is a repaired value, it is only accepted **automatically** (0.85) if an independent witness agrees (glyph topology positive or second reader/VLM equal). Without a witness it gets 0.75, i.e. **below the send threshold**; the user confirms by key press (R-VAL-2b).
+   - If none or several lie within the tolerance, the raw value is proposed and flagged as `OutOfTolerance`/`Ambiguous`.
+   - **Real price changes** are thus neither blocked nor silently "repaired back" to the old value.
+   - **Without a prior** (R-VAL-2a): commodity average with double tolerance; otherwise no repair.
+4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`.
+5. **Glyph topology** (hole counting for 0/6/8/9, concept from basetool, reimplemented) works only as a **veto** against repairs.
 
-### 2.5b Stitching ohne Überlappung
+### 2.5b Stitching without overlap
 
-1. Captures desselben Terminals, derselben Seite und desselben Zeitfensters werden nach der **Scrollbalken-Position** sortiert. Fallback ist die Aufnahmezeit.
-2. Karten werden über die aufgelöste `CommodityId` zusammengeführt. Überlappen sich Bilder, ist das ein Zusatzzeuge (doppelt gelesene Werte müssen übereinstimmen), aber keine Voraussetzung.
-3. **Lückenprüfung:**
-   - Decken die Scrollbalken-Abschnitte die Liste nicht lückenlos ab, oder fehlen Commodities, die laut UEX am Terminal geführt werden, zeigt der Report „möglicherweise unvollständig“ samt der fehlenden Namen.
-   - Gesendet werden darf trotzdem; gesendet wird dann nur, was gelesen wurde.
+1. Captures of the same terminal, the same side and the same time window are sorted by **scrollbar position**. The fallback is the capture time.
+2. Cards are merged via the resolved `CommodityId`. If images overlap, that is an additional witness (values read twice must match), but not a prerequisite.
+3. **Gap check:**
+   - If the scrollbar sections do not cover the list without gaps, or if commodities are missing that UEX lists for the terminal, the report shows "possibly incomplete" together with the missing names.
+   - Sending is still allowed; only what was read is then sent.
 
-### 2.6 Konfidenz (regelbasiert)
+### 2.6 Confidence (rule-based)
 
-**Sendeschwelle: 0.80** (Startwert). Felder darunter müssen bestätigt oder korrigiert werden; eine Bestätigung setzt das Feld auf „vom Nutzer bestätigt“.
+**Send threshold: 0.80** (start value). Fields below it must be confirmed or corrected; a confirmation sets the field to "confirmed by the user".
 
-| Zustand | Konfidenz (Startwerte, am Korpus zu kalibrieren) |
+| State | Confidence (start values, to be calibrated on the corpus) |
 |---|---|
-| Von OCR und VLM übereinstimmend gelesen, validiert | 0.97 |
-| Sauber, im Prior-Band | 0.95 |
-| Sauber, aber ohne Prior (kein Referenzwert), ohne verwechselbare Ziffern | 0.85 |
-| Repariert, eindeutig, **mit unabhängigem Zeugen** | 0.85 |
-| Ein-Leser-Wert (anderer Leser unlesbar), validiert | 0.85 |
-| Repariert nur über den Prior (ohne Zeugen) | 0.75 → **bestätigen** |
-| Außerhalb der Toleranz, sonst plausibel | 0.70 → **bestätigen** |
-| Mehrdeutig / Konflikt zwischen Scans oder Lesern | 0.60 → **auswählen** |
-| Unlesbar / unplausibel | 0.30 → **korrigieren** |
+| Read identically by OCR and VLM, validated | 0.97 |
+| Clean, within the prior band | 0.95 |
+| Clean, but without prior (no reference value), without confusable digits | 0.85 |
+| Repaired, unambiguous, **with independent witness** | 0.85 |
+| Single-reader value (other reader unreadable), validated | 0.85 |
+| Repaired only via the prior (without witness) | 0.75 → **confirm** |
+| Outside the tolerance, otherwise plausible | 0.70 → **confirm** |
+| Ambiguous / conflict between scans or readers | 0.60 → **select** |
+| Unreadable / implausible | 0.30 → **correct** |
 
-**Abweichung vs. Konfidenz – zwei getrennte Dimensionen:**
+**Deviation vs. confidence – two separate dimensions:**
 
-- *Konfidenz* sagt, wie sicher **gelesen** wurde.
-- *Abweichung* sagt, wie stark der Wert vom **bisherigen UEX-Stand** abweicht (R-UI-10).
+- *Confidence* says how reliably the value was **read**.
+- *Deviation* says how strongly the value deviates from the **previous UEX state** (R-UI-10).
 
-Beides wird getrennt berechnet (`DeviationLevel`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`, jeweils mit Flag `referenceStale`) und getrennt angezeigt. Für das Sende-Gate gilt das **Strengere** von beiden: `MAJOR` erfordert immer eine Bestätigung, auch bei hoher Lesesicherheit. Ein Zahlendreher, der sauber gelesen wurde, aber stark vom UEX-Wert abweicht, wird also nie ungeprüft gesendet.
+Both are computed separately (`DeviationLevel`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`, each with the flag `referenceStale`) and displayed separately. For the submission gate the **stricter** of the two applies: `MAJOR` always requires a confirmation, even with high reading confidence. A transposed number that was read cleanly but deviates strongly from the UEX value is therefore never sent unchecked.
 
-Die Report-Konfidenz entspricht dem schlechtesten Pflichtfeld, nicht dem Mittelwert, damit sich einzelne Fehler nicht „wegmitteln“.
+The report confidence equals the worst mandatory field, not the mean, so that individual errors are not "averaged away".
 
-### 2.7 Optionaler KI-Zweitleser (VLM über Ollama, nur bei geschlossenem Spiel)
+### 2.7 Optional AI second reader (VLM via Ollama, only while the game is closed)
 
-**Warum zwei Leser?**
+**Why two readers?**
 
-- basetool hat gemessen, dass **verschiedene** Leser unterschiedliche Fehler machen. Ihre zwei VLMs haben sich bei 8 von 430 Zellen widersprochen, aber nie auf denselben falschen Wert geeinigt.
-- Dasselbe Modell zweimal laufen zu lassen bringt dagegen nichts (0 von 5 Fehlern gefunden, 2 neue erzeugt).
-- Klassische OCR und VLM sind ein solches dekorreliertes Paar.
+- basetool measured that **different** readers make different errors. Their two VLMs contradicted each other in 8 of 430 cells, but never agreed on the same wrong value.
+- Running the same model twice, on the other hand, achieves nothing (0 of 5 errors found, 2 new ones created).
+- Classic OCR and VLM are such a decorrelated pair.
 
-Die Zahlen stammen aus der Refinery-Domäne; ob sie übertragbar sind, prüft das Bake-off (Annahme A8).
+The numbers come from the refinery domain; whether they transfer is checked by the bake-off (assumption A8).
 
-**Ablauf:**
+**Flow:**
 
-1. Während des Spiels liefert die klassische OCR sofort Ergebnisse. Reports mit Warnungen werden für die KI vorgemerkt; der Nutzer kann sie trotzdem jederzeit manuell korrigieren und senden.
-2. Wenn das Spiel geschlossen ist (Hysterese), arbeitet die KI-Queue die vorgemerkten bzw. alle ungesendeten Reports ab. Eingabe sind die perspektivkorrigierten Panel-Ausschnitte (Shop-Panel, Location-Feld), auf eine Kante von ca. 1000–1500 px begrenzt.
-3. Das Ergebnis läuft durch Parser und Vokabular-Auflösung (identisch zur OCR). Danach werden OCR und VLM **pro Feld fusioniert**, und erst das fusionierte Ergebnis wird einmal validiert (Prior, Konsistenz, Konfidenz). Danach wird der Report neu gestitcht.
-4. Startet das Spiel, wird der Request abgebrochen und das Modell entladen; die Jobs bleiben erhalten.
+1. While the game is running, the classic OCR delivers results immediately. Reports with warnings are queued for the AI; the user can still correct and send them manually at any time.
+2. When the game is closed (hysteresis), the AI queue processes the queued or all unsent reports. The input is the perspective-corrected panel crops (shop panel, location field), limited to an edge of approx. 1000–1500 px.
+3. The result runs through the parser and vocabulary resolution (identical to OCR). Then OCR and VLM are **fused per field**, and only the fused result is validated once (prior, consistency, confidence). Afterwards the report is re-stitched.
+4. If the game starts, the request is aborted and the model is unloaded; the jobs are retained.
 
-**Prompt** (`vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioniert):
+**Prompt** (`vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioned):
 
-- beschreibt das Kartenlayout (Name, Statustext, Menge „… SCU“, Preis „¤…/SCU“, Cargo-Kästchen) und den aktiven Tab
-- verlangt exakte Transkription („Ziffer für Ziffer, nichts korrigieren, `?` für Unlesbares“)
-- Währungssymbol und Kontostand ausdrücklich ignorieren
-- Antwortformat:
+- describes the card layout (name, status text, quantity "… SCU", price "¤…/SCU", cargo boxes) and the active tab
+- requires exact transcription ("digit by digit, correct nothing, `?` for unreadable")
+- explicitly ignore the currency symbol and the balance
+- Response format:
 
   ```
   TAB: Buy
@@ -172,52 +172,52 @@ Die Zahlen stammen aus der Refinery-Domäne; ob sie übertragbar sind, prüft da
   | Omnapoxy | Medium Inventory | 333 | 3,237 | 1,2,4,8,16 |
   ```
 
-**Warum Markdown statt JSON-Schema?** basetool hat freie Markdown-Ausgabe plus deterministischen Parser gegen schemaerzwungenes JSON gemessen: 0,9872 vs. 0,9821, mit weniger semantischen Fehlern. Das ist am eigenen Korpus zu bestätigen. Ollama unterstützt strukturierte Ausgabe (`format`); das ist eine Bake-off-Variante.
+**Why Markdown instead of a JSON schema?** basetool measured free Markdown output plus a deterministic parser against schema-enforced JSON: 0.9872 vs. 0.9821, with fewer semantic errors. This has to be confirmed on our own corpus. Ollama supports structured output (`format`); that is a bake-off variant.
 
-**Fusionsregeln pro Feld:**
+**Fusion rules per field:**
 
-| OCR | VLM | Ergebnis |
+| OCR | VLM | Result |
 |---|---|---|
-| Wert a | gleicher Wert a | a, Konfidenz 0.97 „doppelt bestätigt“ |
-| a | b ≠ a, nur eine Confusable-Stelle verschieden | Glyph-Topologie und Prior entscheiden eindeutig, sonst `Ambiguous` (beide Kandidaten im UI) |
-| a | b, stark verschieden | Der Kandidat im Prior-Band gewinnt nur, wenn genau einer drin liegt; sonst `Ambiguous` |
-| unlesbar | b | b als Kandidat; nach der Validierung 0.85 (Ein-Leser-Wert), wenn plausibel, sonst unter der Sendeschwelle |
-| a | unlesbar | unverändert (OCR-Konfidenz) |
-| Commodity-/Terminal-Auflösung verschieden | | immer `Ambiguous` → Pflichtauswahl |
+| Value a | same value a | a, confidence 0.97 "double-confirmed" |
+| a | b ≠ a, differing in only one confusable position | Glyph topology and prior decide unambiguously, otherwise `Ambiguous` (both candidates in the UI) |
+| a | b, strongly different | The candidate within the prior band wins only if exactly one lies within it; otherwise `Ambiguous` |
+| unreadable | b | b as candidate; after validation 0.85 (single-reader value) if plausible, otherwise below the send threshold |
+| a | unreadable | unchanged (OCR confidence) |
+| Commodity/terminal resolution differs | | always `Ambiguous` → mandatory selection |
 
-Vom Nutzer bereits bestätigte oder korrigierte Felder überschreibt die KI **nie**; Abweichungen werden nur als Hinweis angezeigt.
+The AI **never** overwrites fields already confirmed or corrected by the user; deviations are only shown as a hint.
 
-**Grenzen (ehrlich):**
+**Limits (honestly):**
 
-- basetool nennt für das 8B-Modell ~4 s/Bild auf einer RTX 5090 und ~53 s/Bild auf der CPU.
-- Die Hardware-Stufen in basetool liegen bei ≥ 12 GB VRAM (8B) bzw. ≥ 8 GB (4B).
-- Werte für unsere Panels müssen gemessen werden.
-- Auf schwacher Hardware ist die KI ein „über Nacht“-Feature. Die klassische OCR bleibt deshalb der Primärweg.
+- basetool states ~4 s/image for the 8B model on an RTX 5090 and ~53 s/image on the CPU.
+- The hardware tiers in basetool are ≥ 12 GB VRAM (8B) and ≥ 8 GB (4B) respectively.
+- Values for our panels must be measured.
+- On weak hardware the AI is an "overnight" feature. The classic OCR therefore remains the primary path.
 
-## 3. Übernommene Erkenntnisse aus basetool-sc-extractor (GPL-3.0 – nur Konzepte)
+## 3. Insights adopted from basetool-sc-extractor (GPL-3.0 – concepts only)
 
-| Übernommen | Nicht übernommen |
+| Adopted | Not adopted |
 |---|---|
-| PP-OCRv6 small über ORT, ohne OpenCV | Lokales VLM als **Primär**leser – bei uns nur **optionaler Zweitleser bei geschlossenem Spiel** (§2.7), weil es 8–12 GB VRAM bzw. ~50 s/Bild auf der CPU braucht |
-| Box-Filter-Downscale für die Ankersuche | Refinery-spezifische Regeln und Farbkonstanten |
-| Zahlen erst als Text lesen, dann deterministisch parsen | Fester 4K-Geometrie-Fallback (wir nutzen Text-Anker) |
-| Confusable-Set und eindeutige Reparatur mit Zeugen | |
-| Glyph-Topologie als Veto | |
-| Regelbasierte Konfidenz statt Modell-Selbsteinschätzung | |
-| Stitching: Randlesungen abwerten, Konflikte markieren | |
-| Dekorrelierte Zweitleser (verschiedene Verfahren, nicht dasselbe Modell zweimal) | |
-| Eval-Harness: Golden-Korpus außerhalb des Repos, Digest-Test, Kandidatenvergleich über das Pipeline-Ergebnis | |
-| Crop-Dumps zur Sichtprüfung (ein Reskin brach dort die Lokalisierung unbemerkt) | |
-| Hinweis an Nutzer: chromatische Aberration auf 0 | |
+| PP-OCRv6 small via ORT, without OpenCV | Local VLM as the **primary** reader – for us only an **optional second reader while the game is closed** (§2.7), because it needs 8–12 GB VRAM or ~50 s/image on the CPU |
+| Box filter downscale for the anchor search | Refinery-specific rules and color constants |
+| Read numbers as text first, then parse deterministically | Fixed 4K geometry fallback (we use text anchors) |
+| Confusable set and unambiguous repair with witnesses | |
+| Glyph topology as veto | |
+| Rule-based confidence instead of model self-assessment | |
+| Stitching: downweight edge readings, flag conflicts | |
+| Decorrelated second readers (different methods, not the same model twice) | |
+| Eval harness: golden corpus outside the repo, digest test, candidate comparison via the pipeline result | |
+| Crop dumps for visual inspection (a reskin broke the localization there unnoticed) | |
+| Hint to the user: chromatic aberration to 0 | |
 
-## 4. Mess- und Testkonzept
+## 4. Measurement and test concept
 
-- **Korpus-Struktur:** `corpus/<id>/image.png` + `expected.json` (Terminal, Seite, Zeilen mit allen Feldern, `screenOrder`) + `meta.json` (Auflösung, Theme, Location, Spielversion).
-- **Leser getrennt messen:** Die Eval läuft für „nur OCR“, „nur VLM (Modell X)“ und „Fusion“. Die Modellempfehlung folgt aus dem Fusionsergebnis auf dem Korpus, nicht aus der Modellkarte. VLM-Läufe sind opt-in (`UEXDR_VLM_HOST`), weil CI keine GPU hat.
-- **Metriken pro Feldtyp:**
-  - exakt richtig
-  - korrekt markiert (falsch, aber geflaggt)
-  - **still falsch** (falsch und als sicher eingestuft) – die wichtigste Metrik, Ziel ≈ 0
-  - Laufzeit
-- **CI** prüft den öffentlichen, geschwärzten Teilkorpus. Der private Korpus wird lokal über eine Umgebungsvariable (`UEXDR_CORPUS_DIR`) eingebunden.
-- Die **Patch-City-Screenshots** sind der erste Korpus-Eintrag. Sie müssen als Dateien eingecheckt werden (Kontostand vorher schwärzen) oder im privaten Korpus liegen.
+- **Corpus structure:** `corpus/<id>/image.png` + `expected.json` (terminal, side, rows with all fields, `screenOrder`) + `meta.json` (resolution, theme, location, game version).
+- **Measure readers separately:** The eval runs for "OCR only", "VLM only (model X)" and "fusion". The model recommendation follows from the fusion result on the corpus, not from the model card. VLM runs are opt-in (`UEXDR_VLM_HOST`), because CI has no GPU.
+- **Metrics per field type:**
+  - exactly right
+  - correctly flagged (wrong, but flagged)
+  - **silently wrong** (wrong and classified as confident) – the most important metric, target ≈ 0
+  - runtime
+- **CI** checks the public, redacted partial corpus. The private corpus is included locally via an environment variable (`UEXDR_CORPUS_DIR`).
+- The **Patch City screenshots** are the first corpus entry. They must be checked in as files (redact the balance first) or be stored in the private corpus.
