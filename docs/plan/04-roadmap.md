@@ -48,6 +48,23 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] HiDPI, Barrierefreiheit (Tastatur, Kontrast), Lokalisierung DE/EN
 - [ ] Ressourcenmessung neben dem laufenden Spiel; Heap- und Thread-Limits festlegen
 
+## M5 – Optionale KI-Erkennung bei geschlossenem Spiel (Release 1.1, vorziehbar)
+
+Setzt M3 voraus (gemeinsame Auflösung, Validierung und Stitching). Kann parallel zu M4 laufen, wenn Kapazität da ist.
+
+- [ ] `capture`: `GameProcessMonitor` (Windows und Linux/Wine, Hysterese); Annahme A7 auf echten Systemen verifizieren
+- [ ] `vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), Host-Allowlist, Abbruch und Entladen (`keep_alive: 0`)
+- [ ] Prompt v1 plus deterministischer Antwort-Parser (Golden-Tests mit aufgezeichneten Antworten, ohne Ollama in CI)
+- [ ] `pipeline`: Leser-Abstraktion und Fusionsregeln (07 §2.7), property-getestet
+- [ ] KI-Queue (persistiert), `RecognitionPolicy`, Einstellungen (Aus / Automatisch / Immer), UI: Status „KI ausstehend / läuft / fertig“, Anzeige beider Kandidaten bei Widerspruch, Modellverwaltung mit Pull-Fortschritt
+- [ ] **Bake-off** auf dem Korpus: Modelle (u. a. `qwen3-vl:8b-instruct`, `qwen3-vl:4b-instruct`), Markdown- vs. `format`-Ausgabe, Bildgröße; Metriken „nur OCR“ / „nur VLM“ / „Fusion“, Laufzeit, VRAM
+
+**Abnahme:**
+
+- Spielstart bricht einen KI-Lauf innerhalb von ≤ 5 s ab und entlädt das Modell (Test mit simuliertem Prozess).
+- Ohne Ollama gibt es keine Fehlermeldung.
+- Die Fusion senkt „still falsch“ und „markiert“ auf dem Korpus messbar gegenüber „nur OCR“. **Ist das nicht der Fall, wird das Feature nicht ausgeliefert** (Annahme A8).
+
 ## Danach (1.x / später)
 
 - Tray-Modus mit Benachrichtigung (#36)

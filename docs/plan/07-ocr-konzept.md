@@ -93,11 +93,65 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
 
 Die Report-Konfidenz entspricht dem schlechtesten Pflichtfeld, nicht dem Mittelwert, damit sich einzelne Fehler nicht „wegmitteln“.
 
+### 2.7 Optionaler KI-Zweitleser (VLM über Ollama, nur bei geschlossenem Spiel)
+
+**Warum zwei Leser?**
+
+- basetool hat gemessen, dass **verschiedene** Leser unterschiedliche Fehler machen. Ihre zwei VLMs haben sich bei 8 von 430 Zellen widersprochen, aber nie auf denselben falschen Wert geeinigt.
+- Dasselbe Modell zweimal laufen zu lassen bringt dagegen nichts (0 von 5 Fehlern gefunden, 2 neue erzeugt).
+- Klassische OCR und VLM sind ein solches dekorreliertes Paar.
+
+Die Zahlen stammen aus der Refinery-Domäne; ob sie übertragbar sind, prüft das Bake-off (Annahme A8).
+
+**Ablauf:**
+
+1. Während des Spiels liefert die klassische OCR sofort Ergebnisse. Reports mit Warnungen werden für die KI vorgemerkt; der Nutzer kann sie trotzdem jederzeit manuell korrigieren und senden.
+2. Wenn das Spiel geschlossen ist (Hysterese), arbeitet die KI-Queue die vorgemerkten bzw. alle ungesendeten Reports ab. Eingabe sind die perspektivkorrigierten Panel-Ausschnitte (Shop-Panel, Location-Feld), auf eine Kante von ca. 1000–1500 px begrenzt.
+3. Das Ergebnis läuft durch Parser, Vokabular-Auflösung und Validierung (identisch zur OCR), dann folgt die Fusion.
+4. Startet das Spiel, wird der Request abgebrochen und das Modell entladen; die Jobs bleiben erhalten.
+
+**Prompt** (`vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioniert):
+
+- beschreibt das Kartenlayout (Name, Statustext, Menge „… SCU“, Preis „¤…/SCU“, Cargo-Kästchen) und den aktiven Tab
+- verlangt exakte Transkription („Ziffer für Ziffer, nichts korrigieren, `?` für Unlesbares“)
+- Währungssymbol und Kontostand ausdrücklich ignorieren
+- Antwortformat:
+
+  ```
+  TAB: Buy
+  LOCATION: PATCH CITY
+  | name | status | scu | price_per_scu | cargo_sizes |
+  |---|---|---|---|---|
+  | Omnapoxy | Medium Inventory | 333 | 3,237 | 1,2,4,8,16 |
+  ```
+
+**Warum Markdown statt JSON-Schema?** basetool hat freie Markdown-Ausgabe plus deterministischen Parser gegen schemaerzwungenes JSON gemessen: 0,9872 vs. 0,9821, mit weniger semantischen Fehlern. Das ist am eigenen Korpus zu bestätigen. Ollama unterstützt strukturierte Ausgabe (`format`); das ist eine Bake-off-Variante.
+
+**Fusionsregeln pro Feld:**
+
+| OCR | VLM | Ergebnis |
+|---|---|---|
+| Wert a | gleicher Wert a | a, Konfidenz 0.97 „doppelt bestätigt“ |
+| a | b ≠ a, nur eine Confusable-Stelle verschieden | Glyph-Topologie und Prior entscheiden eindeutig, sonst `Ambiguous` (beide Kandidaten im UI) |
+| a | b, stark verschieden | Der Kandidat im Prior-Band gewinnt nur, wenn genau einer drin liegt; sonst `Ambiguous` |
+| unlesbar | b | b, wenn die Validierung ok ist, mit 0.85 (Ein-Leser-Wert); sonst `prüfen` |
+| a | unlesbar | unverändert (OCR-Konfidenz) |
+| Commodity-/Terminal-Auflösung verschieden | | immer `Ambiguous` → Pflichtauswahl |
+
+Vom Nutzer bereits bestätigte oder korrigierte Felder überschreibt die KI **nie**; Abweichungen werden nur als Hinweis angezeigt.
+
+**Grenzen (ehrlich):**
+
+- basetool nennt für das 8B-Modell ~4 s/Bild auf einer RTX 5090 und ~53 s/Bild auf der CPU.
+- Die Hardware-Stufen in basetool liegen bei ≥ 12 GB VRAM (8B) bzw. ≥ 8 GB (4B).
+- Werte für unsere Panels müssen gemessen werden.
+- Auf schwacher Hardware ist die KI ein „über Nacht“-Feature. Die klassische OCR bleibt deshalb der Primärweg.
+
 ## 3. Übernommene Erkenntnisse aus basetool-sc-extractor (GPL-3.0 – nur Konzepte)
 
 | Übernommen | Nicht übernommen |
 |---|---|
-| PP-OCRv6 small über ORT, ohne OpenCV | Lokales VLM (Ollama/Qwen3-VL): braucht 8–12 GB VRAM bzw. ~50 s/Bild auf der CPU und ist neben dem laufenden Spiel ungeeignet |
+| PP-OCRv6 small über ORT, ohne OpenCV | Lokales VLM als **Primär**leser – bei uns nur **optionaler Zweitleser bei geschlossenem Spiel** (§2.7), weil es 8–12 GB VRAM bzw. ~50 s/Bild auf der CPU braucht |
 | Box-Filter-Downscale für die Ankersuche | Refinery-spezifische Regeln und Farbkonstanten |
 | Zahlen erst als Text lesen, dann deterministisch parsen | Fester 4K-Geometrie-Fallback (wir nutzen Text-Anker) |
 | Confusable-Set und eindeutige Reparatur mit Zeugen | |
@@ -112,6 +166,7 @@ Die Report-Konfidenz entspricht dem schlechtesten Pflichtfeld, nicht dem Mittelw
 ## 4. Mess- und Testkonzept
 
 - **Korpus-Struktur:** `corpus/<id>/image.png` + `expected.json` (Terminal, Seite, Zeilen mit allen Feldern, `screenOrder`) + `meta.json` (Auflösung, Theme, Location, Spielversion).
+- **Leser getrennt messen:** Die Eval läuft für „nur OCR“, „nur VLM (Modell X)“ und „Fusion“. Die Modellempfehlung folgt aus dem Fusionsergebnis auf dem Korpus, nicht aus der Modellkarte. VLM-Läufe sind opt-in (`UEXDR_VLM_HOST`), weil CI keine GPU hat.
 - **Metriken pro Feldtyp:**
   - exakt richtig
   - korrekt markiert (falsch, aber geflaggt)
