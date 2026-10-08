@@ -122,14 +122,14 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 | State | Confidence (start values, to be calibrated on the corpus) |
 |---|---|
 | Read identically by OCR and VLM, validated | 0.97 |
-| Clean, within the prior band | 0.95 |
-| Clean, but without prior (no reference value), without confusable digits | 0.85 |
+| Clean read (no unresolved confusable digit) | 0.95 |
 | Repaired, unambiguous, **with independent witness** | 0.85 |
 | Single-reader value (other reader unreadable), validated | 0.85 |
-| Repaired only via the prior (without witness) | 0.75 → **confirm** |
-| Outside the tolerance, otherwise plausible | 0.70 → **confirm** |
+| Repaired only via the prior (without witness), or confusable digit without any prior to check against (R-VAL-2a) | 0.75 → **confirm** |
 | Ambiguous / conflict between scans or readers | 0.60 → **select** |
 | Unreadable / implausible | 0.30 → **correct** |
+
+Confidence deliberately does **not** depend on whether a value lies within the prior tolerance – that is the job of the deviation dimension below. (An earlier version also lowered confidence for out-of-tolerance values, counting the same fact twice.)
 
 **Deviation vs. confidence – two separate dimensions:**
 
@@ -153,11 +153,11 @@ The numbers come from the refinery domain; whether they transfer is checked by t
 **Flow:**
 
 1. While the game is running, the classic OCR delivers results immediately. Reports with warnings are queued for the AI; the user can still correct and send them manually at any time.
-2. When the game is closed (hysteresis), the AI queue processes the queued or all unsent reports. The input is the perspective-corrected panel crops (shop panel, location field), limited to an edge of approx. 1000–1500 px.
+2. When the game is closed (hysteresis), the AI queue processes the flagged or all **Draft** reports (never released, queued or submitted ones). The input is the perspective-corrected panel crops (shop panel, location field), limited to an edge of approx. 1000–1500 px.
 3. The result runs through the parser and vocabulary resolution (identical to OCR). Then OCR and VLM are **fused per field**, and only the fused result is validated once (prior, consistency, confidence). Afterwards the report is re-stitched.
 4. If the game starts, the request is aborted and the model is unloaded; the jobs are retained.
 
-**Prompt** (`vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioned):
+**Prompt** (`adapter-vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioned):
 
 - describes the card layout (name, status text, quantity "… SCU", price "¤…/SCU", cargo boxes) and the active tab
 - requires exact transcription ("digit by digit, correct nothing, `?` for unreadable")
@@ -212,7 +212,7 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
 
 ## 4. Measurement and test concept
 
-- **Corpus structure:** `corpus/<id>/image.png` + `expected.json` (terminal, side, rows with all fields, `screenOrder`) + `meta.json` (resolution, theme, location, game version).
+- **Corpus structure:** `corpus/public/<id>/` (or `$UEXDR_CORPUS_DIR/<id>/` for the private part) with the images and one `expected.json` (source and redaction info, location, theme, game version, per capture: side, section, cards with all fields and `screenOrder`, partial/dimmed flags, `verified` flag). Format: see `corpus/public/pyro-gateway-stanton-01/expected.json`.
 - **Measure readers separately:** The eval runs for "OCR only", "VLM only (model X)" and "fusion". The model recommendation follows from the fusion result on the corpus, not from the model card. VLM runs are opt-in (`UEXDR_VLM_HOST`), because CI has no GPU.
 - **Metrics per field type:**
   - exactly right
@@ -220,4 +220,4 @@ The AI **never** overwrites fields already confirmed or corrected by the user; d
   - **silently wrong** (wrong and classified as confident) – the most important metric, target ≈ 0
   - runtime
 - **CI** checks the public, redacted partial corpus. The private corpus is included locally via an environment variable (`UEXDR_CORPUS_DIR`).
-- The **Patch City screenshots** are the first corpus entry. They must be checked in as files (redact the balance first) or be stored in the private corpus.
+- The first public entry is `pyro-gateway-stanton-01` (unverified). The **Patch City screenshots** still have to be supplied as files (redact the balance first) or stored in the private corpus.

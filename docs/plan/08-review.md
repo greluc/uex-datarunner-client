@@ -92,3 +92,45 @@ Disadvantages accepted, with handling documented in the ADR:
 - explicit translation between contexts
 - more expensive re-cuts
 - the risk that the shared kernel grows
+
+## H. Second full review (2026-10-08)
+
+All documents were re-read after the switch to English and the module re-cut. Findings and fixes:
+
+### Contradictions (fixed)
+
+| # | Finding | Fix |
+|---|---|---|
+| H-1 | R-VAL-2 said deviations beyond tolerance only warn ("not blocking"), while R-UI-10 requires confirmation for major deviations | R-VAL-2 now: never auto-rejected, but a major deviation must be confirmed |
+| H-2 | The goal said manual input is "prefilled with current UEX data", contradicting R-MAN-2 (reference only) | Goal text corrected |
+| H-3 | The core must not touch the file system, but `WatchedFolder` used `java.nio.file.Path` and the folder scanner/watcher were placed in `capture` | `FolderLocation` value object in the core; scanner, watcher and stable-file gate live in `adapter-files` |
+| H-4 | `recognition` worked on `BufferedImage` (AWT, module `java.desktop`) although the core is supposed to be technology-free | Own `ImageRaster` type in the core; ImageIO only in adapters; ArchUnit forbids `java.awt..`/`javax.imageio..` in the core |
+| H-5 | The game process monitor published a "JavaFX property" from an adapter | Publishes via the `GameStateProbe` port; only `ui` maps it to JavaFX |
+| H-6 | Retries were assigned to both `submission` and `adapter-uex` | `submission` decides retries; the gateway makes one attempt per call |
+| H-7 | `GameEnvironment` was listed in `shared-kernel` (11) and in `game` (ADR-002) | Owned by `game`, used as published language |
+| H-8 | Confidence was also lowered for out-of-tolerance values, i.e. the deviation was counted twice | Confidence is independent of the prior band; deviation is its own dimension |
+| H-9 | The traceability rule required tests for all M requirements from M3 on, although M requirements are implemented in M1–M5 | Requirement-to-milestone table in 04; the rule applies per completed milestone |
+
+### Logic gaps (closed)
+
+| # | Finding | Fix |
+|---|---|---|
+| H-10 | The AI re-read could change reports that were already released or queued, and could collide with a concurrent user edit | Only `Draft` reports; `Report.version` for optimistic concurrency |
+| H-11 | Catch-up import after a patch: the "version at capture time" would have been the new version | Local history of observed version changes; uncertain versions must be confirmed (R-CAP-3b) |
+| H-12 | Manual reports had no defined environment or game version | R-MAN-6 |
+| H-13 | Screenshot attachment for manual reports in M1 would have uploaded the full screenshot including the balance, because automatic locate only arrives in M3 | In M1 the user selects the shop-panel region; only that region is uploaded |
+| H-14 | M2 should measure raw OCR accuracy per field, but layout and field parsers were only planned for M3 | `recognition` is split into a first slice (M2) and a second slice (M3) |
+| H-15 | UEX counts every price row as a report (1000 per 30 min) – not enforced | Rate budget in `submission`; open point 16 in 06 |
+| H-16 | Non-terminal screenshots had no defined handling (the predecessor's "failed to process" error) | R-OCR-16 |
+| H-17 | Test-mode default unclear for end users | R-SUB-8: on in dev/CI, off in release builds after onboarding, always visible |
+| H-18 | No defined home for user settings, upload encoding and update check | Ports `*SettingsStore`, `ImageEncoder`, `UpdateCheck` (02 §2) |
+| H-19 | Units of `price_variation`/`scu_variation` unconfirmed but used as thresholds | Assumption A15; configurable conservative defaults |
+| H-20 | `data_remove`/`data_info` parameters unknown although withdrawal (I4) depends on them | Open point 15 in 06 |
+| H-21 | No "delete all local data" action for a tool that stores secrets and screenshots | R-NF-9 |
+| H-22 | Smaller errors: corpus structure in 07 did not match the real corpus; prompt path pointed to an old module name; requirement order within tables; German mermaid ID | Fixed |
+
+### Still open (unchanged, outside the plan's control)
+
+- UEX app token and terms of use (A2) remain the biggest risk.
+- The exact `data_submit` semantics remain unverified: header, `container_sizes`, sell-side SCU, duplicate lock, environments (A1, A9–A12, A15).
+- All thresholds are start values until measured on the corpus.

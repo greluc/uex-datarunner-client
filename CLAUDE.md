@@ -12,7 +12,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 
 | File | Contents |
 |---|---|
-| `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A14** (unverified!) |
+| `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A15** (unverified!) |
 | `docs/plan/02-architecture.md` | Modules (bounded contexts + adapters), context map, domain model, threading |
 | `docs/adr/` | Architecture decision records (ADR-002: modules by bounded context) |
 | `docs/plan/03-language-decision.md` | ADR Java vs. Rust, including licence note on basetool (GPL-3.0) |
@@ -70,7 +70,7 @@ Stack rules:
 - **Stable** releases only; no alpha/beta/RC/milestone versions. Exceptions only with a justification in the commit.
 - New dependency = check the version on Maven Central, add it to the catalog, check the licence (Apache/MIT/BSD/EPL/LGPL fine; GPL only after the licence decision).
 - No heavyweight frameworks (no Spring, no ORM, no DI container); constructor injection.
-- No OpenCV/JavaCV; image operations are implemented on `BufferedImage` or `int[]` rasters.
+- No OpenCV/JavaCV; image operations are implemented on our own immutable `ImageRaster` (ARGB `int[]`) in the core. `BufferedImage`/ImageIO only in adapters (decoding, encoding).
 
 ## Commands
 
@@ -117,6 +117,7 @@ Valid from M0 once the build exists:
 - **Modules by bounded context + ports & adapters** (ADR-002): core = `shared-kernel`, the context modules `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`, plus `workflows` for cross-context processes (no JavaFX, HTTP, SQL, ONNX, file system; time via `Clock`). Adapters (`adapter-uex`, `-storage`, `-ocr`, `-vlm`, `-files`, `-platform`) are cut by technology and implement the ports of the context modules. `ui` talks only to the context modules' application APIs and `workflows`; `app` is a pure composition root. Dependencies only along the context map in `02-architecture.md` §2, acyclic, enforced by Gradle, JPMS and ArchUnit. `submission` never depends on `reporting`; feedback goes through `workflows`. `shared-kernel` holds only value objects/IDs used by at least two contexts.
 - Modules export only their `api` package; implementation lives in `internal`. No technology types (DTOs, `ResultSet`, `OrtSession`, JavaFX) across module boundaries.
 - Package-by-feature inside a module; no service locators, no static singletons, no global mutable state.
+- The core uses no `java.awt`, `javax.imageio` or `java.nio.file`; images enter as `ImageRaster`, folders as `FolderLocation`.
 - Thresholds live in typed settings records with documented defaults; no magic numbers; no boolean control parameters in public APIs.
 - `sealed` only within one JPMS module; interfaces implemented by other modules (e.g. `Reader`) are not `sealed`.
 - Pipeline stages are **pure functions** on immutable records, without UI, network or file-system access, so they are golden-testable.
