@@ -1,111 +1,111 @@
-# ADR-001: Implementierungssprache – Java vs. Rust
+# ADR-001: Implementation language – Java vs. Rust
 
-- **Status:** Akzeptiert (2026-10-08)
-- **Entscheidung:** **Java 27 + JavaFX 27**, Build mit Gradle 9.8.1 (Kotlin DSL)
-- **Kontext:** Desktop-Client für Windows und Linux, der Star-Citizen-Terminal-Screenshots per OCR ausliest bzw. manuelle Eingaben erlaubt, gegen UEX-Referenzdaten validiert und an die UEX-API übermittelt.
+- **Status:** Accepted (2026-10-08)
+- **Decision:** **Java 27 + JavaFX 27**, build with Gradle 9.8.1 (Kotlin DSL)
+- **Context:** Desktop client for Windows and Linux that reads Star Citizen terminal screenshots via OCR or allows manual input, validates against UEX reference data and submits to the UEX API.
 
-## 1. Was die App technisch braucht (gewichtet)
+## 1. What the app needs technically (weighted)
 
-| # | Kriterium | Gewicht | Warum |
+| # | Criterion | Weight | Why |
 |---|---|---|---|
-| K1 | GUI für datenlastige Review-/Editier-Masken (Tabellen, Comboboxen mit Suche, Bildausschnitte mit Overlays, Tastaturbedienung) | **5** | Kern der Nutzererfahrung. Die meisten Bugs des Vorbilds sind UX-/Review-Probleme (siehe [05](05-datarunner-fehleranalyse.md)). |
-| K2 | ONNX-Runtime für PaddleOCR (Detektion + Erkennung) | **5** | Kern der Erkennung |
-| K3 | Bildverarbeitung (Crop, Farbe, Homographie/Perspektive, Downscale) | 3 | Eigenimplementierung bleibt überschaubar |
-| K4 | HTTP/JSON, Caching, Rate-Limit | 2 | In beiden Sprachen trivial |
-| K5 | Paketierung/Distribution Windows + Linux | 3 | Installer bzw. portable Builds |
-| K6 | Ressourcenverbrauch neben dem laufenden Spiel | 3 | Star Citizen braucht viel RAM/VRAM |
-| K7 | Wiederverwendbarkeit vorhandener Referenz-Lösungen (basetool) | 3 | Verkürzt die OCR-Entwicklung |
-| K8 | Sichere Ablage des UEX-Secret-Keys im OS-Keystore | 2 | Sicherheitsanforderung |
-| K9 | Entwicklungsgeschwindigkeit/Iterationszyklus (UI-Tuning, OCR-Heuristiken) | 4 | OCR-Heuristiken brauchen viele Iterationen |
+| K1 | GUI for data-heavy review/edit forms (tables, comboboxes with search, image crops with overlays, keyboard operation) | **5** | Core of the user experience. Most bugs of the original are UX/review problems (see [05](05-datarunner-bug-analysis.md)). |
+| K2 | ONNX Runtime for PaddleOCR (detection + recognition) | **5** | Core of the recognition |
+| K3 | Image processing (crop, color, homography/perspective, downscale) | 3 | Own implementation remains manageable |
+| K4 | HTTP/JSON, caching, rate limit | 2 | Trivial in both languages |
+| K5 | Packaging/distribution Windows + Linux | 3 | Installers or portable builds |
+| K6 | Resource consumption next to the running game | 3 | Star Citizen needs a lot of RAM/VRAM |
+| K7 | Reusability of existing reference solutions (basetool) | 3 | Shortens OCR development |
+| K8 | Secure storage of the UEX secret key in the OS keystore | 2 | Security requirement |
+| K9 | Development speed/iteration cycle (UI tuning, OCR heuristics) | 4 | OCR heuristics need many iterations |
 
-## 2. Faktenlage (am 2026-10-08 geprüft, nicht aus dem Gedächtnis)
+## 2. Facts (checked on 2026-10-08, not from memory)
 
 ### Java
 
-- **JDK 27** ist GA (Mitte September 2026, kein LTS, sechs Monate Support). Das letzte LTS ist **JDK 25**.
-- **JavaFX 27** ist GA auf Maven Central (`org.openjfx:javafx-controls:27`).
-- **ONNX Runtime Java 1.30.0** (`com.microsoft.onnxruntime:onnxruntime`) ist offiziell und stabil.
-  - Das JAR enthält bereits die Natives für `win-x64`, `linux-x64`, `linux-aarch64` und `osx-aarch64`; geprüft durch Auflisten des JAR-Inhalts.
-  - Es bringt einen `Automatic-Module-Name: com.microsoft.onnxruntime` mit.
-- **basetool-sc-extractor** (Kotlin/JVM, JDK 25) nutzt genau diese ONNX-Runtime-Version mit PP-OCRv6-small-Modellen.
-  - Die Bildverarbeitung ist komplett auf `BufferedImage` geschrieben, ohne OpenCV.
-  - Damit ist gezeigt, dass PP-OCR über ORT auf der JVM mit der SC-HUD-Schrift **technisch** funktioniert.
-  - **Einschränkung:** In basetool ist PP-OCR nur der **Zweitleser für Ziffern** (Refinery-Panels); Primärleser ist dort ein VLM. Wie gut PP-OCR als **Primärleser** für Rohstoff-Terminals ist, ist unbelegt und wird in M2 gemessen.
-- Weitere Bausteine:
+- **JDK 27** is GA (mid-September 2026, not LTS, six months of support). The latest LTS is **JDK 25**.
+- **JavaFX 27** is GA on Maven Central (`org.openjfx:javafx-controls:27`).
+- **ONNX Runtime Java 1.30.0** (`com.microsoft.onnxruntime:onnxruntime`) is official and stable.
+  - The JAR already contains the natives for `win-x64`, `linux-x64`, `linux-aarch64` and `osx-aarch64`; checked by listing the JAR contents.
+  - It ships an `Automatic-Module-Name: com.microsoft.onnxruntime`.
+- **basetool-sc-extractor** (Kotlin/JVM, JDK 25) uses exactly this ONNX Runtime version with PP-OCRv6 small models.
+  - The image processing is written entirely on `BufferedImage`, without OpenCV.
+  - This shows that PP-OCR via ORT on the JVM works **technically** with the SC HUD font.
+  - **Limitation:** In basetool, PP-OCR is only the **second reader for digits** (refinery panels); the primary reader there is a VLM. How good PP-OCR is as the **primary reader** for commodity terminals is unproven and will be measured in M2.
+- Further building blocks:
   - **Gradle 9.8.1**
   - **Jackson 3.2.3** (`tools.jackson.core`)
   - **sqlite-jdbc 3.53.4.0**
   - **JUnit 6.1.3**
   - **Error Prone 2.50.0** + **NullAway 0.14.2** + **JSpecify 1.0.1**
   - **Spotless 8.10.3**
-  - Versionsliste in [CLAUDE.md](../../CLAUDE.md)
+  - Version list in [CLAUDE.md](../../CLAUDE.md)
 
 ### Rust
 
-- **Rust 1.99.0** stable (Build vom 2026-09-28 laut `channel-rust-stable.toml`, Release ca. 1. Oktober 2026). Stabile Edition **2024** (geprüft mit rustc 1.97; eine Edition 2027 ist nicht stabil).
-- **`ort` (ONNX-Runtime-Binding): neueste Version `2.0.0-rc.13`.**
-  - Es gibt **keine stabile 2.x-Version**, nur Release Candidates.
-  - Die Bibliothek wird breit genutzt (> 21 Mio. Downloads), ist aber formal ein RC.
-- **`oar-ocr` 0.10.0** (2026-10-03) bietet eine fertige PaddleOCR-Pipeline in Rust auf Basis von `ort`. Das ist ein echter Vorteil für Rust.
-- **`ocrs` 0.13.1 / `rten` 0.27.0** sind eine reine Rust-OCR-Alternative ohne native ONNX Runtime, aber mit eigenen Modellen statt PaddleOCR.
-- **`image` 0.25.10 + `imageproc` 0.27.0** bringen projektive Transformationen bereits mit.
-- GUI-Optionen:
-  - **`egui` 0.36.2**: Immediate Mode, Tabellen über `egui_extras`
-  - **`slint` 1.18.1**: deklarativ, `StandardTableView`
-  - **`iced` 0.14.0** (Dezember 2025): hat seit 0.14 ein `table`-Widget („Display tables“, Zellen sind beliebige Widgets). Editierbare Zellen sind also möglich, Editier-Logik, Validierung und Fokus-Navigation muss man aber selbst bauen. Korrigiert nach Prüfung des Crate-Quellcodes von `iced_widget` 0.14.2; eine frühere Fassung behauptete fälschlich, iced habe kein Tabellen-Widget.
-  - Die Einschätzungen zu egui und slint (Umfang der Inline-Bearbeitung) stammen **nicht** aus einer Code-Prüfung. Sie sind als Einschätzung zu lesen; für die Entscheidung ausschlaggebend ist, dass JavaFX editierbare Tabellen mit Cell-Editoren fertig mitbringt.
-- **`keyring` 4.2.0** bietet plattformübergreifenden Zugriff auf den OS-Keystore. Das ist ein Vorteil gegenüber Java.
+- **Rust 1.99.0** stable (build of 2026-09-28 according to `channel-rust-stable.toml`, release approx. October 1, 2026). Stable edition **2024** (checked with rustc 1.97; an edition 2027 is not stable).
+- **`ort` (ONNX Runtime binding): latest version `2.0.0-rc.13`.**
+  - There is **no stable 2.x version**, only release candidates.
+  - The library is widely used (> 21 million downloads), but is formally an RC.
+- **`oar-ocr` 0.10.0** (2026-10-03) offers a ready-made PaddleOCR pipeline in Rust based on `ort`. That is a real advantage for Rust.
+- **`ocrs` 0.13.1 / `rten` 0.27.0** are a pure Rust OCR alternative without native ONNX Runtime, but with their own models instead of PaddleOCR.
+- **`image` 0.25.10 + `imageproc` 0.27.0** already include projective transformations.
+- GUI options:
+  - **`egui` 0.36.2**: immediate mode, tables via `egui_extras`
+  - **`slint` 1.18.1**: declarative, `StandardTableView`
+  - **`iced` 0.14.0** (December 2025): has had a `table` widget since 0.14 ("Display tables", cells are arbitrary widgets). Editable cells are therefore possible, but editing logic, validation and focus navigation have to be built yourself. Corrected after checking the crate source code of `iced_widget` 0.14.2; an earlier version wrongly claimed that iced has no table widget.
+  - The assessments of egui and slint (extent of inline editing) do **not** come from a code check. They are to be read as an assessment; decisive for the decision is that JavaFX ships editable tables with cell editors out of the box.
+- **`keyring` 4.2.0** offers cross-platform access to the OS keystore. That is an advantage over Java.
 
-## 3. Bewertung (1 = schlecht, 5 = sehr gut)
+## 3. Rating (1 = poor, 5 = very good)
 
-| Kriterium | Gew. | Java | Rust | Begründung |
+| Criterion | Wt. | Java | Rust | Rationale |
 |---|---|---|---|---|
-| K1 GUI | 5 | **5** | 2–3 | JavaFX bringt `TableView` mit Cell-Editoren, `ComboBox`, `Canvas`, CSS-Theming, Accessibility und HiDPI mit. In Rust sind editierbare Tabellen mit Validierungs-Highlighting deutlich mehr Eigenbau. |
-| K2 ONNX | 5 | **5** | 4 | Java ist offiziell und stabil, Natives sind im JAR. Rust: `ort` ist nur RC; dafür gibt es die fertige Pipeline `oar-ocr`. |
-| K3 Bildverarbeitung | 3 | 3 | **4** | Java braucht eine eigene Homographie (~100 Zeilen); `imageproc` hat sie fertig. |
-| K4 HTTP/JSON | 2 | 5 | 5 | `java.net.http` + Jackson 3 vs. `reqwest` + `serde`: gleichwertig |
-| K5 Distribution | 3 | 3 | **5** | `jpackage` erzeugt pro OS ein Paket mit Runtime (deutlich größer, Build pro OS nötig). Rust: ein Binary plus ONNX-Runtime-Lib. |
-| K6 Ressourcen | 3 | 3 | **5** | Die JVM braucht mehr RAM. Sie ist per `-Xmx`, G1 und Compact Object Headers (JEP 534, ab JDK 27 Default) begrenzbar, bleibt aber über Rust. **Konkrete Zahlen müssen gemessen werden, sie werden hier nicht geschätzt.** |
-| K7 Wiederverwendung | 3 | **5** | 3 | basetool läuft auf der JVM mit derselben ORT-Java-API: Konzepte (nicht Code, siehe Lizenz) lassen sich direkt übertragen. Code-Übernahme setzt GPL-3.0 voraus (siehe unten). |
-| K8 Secret-Store | 2 | 3 | **5** | Java hat keinen plattformübergreifenden Keyring. Lösung: kleine eigene Anbindung per **FFM-API** an Windows Credential Manager und libsecret. Rust: `keyring` fertig. |
-| K9 Iteration | 4 | **5** | 3 | Inkrementelle Kompilierung, Hot-Reload von CSS und schnelles UI-Prototyping sprechen für Java. Rust-Compile-Zeiten mit ORT plus GUI sind spürbar länger. |
-| **Summe (gewichtet)** | | **128** | **113–118** | |
+| K1 GUI | 5 | **5** | 2–3 | JavaFX ships `TableView` with cell editors, `ComboBox`, `Canvas`, CSS theming, accessibility and HiDPI. In Rust, editable tables with validation highlighting are considerably more custom work. |
+| K2 ONNX | 5 | **5** | 4 | Java is official and stable, natives are in the JAR. Rust: `ort` is only an RC; in return there is the ready-made pipeline `oar-ocr`. |
+| K3 Image processing | 3 | 3 | **4** | Java needs its own homography (~100 lines); `imageproc` has it ready-made. |
+| K4 HTTP/JSON | 2 | 5 | 5 | `java.net.http` + Jackson 3 vs. `reqwest` + `serde`: equivalent |
+| K5 Distribution | 3 | 3 | **5** | `jpackage` creates one package per OS with runtime (considerably larger, build per OS required). Rust: one binary plus the ONNX Runtime lib. |
+| K6 Resources | 3 | 3 | **5** | The JVM needs more RAM. It can be limited via `-Xmx`, G1 and Compact Object Headers (JEP 534, default from JDK 27), but stays above Rust. **Concrete numbers must be measured; they are not estimated here.** |
+| K7 Reuse | 3 | **5** | 3 | basetool runs on the JVM with the same ORT Java API: concepts (not code, see license) can be transferred directly. Taking over code requires GPL-3.0 (see below). |
+| K8 Secret store | 2 | 3 | **5** | Java has no cross-platform keyring. Solution: a small custom binding via the **FFM API** to Windows Credential Manager and libsecret. Rust: `keyring` ready-made. |
+| K9 Iteration | 4 | **5** | 3 | Incremental compilation, hot reload of CSS and fast UI prototyping favor Java. Rust compile times with ORT plus GUI are noticeably longer. |
+| **Total (weighted)** | | **128** | **113–118** | |
 
-Rechnung Java: 25+25+9+10+9+9+15+6+20 = 128.
-Rechnung Rust: (10–15)+20+12+10+15+15+9+10+12 = 113–118.
+Calculation Java: 25+25+9+10+9+9+15+6+20 = 128.
+Calculation Rust: (10–15)+20+12+10+15+15+9+10+12 = 113–118.
 
-Die genaue Punktzahl ist weniger wichtig als die zwei Kriterien mit dem höchsten Gewicht: **GUI (K1)** und **OCR-Runtime (K2)**.
+The exact score is less important than the two criteria with the highest weight: **GUI (K1)** and **OCR runtime (K2)**.
 
-## 4. Entscheidung und ehrliche Einordnung
+## 4. Decision and honest assessment
 
-**Gewählt: Java.** Die Umsetzung ist in Java am einfachsten, weil
+**Chosen: Java.** The implementation is easiest in Java, because
 
-1. der aufwändigste Teil (die Review-UI mit editierbaren, validierten Tabellen und Bild-Overlays) mit JavaFX Standard ist und in Rust Eigenbau wäre;
-2. die ONNX Runtime in Java offiziell stabil ist und die Natives für beide Ziel-OS im JAR mitbringt;
-3. basetool-sc-extractor die technische Kette (PP-OCRv6 + ORT + `BufferedImage`) auf der JVM für dieselbe Spielschrift bereits nutzt – dort allerdings nur als Ziffern-Zweitleser; die Eignung als Primärleser misst erst M2.
+1. the most laborious part (the review UI with editable, validated tables and image overlays) is standard with JavaFX and would be custom work in Rust;
+2. the ONNX Runtime is officially stable in Java and ships the natives for both target OSes in the JAR;
+3. basetool-sc-extractor already uses the technical chain (PP-OCRv6 + ORT + `BufferedImage`) on the JVM for the same game font – there, however, only as a second reader for digits; suitability as the primary reader will only be measured in M2.
 
-**Was dagegen spricht – bewusst in Kauf genommen:**
+**What speaks against it – deliberately accepted:**
 
-- **Paketgröße und RAM** sind schlechter als bei Rust. Gegenmaßnahmen:
-  - `jlink` nur mit den benötigten Modulen
-  - Heap-Limit
-  - Modelle lazy laden und die ORT-Session nach Inaktivität schließen
-- **JDK 27 ist kein LTS.** Gemäß Vorgabe „aktuellste Version“ entwickeln wir auf JDK 27 und ziehen im März 2027 auf JDK 28 nach.
-  - Für Endnutzer ist das egal, weil `jpackage` die Runtime mitliefert.
-  - **Alternative:** JDK 25 LTS, falls weniger Upgrade-Aufwand gewünscht ist.
-- **Keine Preview-Features** (z. B. Structured Concurrency, JEP 533 – in JDK 27 noch Preview). Produktivcode verwendet nur finale Features.
-- **Toolchain-Risiko JDK 27:** Error Prone, NullAway, google-java-format und das jlink-Plugin greifen tief in javac bzw. das JDK ein. Ob die aktuellen Versionen JDK 27 unterstützen, ist **nicht geprüft**; das passiert in M0. Unterstützt eines davon JDK 27 nicht, ist der Fallback JDK 25 LTS (die Entscheidung Java bleibt davon unberührt).
+- **Package size and RAM** are worse than with Rust. Countermeasures:
+  - `jlink` with only the required modules
+  - heap limit
+  - load models lazily and close the ORT session after inactivity
+- **JDK 27 is not an LTS.** In line with the requirement "latest version", we develop on JDK 27 and move to JDK 28 in March 2027.
+  - For end users this does not matter, because `jpackage` ships the runtime.
+  - **Alternative:** JDK 25 LTS, if less upgrade effort is desired.
+- **No preview features** (e.g. Structured Concurrency, JEP 533 – still preview in JDK 27). Production code uses only final features.
+- **Toolchain risk JDK 27:** Error Prone, NullAway, google-java-format and the jlink plugin hook deeply into javac or the JDK. Whether the current versions support JDK 27 is **not checked**; that happens in M0. If one of them does not support JDK 27, the fallback is JDK 25 LTS (the decision for Java remains unaffected).
 
-**Wann Rust die bessere Wahl wäre:** wenn ein kleines Einzel-Binary und minimaler Speicherbedarf oberste Priorität hätten oder wenn das Team Rust deutlich besser beherrscht als Java. Die Architektur (siehe [02](02-architektur.md)) ist sprachneutral geschnitten, ein späterer Port des OCR-Kerns wäre also möglich.
+**When Rust would be the better choice:** if a small single binary and minimal memory footprint were the top priority, or if the team knows Rust considerably better than Java. The architecture (see [02](02-architecture.md)) is cut in a language-neutral way, so a later port of the OCR core would be possible.
 
-**Nachtrag (optionale KI-Erkennung):** Das lokale VLM wird über die HTTP-API von Ollama angebunden (`java.net.http` + Jackson). Das ist in beiden Sprachen gleich einfach und ändert die Bewertung nicht. Die Spielerkennung über `ProcessHandle` ist im JDK enthalten; in Rust bräuchte es eine Crate wie `sysinfo`.
+**Addendum (optional AI recognition):** The local VLM is connected via the Ollama HTTP API (`java.net.http` + Jackson). This is equally easy in both languages and does not change the rating. Game detection via `ProcessHandle` is included in the JDK; in Rust it would need a crate such as `sysinfo`.
 
-## 5. Lizenzhinweis (Konsequenz für die Wiederverwendung)
+## 5. License notice (consequence for reuse)
 
-basetool-sc-extractor steht unter **GPL-3.0-or-later**.
+basetool-sc-extractor is licensed under **GPL-3.0-or-later**.
 
-- **Code übernehmen oder übersetzen** macht unseren Client zu einem abgeleiteten Werk, das unter GPL-3.0-kompatiblen Bedingungen veröffentlicht werden muss.
-- **Ideen, Schwellwerte und Messergebnisse** dürfen frei neu implementiert werden.
-- Die **PP-OCRv6-Modelle** stehen unter Apache-2.0 und dürfen direkt verwendet werden.
+- **Taking over or translating code** makes our client a derivative work that must be published under GPL-3.0-compatible terms.
+- **Ideas, thresholds and measurement results** may be freely re-implemented.
+- The **PP-OCRv6 models** are licensed under Apache-2.0 and may be used directly.
 
-**Offene Entscheidung für den Projektinhaber:** Lizenz des Projekts festlegen (Empfehlung: GPL-3.0-or-later, wenn Code aus basetool portiert werden soll; sonst frei wählbar). Bis dahin implementieren wir **nur nach Konzept** und kopieren keinen Code.
+**Open decision for the project owner:** determine the project's license (recommendation: GPL-3.0-or-later if code from basetool is to be ported; otherwise freely selectable). Until then we implement **only by concept** and do not copy any code.

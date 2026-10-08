@@ -1,95 +1,95 @@
 # Roadmap
 
-Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklärt. Dann folgt **manuelle Erfassung plus Senden**; das ist schon ohne OCR ein nutzbares Produkt. Danach kommt die OCR. Aufwände werden bewusst nicht in Tagen geschätzt, weil Verfügbarkeit und Erfahrung des Teams unbekannt sind.
+Order by risk and benefit: first the API uncertainties are clarified. Then follows **manual capture plus submission**; that is already a usable product without OCR. After that comes the OCR. Effort is deliberately not estimated in days, because the team's availability and experience are unknown.
 
-## M0 – Fundament und Verifikation
+## M0 – Foundation and verification
 
-- [ ] Projektinhaber entscheidet: Projekt- und Paketname, Lizenz (GPL-3.0 bei Code-Port aus basetool), JDK 27 vs. 25 LTS
-- [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
-- [ ] **Domänenmodell schärfen** ([11](11-ddd-und-tdd.md)): Ubiquitous Language, Bounded Contexts, Report-Invarianten I1–I5 gemeinsam mit dem Projektinhaber durchgehen (kurzer Event-Storming-Durchlauf); Marker-Annotationen und ArchUnit-DDD-Regeln anlegen
-- [ ] TDD-Infrastruktur: `java-test-fixtures` pro Modul (Fakes der Ports, Test-Data-Builder), jqwik, PIT (Kompatibilität mit JUnit 6 und JDK 27 prüfen), Tag-Report für Anforderungs-IDs
-- [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
-- [ ] Qualitäts-Gates nach [09-engineering-prinzipien.md](09-engineering-prinzipien.md): ArchUnit-Regeln (Schichten, Zyklen, verbotene Abhängigkeiten), JaCoCo-Schwellen, Dependabot, PR-Vorlage mit Checkliste – **vor** dem ersten Fachcode, damit die Regeln von Anfang an greifen
-- [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
-- [ ] **Lieferkette absichern, bevor die erste Abhängigkeit eingecheckt wird** ([10](10-supply-chain-security.md)): Repository-Beschränkung, Locking, `verification-metadata.xml` (SHA-256 + PGP) mit Keyring, Wrapper-Validierung, Actions per SHA gepinnt, minimale `permissions`, Dependabot mit Abkühlzeit, OSV-Scan, CODEOWNERS, Branch-Protection, `SECURITY.md`
-- [ ] **API-Spike** (kleine CLI im Modul `adapter-uex`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
-- [ ] Mit UEX klären: App-Token für Open-Source-Clients, Nutzungsbedingungen, Annahmen A9–A12 (Umgebungs-Mapping, `scu_sell` vs. `scu_sell_stock`, zusammengesetzter Screenshot, Duplikatsperre)
-- [ ] Korpus ausbauen: erster Eintrag `corpus/public/pyro-gateway-stanton-01` vorhanden (Transkription **vom Menschen zu verifizieren**); Patch-City-Screenshots als Dateien nachreichen; möglichst **Original-Screenshots** (verlustfrei, Originalauflösung) statt Chat-Uploads
+- [ ] Project owner decides: project and package name, license (GPL-3.0 if code is ported from basetool), JDK 27 vs. 25 LTS
+- [ ] **Toolchain check JDK 27:** Do Gradle 9.8.1 (toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` and jpackage (WiX ≥ 4 on Windows) run with JDK 27? If not: JDK 25 LTS (see ADR)
+- [ ] **Sharpen the domain model** ([11](11-ddd-and-tdd.md)): go through Ubiquitous Language, Bounded Contexts, report invariants I1–I5 together with the project owner (short event storming pass); create marker annotations and ArchUnit DDD rules
+- [ ] TDD infrastructure: `java-test-fixtures` per module (fakes of the ports, test data builders), jqwik, PIT (check compatibility with JUnit 6 and JDK 27), tag report for requirement IDs
+- [ ] Gradle multi-project according to [02-architecture.md](02-architecture.md), `build-logic`, version catalog, Spotless, Error Prone/NullAway, JUnit 6
+- [ ] Quality gates according to [09-engineering-principles.md](09-engineering-principles.md): ArchUnit rules (layers, cycles, forbidden dependencies), JaCoCo thresholds, Dependabot, PR template with checklist – **before** the first domain code, so that the rules apply from the start
+- [ ] CI: GitHub Actions, matrix Windows/Linux, `./gradlew check`
+- [ ] **Secure the supply chain before the first dependency is checked in** ([10](10-supply-chain-security.md)): repository restriction, locking, `verification-metadata.xml` (SHA-256 + PGP) with keyring, wrapper validation, actions pinned by SHA, minimal `permissions`, Dependabot with cooldown period, OSV scan, CODEOWNERS, branch protection, `SECURITY.md`
+- [ ] **API spike** (small CLI in the module `adapter-uex`) against the live API with `is_production=0`; clarifies all open points from [06-uex-api.md](06-uex-api.md) (header, app token, `status_*`, `container_sizes`, `/user`)
+- [ ] Clarify with UEX: app token for open-source clients, terms of use, assumptions A9–A12 (environment mapping, `scu_sell` vs. `scu_sell_stock`, composed screenshot, duplicate lock)
+- [ ] Expand the corpus: first entry `corpus/public/pyro-gateway-stanton-01` available (transcription **to be verified by a human**); supply the Patch City screenshots as files; preferably **original screenshots** (lossless, original resolution) instead of chat uploads
 
-**Abnahme:** `./gradlew check` ist auf beiden OS grün; ein Test-Report mit `is_production=0` wurde erfolgreich übermittelt und die Antwort dokumentiert. **Negativtests der Lieferkette:** Ein manipuliertes Artefakt (geänderter Hash) und eine dynamische Version lassen den Build nachweislich scheitern.
+**Acceptance criteria:** `./gradlew check` is green on both OSes; a test report with `is_production=0` was submitted successfully and the response documented. **Negative tests of the supply chain:** a tampered artifact (changed hash) and a dynamic version demonstrably make the build fail.
 
-## M1 – Referenzdaten, manuelle Erfassung, Senden (erstes nutzbares Release 0.1)
+## M1 – Reference data, manual capture, submission (first usable release 0.1)
 
-- [ ] `domain`: Value Objects, Ports; `application`: Use-Cases Senden (Queue, Cooldown, Sendeschwelle), Abweichungsbewertung (R-UI-10), manuelle Erfassung – getestet mit Fakes der Ports
-- [ ] `adapter-uex`: Client, DTO-Mapping, Envelope, Fehlercodes, Rate-Limiter, Host-Fallback; Kontrakt-Tests mit aufgezeichneten Antworten
-- [ ] `adapter-storage`: SQLite, Migrationen, Repositories (Queue, Historie, Cache)
-- [ ] `adapter-refdata`: Cache, TTL-Refresh, Vokabular-Indizes, Fuzzy-Matcher (property-getestet)
-- [ ] `adapter-platform`: Secret-Store (FFM: Credential Manager / libsecret), Pfade, Truststore
-- [ ] `ui`: Onboarding (Key → `/user`-Check), Einstellungen, **manuelle Erfassung** (R-MAN-*) mit Abweichungsmarkierung (R-UI-10..12), Historie, Diagnose
-- [ ] `app`: Composition Root, Konfiguration
-- [ ] Packaging: MSI / `.deb` / Archive aus CI, mit SHA256SUMS, SBOM und Build-Attestierung (R-SEC-6)
+- [ ] `domain`: value objects, ports; `application`: use cases submission (queue, cooldown, send threshold), deviation assessment (R-UI-10), manual capture – tested with fakes of the ports
+- [ ] `adapter-uex`: client, DTO mapping, envelope, error codes, rate limiter, host fallback; contract tests with recorded responses
+- [ ] `adapter-storage`: SQLite, migrations, repositories (queue, history, cache)
+- [ ] `adapter-refdata`: cache, TTL refresh, vocabulary indexes, fuzzy matcher (property-tested)
+- [ ] `adapter-platform`: secret store (FFM: Credential Manager / libsecret), paths, truststore
+- [ ] `ui`: onboarding (key → `/user` check), settings, **manual capture** (R-MAN-*) with deviation marking (R-UI-10..12), history, diagnostics
+- [ ] `app`: composition root, configuration
+- [ ] Packaging: MSI / `.deb` / archives from CI, with SHA256SUMS, SBOM and build attestation (R-SEC-6)
 
-**Abnahme:** Ein Nutzer erfasst ein Terminal manuell in < 1 min (Zielwert), sendet es und sieht die Report-IDs. Ein Cooldown überlebt den Neustart der App. Alle M-Anforderungen dieses Meilensteins haben Akzeptanztests (`@Tag`), die **vor** der Implementierung geschrieben wurden; Mutation-Score des Kerns gemessen und als Untergrenze eingefroren.
+**Acceptance criteria:** A user captures a terminal manually in < 1 min (target value), submits it and sees the report IDs. A cooldown survives a restart of the app. All M requirements of this milestone have acceptance tests (`@Tag`) that were written **before** the implementation; mutation score of the core measured and frozen as a lower bound.
 
-## M2 – OCR-Kern und Eval
+## M2 – OCR core and eval
 
-- [ ] `adapter-ocr`: ORT-Sessions, DB-Postprocessing, CTC-Decode, Bildoperationen, Homographie
-- [ ] `tools/ocr-eval`: Korpus-Runner, Metriken, Crop-Dumps, Digest
-- [ ] Baseline-Messung auf dem Korpus: Rohgenauigkeit pro Feldtyp, Laufzeit, RAM
+- [ ] `adapter-ocr`: ORT sessions, DB postprocessing, CTC decode, image operations, homography
+- [ ] `tools/ocr-eval`: corpus runner, metrics, crop dumps, digest
+- [ ] Baseline measurement on the corpus: raw accuracy per field type, runtime, RAM
 
-**Abnahme:** Reproduzierbarer Eval-Bericht; die Rohgenauigkeit ist dokumentiert (noch ohne Zielwert).
+**Acceptance criteria:** Reproducible eval report; the raw accuracy is documented (still without a target value).
 
-## M3 – Pipeline und Review-UI (Release 0.5)
+## M3 – Pipeline and review UI (release 0.5)
 
-- [ ] `pipeline`: Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-- [ ] `adapter-capture` + `application`: nutzerdefinierte Ordner, Button „Einlesen“ (manuell, Standard), Auto-Watch opt-in pro Ordner (WatchService plus Polling-Fallback, Nachhol-Scan), Stable-File-Gate, Verarbeitet-Register, Drag & Drop, Strg+V, Aufnahmezeit
-- [ ] `ui`: Queue-Ansicht, Report-Editor mit Bildausschnitten und Quell-Highlight, Abweichungsmarkierung gegen UEX (R-UI-10..12), Sendesperre, „Alle sicheren übernehmen“
-- [ ] Upload-Screenshot: Zuschnitt, Kontostand schwärzen (Test!)
+- [ ] `pipeline`: locate, layout, field parser, resolution, validation, repair, stitching, confidence
+- [ ] `adapter-capture` + `application`: user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
+- [ ] `ui`: queue view, report editor with image crops and source highlight, deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"
+- [ ] Upload screenshot: cropping, redact balance (test!)
 
-**Abnahme:** Auf dem Korpus ist „still falsch“ ≈ 0. Die Feldgenauigkeit nach Validierung ist gemessen, und die Zielwerte werden **auf Basis der Messung** festgelegt und in CI eingefroren.
+**Acceptance criteria:** On the corpus, "silently wrong" is ≈ 0. The field accuracy after validation is measured, and the target values are set **based on the measurement** and frozen in CI.
 
-## M4 – Robustheit und Plattform (Release 1.0)
+## M4 – Robustness and platform (release 1.0)
 
-- [ ] Weitere Themes/Layouts (blau Standard, Nyx, Gateways, rote Scrapyard-Terminals), Ultrawide/1080p/4K
-- [ ] Spiel-Lokalisierung (`global.ini`) und SC-Installationserkennung inklusive Wine/Proton (Annahmen A3/A4 verifiziert)
-- [ ] Zweitleser für Status (Balken/Farbe) und Cargo-Größen
-- [ ] HiDPI, Barrierefreiheit (Tastatur, Kontrast), Lokalisierung DE/EN
-- [ ] Ressourcenmessung neben dem laufenden Spiel; Heap- und Thread-Limits festlegen
+- [ ] Further themes/layouts (blue standard, Nyx, gateways, red scrapyard terminals), ultrawide/1080p/4K
+- [ ] Game localization (`global.ini`) and SC installation detection including Wine/Proton (assumptions A3/A4 verified)
+- [ ] Second reader for status (bar/color) and cargo sizes
+- [ ] HiDPI, accessibility (keyboard, contrast), UI texts in English via ResourceBundles
+- [ ] Resource measurement next to the running game; set heap and thread limits
 
-## M5 – Optionale KI-Erkennung bei geschlossenem Spiel (Release 1.1, vorziehbar)
+## M5 – Optional AI recognition with the game closed (release 1.1, can be brought forward)
 
-Setzt M3 voraus (gemeinsame Auflösung, Validierung und Stitching). Kann parallel zu M4 laufen, wenn Kapazität da ist.
+Requires M3 (shared resolution, validation and stitching). Can run in parallel to M4 if there is capacity.
 
-- [ ] `adapter-platform`: `GameProcessMonitor` (Windows und Linux/Wine, Hysterese); Annahme A7 auf echten Systemen verifizieren
-- [ ] `adapter-vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), Host-Allowlist, Abbruch und Entladen (`keep_alive: 0`)
-- [ ] Prompt v1 plus deterministischer Antwort-Parser (Golden-Tests mit aufgezeichneten Antworten, ohne Ollama in CI)
-- [ ] `pipeline`: Fusionsregeln (07 §2.7), property-getestet
-- [ ] `application`: KI-Queue (persistiert), `RecognitionPolicy`; `ui`: Einstellungen (Aus / Automatisch / Immer), UI: Status „KI ausstehend / läuft / fertig“, Anzeige beider Kandidaten bei Widerspruch, Modellverwaltung mit Pull-Fortschritt
-- [ ] **Bake-off** auf dem Korpus: Modelle (u. a. `qwen3-vl:8b-instruct`, `qwen3-vl:4b-instruct`), Markdown- vs. `format`-Ausgabe, Bildgröße; Metriken „nur OCR“ / „nur VLM“ / „Fusion“, Laufzeit, VRAM
+- [ ] `adapter-platform`: `GameProcessMonitor` (Windows and Linux/Wine, hysteresis); verify assumption A7 on real systems
+- [ ] `adapter-vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), host allowlist, cancellation and unloading (`keep_alive: 0`)
+- [ ] Prompt v1 plus deterministic answer parser (golden tests with recorded answers, without Ollama in CI)
+- [ ] `pipeline`: fusion rules (07 §2.7), property-tested
+- [ ] `application`: AI queue (persisted), `RecognitionPolicy`; `ui`: settings (Off / Automatic / Always), UI: status "AI pending / running / done", display of both candidates on contradiction, model management with pull progress
+- [ ] **Bake-off** on the corpus: models (including `qwen3-vl:8b-instruct`, `qwen3-vl:4b-instruct`), Markdown vs. `format` output, image size; metrics "OCR only" / "VLM only" / "fusion", runtime, VRAM
 
-**Abnahme:**
+**Acceptance criteria:**
 
-- Spielstart bricht einen KI-Lauf innerhalb von ≤ 5 s ab (2-s-Takt während eines Laufs plus Abbruch) und entlädt das Modell (Test mit simuliertem Prozess).
-- Ohne Ollama gibt es keine Fehlermeldung.
-- Die Fusion senkt „still falsch“ und „markiert“ auf dem Korpus messbar gegenüber „nur OCR“. **Ist das nicht der Fall, wird das Feature nicht ausgeliefert** (Annahme A8).
+- Game start aborts an AI run within ≤ 5 s (2 s interval during a run plus abort) and unloads the model (test with simulated process).
+- Without Ollama there is no error message.
+- The fusion measurably lowers "silently wrong" and "flagged" on the corpus compared with "OCR only". **If that is not the case, the feature is not shipped** (assumption A8).
 
-## Risiken
+## Risks
 
-| Risiko | Auswirkung | Gegenmaßnahme / Prüfung |
+| Risk | Impact | Countermeasure / check |
 |---|---|---|
-| UEX verlangt ein App-Token, das ein Open-Source-Client nicht sicher verteilen kann (A2) | **Projektblocker** für das Senden | M0: früh mit UEX klären; Option „Nutzer trägt eigenes App-Token ein“ |
-| Nutzungsbedingungen von UEX schließen Drittclients oder automatisierte Erfassung aus | Projektblocker | M0: Terms lesen und gegebenenfalls Freigabe einholen |
-| PP-OCR ist als Primärleser für Terminals zu ungenau | Viel Handkorrektur; Kernnutzen sinkt | M2 misst früh; Gegenmaßnahmen: Fine-Tuning des Erkennungsmodells, VLM-Zweitleser (M5) |
-| Spiel-Patch ändert das Terminal-Layout | Erkennung bricht | Datengetriebene Layout-Profile, Crop-Dumps, Korpus-Regressionstest; manueller Zuschnitt als Fallback |
-| Toolchain unterstützt JDK 27 nicht | Build blockiert | M0-Check; Fallback JDK 25 LTS |
-| Linux-Spezifika (Wine-Pfade, Spielerkennung, Secret Service, XWayland) weichen von den Annahmen ab | Linux-Funktionen eingeschränkt | Manuelle Konfiguration als Fallback überall; Tests auf echten Systemen in M4/M5 |
-| Kompromittierte Abhängigkeit, CI-Aktion oder kompromittiertes Build-Artefakt | Schadcode bei Nutzern, Diebstahl des Secret-Keys | Maßnahmen S-1…S-31 in [10](10-supply-chain-security.md); Restrisiko „bösartige, korrekt signierte neue Version“ bleibt mittel |
-| UEX-API ändert sich (Felder, Fehlercodes) | Senden schlägt fehl | Defensives Parsen, Kontrakt-Tests mit aufgezeichneten Antworten, verständliche Fehlermeldungen |
+| UEX requires an app token that an open-source client cannot distribute securely (A2) | **Project blocker** for submission | M0: clarify early with UEX; option "user enters their own app token" |
+| UEX terms of use exclude third-party clients or automated capture | Project blocker | M0: read the terms and obtain approval if necessary |
+| PP-OCR is too inaccurate as the primary reader for terminals | Lots of manual correction; core benefit drops | M2 measures early; countermeasures: fine-tuning the recognition model, VLM second reader (M5) |
+| Game patch changes the terminal layout | Recognition breaks | Data-driven layout profiles, crop dumps, corpus regression test; manual cropping as fallback |
+| Toolchain does not support JDK 27 | Build blocked | M0 check; fallback JDK 25 LTS |
+| Linux specifics (Wine paths, game detection, Secret Service, XWayland) deviate from the assumptions | Linux functions restricted | Manual configuration as fallback everywhere; tests on real systems in M4/M5 |
+| Compromised dependency, CI action or compromised build artifact | Malicious code at users, theft of the secret key | Measures S-1…S-31 in [10](10-supply-chain-security.md); residual risk "malicious, correctly signed new version" remains medium |
+| UEX API changes (fields, error codes) | Submission fails | Defensive parsing, contract tests with recorded responses, understandable error messages |
 
-## Danach (1.x / später)
+## Afterwards (1.x / later)
 
-- Tray-Modus mit Benachrichtigung (#36)
-- Items und Fahrzeugkauf/-miete (#20)
-- Weitere OCR-Schriftsysteme (Kyrillisch/Koreanisch)
-- Optional ein feinjustiertes Erkennungsmodell für die SC-HUD-Schrift
-- Trade-Routen sind bewusst **nicht** geplant; dafür existieren spezialisierte Tools
+- Tray mode with notification (#36)
+- Items and vehicle purchase/rental (#20)
+- Further OCR writing systems (Cyrillic/Korean)
+- Optionally a fine-tuned recognition model for the SC HUD font
+- Trade routes are deliberately **not** planned; specialized tools exist for that
