@@ -15,6 +15,7 @@ Desktop-Client (Windows + Linux) zum Erfassen von Star-Citizen-Rohstoff-Terminal
 | `docs/plan/06-uex-api.md` | API-Notizen; **ungesicherte Punkte sind markiert** |
 | `docs/plan/07-ocr-konzept.md` | OCR-Pipeline, Konfidenz und Sendeschwelle, KI-Fusion, Screenshot-Beobachtungen |
 | `docs/plan/08-review.md` | Review des Plans: gefundene Fehler und Lücken, was geändert wurde, was offen ist |
+| `docs/plan/10-supply-chain-security.md` | Lieferkette: Bedrohungsmodell und Maßnahmen S-1…S-31 (Locking, Verification, gepinnte Actions, SBOM, Attestierung) |
 | `docs/plan/09-engineering-prinzipien.md` | **Verbindliche** Regeln zu Modularisierung, Clean Code, Tests, Definition of Done – inklusive Durchsetzung (ArchUnit, Error Prone, CI) |
 
 Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht, aktualisiere das Dokument im selben Commit oder frage nach.
@@ -46,7 +47,16 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 | Format | Spotless mit google-java-format (Google Java Style, Standardstil, 2 Leerzeichen Einrückung, 100 Zeichen) | Spotless-Plugin 8.10.3 / google-java-format 1.37.0 |
 | Tests | JUnit Jupiter, AssertJ, Mockito, WireMock, jqwik, TestFX | 6.1.3 / 3.27.7 / 5.24.0 / 3.13.2 / 1.10.1 / 4.0.18 |
 | Architektur/Coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (JDK-27-Support in M0 prüfen) |
+| Lieferkette | CycloneDX-Gradle-Plugin `org.cyclonedx.bom`; OSV-Scanner; GitHub Actions `gradle/actions` (wrapper-validation, dependency-submission), `actions/attest-build-provenance`, `actions/setup-java`, `actions/checkout` | 3.5.0; v2.6.0; v6.4.0, v4.2.2, v6.0.1, v7.0.1 (per SHA pinnen) |
 | Gradle-Plugins | `net.ltgt.errorprone` 5.1.1, `org.beryx.jlink` 4.1.1, `com.github.ben-manes.versions` 0.65.0, `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | |
+
+Regeln für die Lieferkette (verbindlich, Details in `10-supply-chain-security.md`):
+
+- Nur Maven Central (Bibliotheken) und Gradle Plugin Portal (Plugins); kein `mavenLocal()`, kein JitPack, keine Snapshots, keine dynamischen Versionen.
+- Jede Abhängigkeitsänderung aktualisiert `gradle.lockfile` (`--write-locks`) **und** `gradle/verification-metadata.xml` (`--write-verification-metadata pgp,sha256 --export-keys`) im selben PR. Neue Signaturschlüssel werden nie ungeprüft übernommen; Fingerprint und Quelle stehen im PR.
+- Verification-Fehler werden nie durch Abschalten der Prüfung „gelöst“.
+- GitHub Actions nur per vollständigem Commit-SHA mit Versionskommentar; `permissions` minimal.
+- Keine Laufzeit-Downloads von Code; Modelle nur mit festem SHA-256; kein Auto-Update.
 
 Regeln für den Stack:
 

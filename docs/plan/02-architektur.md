@@ -305,4 +305,5 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - `./gradlew check` (Spotless, Error Prone/NullAway, Tests)
   - OCR-Eval auf dem öffentlichen (geschwärzten) Korpus
   - `jpackage` pro OS bei Tags
-- Releases: Artefakte plus SHA-256-Prüfsummen.
+- Releases: Artefakte plus SHA-256-Prüfsummen, CycloneDX-SBOM und signierte Build-Provenienz.
+- **Lieferkette:** Dependency-Locking, Dependency-Verification (SHA-256 + PGP), Wrapper-Validierung, SHA-gepinnte Actions – siehe [10-supply-chain-security.md](10-supply-chain-security.md).
