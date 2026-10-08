@@ -65,6 +65,25 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | R-OCR-11 | Stitching mehrerer gescrollter Screenshots eines Terminals bzw. einer Seite. Abgeschnittene Karten am Rand werden nur übernommen, wenn die Felder vollständig sind. Bei Konflikten wird der Wert bevorzugt, der weiter vom Viewport-Rand entfernt gelesen wurde. | M |
 | R-OCR-12 | Verarbeitung im Hintergrund (begrenzte Parallelität), die UI blockiert nie. Ziel: < 3 s pro Screenshot auf einer Mittelklasse-CPU (**Zielwert, wird gemessen**). | M |
 
+## Optionale KI-Erkennung (VLM)
+
+Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch während des Spiels. Zusätzlich lässt sich ein **lokales Vision-Language-Modell (VLM)** über [Ollama](https://ollama.com) zuschalten. Es braucht viel VRAM bzw. CPU und läuft deshalb standardmäßig **nur, wenn Star Citizen geschlossen ist**. So kann man im Spiel ohne KI arbeiten und die KI danach nachprüfen lassen.
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| R-VLM-1 | Einstellung „KI-Erkennung“ mit drei Werten: **Aus** (Standard), **Automatisch – nur wenn das Spiel geschlossen ist**, **Immer** (Experte, mit Warnung zu VRAM- und FPS-Einbußen) | S |
+| R-VLM-2 | Spielerkennung: Der Prozess `StarCitizen.exe` wird zyklisch geprüft (Standard alle 5 s). Windows: Pfad endet auf `Bin64\StarCitizen.exe`. Linux: Kommandozeile oder Argumente des Wine-/Proton-Prozesses enthalten `StarCitizen.exe` (Annahme A7). Der RSI-Launcher allein zählt nicht als „Spiel läuft“. „Geschlossen“ gilt erst nach einer Hysterese (Standard 30 s), damit ein Neustart des Spiels die KI nicht startet. | S |
+| R-VLM-3 | Spielstart während eines KI-Laufs: Der laufende Job wird sofort abgebrochen und das Modell entladen (`keep_alive: 0`). Betroffene Scans gehen zurück in den Zustand „KI ausstehend“; es gehen keine Daten verloren. | S |
+| R-VLM-4 | Nachprüfen nach Spielende: Die App bietet an (oder führt automatisch aus, einstellbar), alle **noch nicht gesendeten** Reports mit dem VLM nachzulesen. Wählbar sind „nur Reports mit Warnungen“ (Standard) oder „alle“. Fortschritt und Abbruch sind jederzeit möglich. | S |
+| R-VLM-5 | Fusion: VLM und klassische OCR sind **unabhängige Leser**. Übereinstimmung erhöht die Konfidenz („doppelt bestätigt“); Widerspruch erzeugt ein Finding `Ambiguous` mit beiden Kandidaten. VLM-Werte durchlaufen **dieselbe** Vokabular-Auflösung und Validierung (Prior, Toleranzen, Konsistenz). Kein Leser setzt allein einen Wert durch, der der Validierung widerspricht. | S |
+| R-VLM-6 | Ausschließlich lokal: Standard-Host `http://localhost:11434`, konfigurierbar. Cloud-Modelle (Ollama-Cloud, Suffix `:cloud`) und Nicht-Localhost-Hosts nur nach expliziter Bestätigung mit Datenschutzhinweis. Bilder verlassen sonst nie den Rechner. | S |
+| R-VLM-7 | Modellverwaltung: Ollama-Erreichbarkeit und -Version prüfen (`/api/version`), installierte Modelle anzeigen (`/api/tags`), empfohlenes Modell auf Wunsch laden (`/api/pull` mit Fortschritt). Ollama selbst wird **nicht** mitgeliefert; die App zeigt eine Installationsanleitung. | S |
+| R-VLM-8 | Hardware-Hinweis: Nach dem Laden des Modells wird `size_vram` mit `size` verglichen (`/api/ps`). Läuft das Modell nicht vollständig auf der GPU, warnt die App („langsam, läuft auf CPU“). Die Geschwindigkeit pro Bild wird in der UI angezeigt. | S |
+| R-VLM-9 | Eingabe ans VLM ist der **perspektivkorrigierte Panel-Ausschnitt** (Shop-Panel bzw. Location-Feld), nicht der ganze Screenshot. Das ist kleiner und schneller, und der Kontostand wird nicht mitgegeben. | S |
+| R-VLM-10 | Ausgabeformat: Prompt als versionierte Ressource; Temperatur 0; Antwort als `KEY: value`-Zeilen plus Markdown-Tabelle, die ein deterministischer Parser verarbeitet (siehe [07](07-ocr-konzept.md) §2.7). Wird die Antwort abgeschnitten (`done_reason == "length"`), folgt genau ein Retry mit größerem Token-Limit. | S |
+| R-VLM-11 | Das empfohlene Standardmodell wird per **Bake-off auf unserem Korpus** festgelegt (nicht nach Modellkarte). Kandidaten u. a. die bei basetool erprobten `qwen3-vl:8b-instruct`/`qwen3-vl:4b-instruct`; deren Eignung für Rohstoff-Terminals ist **unbelegt**. | S |
+| R-VLM-12 | Die Funktion ist vollständig optional: Ohne Ollama ist die App uneingeschränkt nutzbar, ohne Fehlermeldungen beim Start. | M |
+
 ## Validierung (VAL)
 
 | ID | Anforderung | Prio |
@@ -139,7 +158,7 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | R-NF-5 | Konfiguration: atomares Schreiben, Schema-Versionierung, sichtbare Fehler. Speicherorte: Windows `%APPDATA%`, Linux `$XDG_CONFIG_HOME`/`$XDG_DATA_HOME`/`$XDG_CACHE_HOME`. | M |
 | R-NF-6 | Logging: rotierende Logdatei, Secrets maskiert, Diagnose-Export (Logs plus Systeminfo, ohne Secrets) | M |
 | R-NF-7 | Update-Hinweis über GitHub Releases, höchstens einmal täglich, abschaltbar | S |
-| R-NF-8 | Kein Eingriff ins Spiel: keine Prozess- oder Speicherzugriffe, keine Input-Injektion, keine Overlays. Nur Dateien und Zwischenablage werden gelesen. | M |
+| R-NF-8 | Kein Eingriff ins Spiel: kein Zugriff auf Prozessspeicher, keine Input-Injektion, keine Overlays. Gelesen werden nur Dateien, die Zwischenablage und die **Prozessliste** (für Pfaderkennung und Spielerkennung, R-VLM-2). | M |
 
 ## Annahmen (zu verifizieren)
 
@@ -151,3 +170,5 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | A4 | Der Windows-Standardpfad für Screenshots ist `…\StarCitizen\<CHANNEL>\screenshots`. Er wird beim Onboarding angezeigt und ist bestätigbar, nicht blind gesetzt. |
 | A5 | Die Statusstufen 1–7 und ihre Namen kommen aus `commodities_status`. Die Zuordnung der Ingame-Texte (z. B. „Max Inventory“, „Out of Stock“ auf der Sell-Seite) zu den Codes ist am Korpus zu verifizieren. |
 | A6 | Die Patch-City-Screenshots (2000×1125) sind möglicherweise skaliert. Ziel-Auflösungen müssen mit Original-Screenshots getestet werden. |
+| A7 | Unter Linux ist das laufende Spiel über `ProcessHandle.info().command()`/`arguments()` des Wine-/Proton-Prozesses anhand von `StarCitizen.exe` erkennbar. Auf echten Installationen (Wine, Proton, Lutris) zu prüfen; Fallback ist ein Scan von `/proc/*/cmdline`. |
+| A8 | Ein lokales VLM liest Rohstoff-Terminals genauer als die klassische OCR oder ergänzt sie sinnvoll. Belegt ist das bisher nur für Refinery-Panels (basetool); für unseren Fall wird es erst durch das Bake-off in M5 geprüft. Ist der Nutzen gering, bleibt das Feature klein oder entfällt. |

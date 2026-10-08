@@ -19,6 +19,14 @@ flowchart LR
         V --> S[6 Stitching<br/>→ Report-Entwurf]
     end
 
+    subgraph KI["Optional: KI-Zweitleser"]
+        GM[Spiel-Monitor<br/>StarCitizen.exe?] -->|Spiel geschlossen| VQ[(KI-Queue)]
+        VQ --> VL[VLM via Ollama<br/>localhost]
+        VL --> F[Fusion<br/>OCR ⨯ VLM]
+    end
+    S -. Reports mit Warnungen .-> VQ
+    F --> V
+
     subgraph Ref["Referenzdaten"]
         API[UEX API 2.0] <--> C[(SQLite-Cache)]
         G[global.ini<br/>Spiel-Lokalisierung]
@@ -49,9 +57,10 @@ uex-datarunner-client/
 ├── domain/                 Records/Sealed-Types, keine Abhängigkeiten außer JSpecify
 ├── uex-api/                HTTP-Client, DTOs, Envelope, Fehlercodes, Rate-Limiter
 ├── refdata/                SQLite-Cache, Refresh-Scheduler, Vokabular-Indizes, Fuzzy-Matcher, global.ini-Parser
+├── vlm/                    Optional: Ollama-Client, Prompt-Ressourcen, Antwort-Parser, KI-Queue, Modellverwaltung
 ├── ocr/                    ONNX-Runtime-Sessions, DB-Detektion, CTC-Erkennung, Bildoperationen, Homographie
 ├── pipeline/               Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-├── capture/                Ordner-Watcher, SC-Installationserkennung (Win/Linux/Wine), Clipboard, Dedupe
+├── capture/                Ordner-Watcher, SC-Installationserkennung (Win/Linux/Wine), Spiel-Prozess-Monitor, Clipboard, Dedupe
 ├── submission/             Report→Payload, Sende-Queue, Cooldown, Historie, data_remove
 ├── app/                    JavaFX-UI (MVVM), Einstellungen, Secret-Store (FFM), Onboarding, Packaging
 └── tools/ocr-eval/         CLI: Golden-Korpus-Auswertung, Crop-Dumps, Digest
@@ -64,7 +73,9 @@ app → submission → uex-api → domain
 app → pipeline → ocr → domain
 pipeline → refdata → uex-api
 app → capture → domain
-tools/ocr-eval → pipeline, refdata
+app → vlm → domain            (vlm liefert Leser-Ergebnisse; die Fusion liegt in pipeline)
+pipeline → domain             (pipeline kennt vlm NICHT, nur das Interface `Reader`)
+tools/ocr-eval → pipeline, refdata, vlm
 ```
 
 Package-Root: `space.uexdatarunner.<modul>` (Platzhalter – Projektname und Reverse-Domain sind vom Projektinhaber festzulegen).
@@ -114,6 +125,37 @@ Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfas
 | 4 Auflösung | Karten → Commodity-/Terminal-Kandidaten | Normalisierung (Groß-/Kleinschreibung, Leerzeichen, Ligaturen) plus gewichtetes Levenshtein/Jaro-Winkler gegen das Vokabular, Sortiment des Terminals bevorzugt |
 | 5 Validierung | Kandidaten → `Field<T>` mit Findings | Zahlparser, UEX-Prior, `data_parameters`-Toleranzen, Confusable-Reparatur, Glyph-Topologie-Veto, Status↔SCU-Konsistenz |
 | 6 Stitching | Scans → `ReportDraft` | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
+
+## 4a. Optionale KI-Erkennung (`vlm` + Spiel-Monitor)
+
+- **Leser-Abstraktion** (in `domain`):
+
+  ```java
+  public sealed interface Reader permits OcrReader, VlmReader {}
+  public record ReaderResult(ReaderKind kind, List<RawCard> cards, @Nullable RawHeader header, Duration took) {}
+  ```
+
+  Die klassische OCR und das VLM liefern dieselbe Rohstruktur. Die Stufen 4–6 (Auflösung, Validierung, Stitching) sind für beide identisch, und die **Fusion** vergleicht pro Feld (Regeln in [07](07-ocr-konzept.md) §2.7).
+
+- **`GameProcessMonitor`** (`capture`):
+  - Prüft periodisch auf einem Virtual Thread `ProcessHandle.allProcesses()` (Windows: Pfad `…\Bin64\StarCitizen.exe`; Linux: Wine-/Proton-Kommandozeile, Annahme A7).
+  - Veröffentlicht die Zustände `RUNNING` und `CLOSED` mit Hysterese als JavaFX-Property bzw. Listener.
+  - Hat keine weiteren Rechte und keinen Prozesszugriff.
+
+- **`RecognitionPolicy`** (`app`) entscheidet anhand der Einstellung (Aus / Automatisch / Immer) und des Spielzustands, ob die KI-Queue arbeiten darf:
+
+  | Einstellung | Spiel läuft | Spiel geschlossen |
+  |---|---|---|
+  | Aus | nur OCR | nur OCR |
+  | Automatisch | nur OCR; Reports werden für die KI vorgemerkt | KI-Queue läuft (nur Reports mit Warnungen oder alle) |
+  | Immer | OCR + KI (Warnung) | OCR + KI |
+
+- **KI-Queue** (`vlm`):
+  - Ein Job nach dem anderen (das VLM nutzt die GPU exklusiv), persistiert in SQLite als „KI ausstehend“.
+  - Beim Wechsel auf `RUNNING`: laufenden Request abbrechen (`HttpClient`-Future `cancel`), Modell entladen (`keep_alive: 0`), Jobs zurück in die Queue.
+  - Wenn die Queue leer ist: Modell nach kurzer Zeit entladen (Standard `keep_alive` 5 min).
+
+- **`OllamaClient`**: `java.net.http` und Jackson; Endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (Streaming-Fortschritt) und `/api/chat` (`stream: false`, `images` als Base64, `options.temperature = 0`). Host-Allowlist: localhost; andere Hosts nur nach Bestätigung (R-VLM-6).
 
 ## 5. Referenzdaten (`refdata`)
 
@@ -166,8 +208,9 @@ Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfas
 
 - Secret-Key nur im OS-Keystore; Maskierung in Logs über einen Logback-Filter. Ein Test stellt sicher, dass der Key nie in einer Log-Zeile auftaucht.
 - Upload-Screenshot: nur der Shop-Ausschnitt, Kontostand geschwärzt (siehe F30).
-- Keine Telemetrie. Netzwerkziele sind ausschließlich UEX und GitHub Releases (Update-Check, abschaltbar).
-- Kein Zugriff auf den Spielprozess außer dem optionalen Lesen der Prozessliste zur Pfaderkennung.
+- Keine Telemetrie. Netzwerkziele sind ausschließlich UEX, GitHub Releases (Update-Check, abschaltbar) und – optional – die lokale Ollama-Instanz.
+- Kein Zugriff auf den Spielprozess außer dem Lesen der Prozessliste (Pfad- und Spielerkennung).
+- Dem VLM werden nur Panel-Ausschnitte übergeben, nie der ganze Screenshot (Kontostand).
 
 ## 10. Build und CI
 

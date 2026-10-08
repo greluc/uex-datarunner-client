@@ -95,6 +95,8 @@ Die genaue Punktzahl ist weniger wichtig als die zwei Kriterien mit dem höchste
 
 **Wann Rust die bessere Wahl wäre:** wenn ein kleines Einzel-Binary und minimaler Speicherbedarf oberste Priorität hätten oder wenn das Team Rust deutlich besser beherrscht als Java. Die Architektur (siehe [02](02-architektur.md)) ist sprachneutral geschnitten, ein späterer Port des OCR-Kerns wäre also möglich.
 
+**Nachtrag (optionale KI-Erkennung):** Das lokale VLM wird über die HTTP-API von Ollama angebunden (`java.net.http` + Jackson). Das ist in beiden Sprachen gleich einfach und ändert die Bewertung nicht. Die Spielerkennung über `ProcessHandle` ist im JDK enthalten; in Rust bräuchte es eine Crate wie `sysinfo`.
+
 ## 5. Lizenzhinweis (Konsequenz für die Wiederverwendung)
 
 basetool-sc-extractor steht unter **GPL-3.0-or-later**.

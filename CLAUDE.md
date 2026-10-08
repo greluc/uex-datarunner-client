@@ -35,6 +35,7 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 | Build | Gradle, Kotlin DSL, Version-Catalog `gradle/libs.versions.toml` | 9.8.1 |
 | OCR-Runtime | `com.microsoft.onnxruntime:onnxruntime` (Natives win-x64/linux-x64 im JAR) | 1.30.0 |
 | OCR-Modelle | PaddleOCR PP-OCRv6 small det + rec (ONNX, Hugging Face `PaddlePaddle/…`) | – |
+| Optionale KI | Lokales VLM über die Ollama-HTTP-API (nicht gebündelt, vom Nutzer installiert); Endpoints laut offizieller Ollama-Doku (`docs/api.md`) geprüft | v0.40.1 (aktuell) |
 | JSON | Jackson 3: `tools.jackson.core:jackson-databind` (Packages `tools.jackson.*`; **Annotationen bleiben** `com.fasterxml.jackson.annotation`) | 3.2.3 |
 | HTTP | `java.net.http.HttpClient` (JDK) | – |
 | DB | `org.xerial:sqlite-jdbc` | 3.53.4.0 |
@@ -103,6 +104,13 @@ Vor jedem Commit muss `./gradlew check` grün sein.
 - **UEX-Werte nicht hartkodieren:** Spielversion, Statusstufen und Toleranzen kommen aus der API bzw. dem Cache, niemals aus Konstanten (siehe F14).
 - Freie OCR-Strings erreichen nie die API; nur aufgelöste IDs aus dem UEX-Vokabular.
 - Der Upload-Screenshot enthält nur das Shop-Panel und das Location-Feld; **der Kontostand wird immer geschwärzt** (Test Pflicht).
+- **Optionale KI-Erkennung (VLM/Ollama):**
+  - Die klassische OCR ist immer der Primärweg; die App muss ohne Ollama voll funktionieren.
+  - Das VLM läuft im Modus „Automatisch“ **nur bei geschlossenem Spiel**. Startet das Spiel, wird der Request abgebrochen und das Modell sofort entladen (`keep_alive: 0`); Jobs gehen nie verloren.
+  - Nur `localhost` ohne Rückfrage; keine Cloud-Modelle ohne explizite Zustimmung.
+  - VLM-Ergebnisse durchlaufen dieselbe Auflösung und Validierung wie OCR. Die Fusion folgt den Regeln in `07-ocr-konzept.md` §2.7.
+  - Vom Nutzer bestätigte Felder überschreibt die KI nie.
+  - CI startet kein Ollama; der Parser wird mit aufgezeichneten Antworten getestet, Live-Läufe sind opt-in über `UEXDR_VLM_HOST`.
 
 ## Tests
 

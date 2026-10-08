@@ -2,6 +2,8 @@
 
 Plattformübergreifender Desktop-Client (Windows + Linux) für Star-Citizen-DataRunner. Er erfasst Daten von Rohstoff-Terminals – **manuell oder per Screenshot-OCR** – und übermittelt sie an [UEX Corp](https://uexcorp.space). Aktuelle UEX-Daten dienen dabei als Vorgabewerte und Plausibilitätsgrenzen für die Erkennung.
 
+Während des Spiels arbeitet eine schlanke, lokale OCR. Optional prüft ein lokales KI-Modell (über Ollama) die Ergebnisse nach, sobald das Spiel geschlossen ist.
+
 > Status: **Planung**. Es gibt noch keinen lauffähigen Code.
 
 ## Plan
