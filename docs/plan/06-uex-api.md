@@ -1,5 +1,7 @@
 # UEX API 2.0 – working notes
 
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
 > **Sources, honestly:** The official documentation (`https://uexcorp.space/api/documentation/`) was **not reachable** from the research environment (network policy or DNS). The information therefore comes from three sources:
 >
 > - **[DOC-SNIPPET]:** excerpts of the official documentation in search results

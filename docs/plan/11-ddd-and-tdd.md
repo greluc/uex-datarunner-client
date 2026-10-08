@@ -1,5 +1,7 @@
 # Domain-Driven Design and Test-Driven Development
 
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
 How we model the domain (DDD) and how we let code come into being (TDD). Both complement [02-architecture.md](02-architecture.md) (Ports & Adapters) and [09-engineering-principles.md](09-engineering-principles.md) (enforcement).
 
 **Principle "as far as possible":**
@@ -188,7 +190,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 | Core modules (context modules, `shared-kernel`, `workflows`) | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
 | Adapters (`adapter-uex`, `adapter-storage`, `adapter-files`) | **Test-first, as far as possible:** contract and integration tests (WireMock, real SQLite file, real temp directory) first, then the implementation |
 | `adapter-ocr`, `adapter-vlm` and OCR thresholds | **Spike & Stabilize:** exploration in the eval harness is allowed (result: measurements, no merge). Before the merge, the desired behavior is pinned down with golden and unit tests that fail without the change. |
-| `ui` | ViewModels via TDD (without a window); views (layout, CSS) without TDD, critical flows via TestFX after implementation |
+| `ui` | ViewModels via TDD (without a window); views (layout, CSS) without TDD, critical flows via TestFX after implementation; exception: the Star Citizen Fan Kit unit's pinning tests (R-UI-19), including the TestFX tests of both placements, are written first |
 | `adapter-platform` (FFM, process list) | Thin wrappers behind ports; the port is tested via a fake, the native side via integration tests on the target OS (CI matrix) |
 | Bugfix (everywhere) | First a test that reproduces the bug |
 

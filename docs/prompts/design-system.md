@@ -1,5 +1,17 @@
 # Task: Design the UEX Datarunner Client design system (inspired by the current RSI website and Spectrum)
 
+> **Doc type:** Prompt — not yet run; rewrite pending (08 §K "Deferred"). Last reviewed: 2026-10-08.
+
+> **Superseded in part by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08); these rules win over the text below until the rewrite:**
+>
+> - The licence is GPL-3.0-or-later. The licence policy is CLAUDE.md "Stack rules", which already allows OFL-1.1 fonts and ISC icons. The §9 statements on the licence list and "GPL is not allowed" no longer apply.
+> - The Star Citizen Fan Kit unit is adopted (R-UI-19; CLAUDE.md "Star Citizen Fan Kit unit"): the logo plus both notices, byte-exact, in the About dialog and on the onboarding start screen.
+>   - Superseded: the bans on Fankit files and assets, the "Trademark line: UNVERIFIED" section and its neutral wording, D11, and the matching self-check items.
+>   - Fan Kit and other proprietary fonts stay excluded.
+> - The design-system ADR takes the next free number at push time (ADR-0004 as of 2026-10-08), never ADR-0003. `docs/adr/0003-design-system.md` becomes `docs/adr/NNNN-design-system.md`.
+> - The README disclaimer is in its "Star Citizen fan content" and "Disclaimer" sections, not at line 29.
+> - Assumptions run to A23 (new ones from A24), and the invariants are I1–I7.
+
 You are Claude Code, working in the repository `uex-datarunner-client`. Design and document the app's **design system**: design tokens, themes, a semantic state language, component specifications, JavaFX CSS theme files, check scripts, a preview gallery and an ADR.
 
 The visual language must **lean strongly on the newer (2025/2026) look of the Roberts Space Industries (RSI) website and its community platform Spectrum**, not on the older RSI look. The app is an **unofficial fan tool**. It must *evoke* that look, never copy protected brand assets, and never suggest that it is affiliated with or endorsed by Cloud Imperium Games (CIG) or RSI.

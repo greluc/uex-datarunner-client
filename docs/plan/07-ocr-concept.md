@@ -1,5 +1,7 @@
 # OCR concept
 
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
 ## 1. Observations on real screenshots (Patch City, Pyro)
 
 The five screenshots supplied by the project owner (2000×1125, Buy and Local Market Value tab, scrolled) show the current terminal layout. What we infer from them:
@@ -371,7 +373,9 @@ AI re-reads and re-stitching **never** overwrite a field with origin `USER` or w
 - Values for our panels must be measured.
 - On weak hardware the AI is an "overnight" feature. The classic OCR therefore remains the primary path.
 
-## 3. Insights adopted from basetool-sc-extractor (GPL-3.0 – concepts only)
+## 3. Insights adopted from basetool-sc-extractor
+
+Corrected 2026-10-08: basetool-sc-extractor is GPL-3.0-or-later. Since [ADR-0003](../adr/0003-licence-and-contributions.md) its code may be ported under the porting rules in [CLAUDE.md](../../CLAUDE.md) ("Working rules"); until then this section adopted concepts only.
 
 | Adopted | Not adopted |
 |---|---|

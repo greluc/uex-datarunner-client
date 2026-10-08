@@ -1,5 +1,7 @@
 # Bug analysis of SC-Datarunner-UEX and fixes in our client
 
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-08.
+
 ## Sources – please note
 
 - SC-Datarunner-UEX is **closed source**. The repo contains only the README, images and Pages configuration; the binaries are under "Releases". There is no source code we could inspect. The binaries were deliberately **not** decompiled.
