@@ -107,6 +107,13 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
 | Mehrdeutig / Konflikt zwischen Scans oder Lesern | 0.60 → **auswählen** |
 | Unlesbar / unplausibel | 0.30 → **korrigieren** |
 
+**Abweichung vs. Konfidenz – zwei getrennte Dimensionen:**
+
+- *Konfidenz* sagt, wie sicher **gelesen** wurde.
+- *Abweichung* sagt, wie stark der Wert vom **bisherigen UEX-Stand** abweicht (R-UI-10).
+
+Beides wird getrennt berechnet (`DeviationLevel`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`, jeweils mit Flag `referenceStale`) und getrennt angezeigt. Für das Sende-Gate gilt das **Strengere** von beiden: `MAJOR` erfordert immer eine Bestätigung, auch bei hoher Lesesicherheit. Ein Zahlendreher, der sauber gelesen wurde, aber stark vom UEX-Wert abweicht, wird also nie ungeprüft gesendet.
+
 Die Report-Konfidenz entspricht dem schlechtesten Pflichtfeld, nicht dem Mittelwert, damit sich einzelne Fehler nicht „wegmitteln“.
 
 ### 2.7 Optionaler KI-Zweitleser (VLM über Ollama, nur bei geschlossenem Spiel)
