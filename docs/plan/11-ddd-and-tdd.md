@@ -32,7 +32,10 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 | Submission gate (`SubmissionGate`) | set of rules deciding whether a Report may be sent |
 | Cooldown (`Cooldown`) | lock period after a successful report for (terminal, commodity, environment) |
 | Environment (`GameEnvironment`) | LIVE, PTU, EPTU, HOTFIX, TECH-PREVIEW |
-| Reference snapshot (`ReferenceSnapshot`) | immutable state of the UEX data for one decision |
+| Reference snapshot (`ReferenceSnapshot`) | immutable state of the UEX data for one environment and one decision |
+| Session (`Session`) | consecutive captures without a gap longer than 60 min (configurable); context for terminal disambiguation and the session overview (R-UI-14) |
+| Stitched scan (`StitchedScan`) | the merged rows of all scans of one group, produced by Recognition and consumed by Reporting |
+| Observation time (`observedAt`) | time of the oldest capture of a Report; basis for the age rules (R-VAL-6) |
 
 ### A2. Bounded Contexts
 
@@ -60,12 +63,15 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 | I1 | Each commodity appears at most once per Report. |
 | I2 | Release (`release()`) is only possible if: the terminal is resolved; every mandatory field is ≥ send threshold **or** confirmed; every `MAJOR` deviation is confirmed; environment and game version match the UEX acceptance state. |
 | I3 | A confirmation applies to exactly one value. `correct(field, newValue)` revokes the confirmation. |
-| I4 | A submitted Report is immutable; only `withdraw()` is possible (leads to `data_remove`). |
+| I4 | A submitted Report is immutable; only `withdraw()` is possible (leads to `data_remove`). Corrections create a **new** Draft (`duplicateAsDraft()`), never an edit in place (unless `data_edit` is verified, R-SUB-10). |
+| I6 | A Report is released only if its observation age is within the limits (R-VAL-6) and its rows are evaluated against the current reference snapshot (R-VAL-7). |
 | I5 | The game version is the one valid at capture time; a version change marks the Report as "to be checked". |
 
 The `Report` carries a `version` number for optimistic concurrency: every command is applied to a specific version, and the repository rejects writes based on a stale version (e.g. user edit and AI re-read at the same time).
 
-States as sealed types: `Draft → Released → Queued → Submitted | Rejected`, `Submitted → Withdrawn`. Invalid transitions return `Outcome.Refused` with a reason code; there are no status strings.
+States as sealed types: `Draft → Released → Queued → (WaitingForCooldown →) Submitted | PartiallyAccepted | OutcomeUnknown | Rejected`; `Released/Queued → Draft` (cancel); `OutcomeUnknown → Submitted | Draft` (after resolution via `data_info` or by the user); `Submitted/PartiallyAccepted → Withdrawn`; `Rejected/Withdrawn` can be duplicated as a new Draft. Invalid transitions return `Outcome.Refused` with a reason code; there are no status strings.
+
+Records are not fully encapsulated: their canonical constructor is as visible as the record. The compact constructor therefore validates all state-local invariants (I1, value-bound confirmations), and an ArchUnit rule allows `new Report(...)` only inside the aggregate and in the persistence mapper (reconstitution). Transition invariants (I3, I4) are enforced by the command methods.
 
 Further aggregates:
 
@@ -90,10 +96,10 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 
 ### A6. Domain events
 
-`CaptureImported`, `CaptureScanned`, `ReportDraftCreated`, `ReportReleased`, `ReportSubmitted`, `SubmissionRejected`, `ReportWithdrawn`, `GameStateChanged`, `ReferenceDataRefreshed`.
+`CaptureImported`, `CaptureScanned`, `ReportDraftCreated`, `ReportReleased`, `ReportSubmitted`, `ReportWithdrawn`, `SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionOutcomeUnknown`, `SubmissionRejected`, `GameStateChanged`, `ReferenceDataRefreshed`.
 
-- Events are immutable records in the `api` package of the context that publishes them (base type in `shared-kernel`).
-- They are delivered **in-process and synchronously** via a small dispatcher in `workflows`, without a framework.
+- Events are immutable records in the `api` package of the context that publishes them (base type in `shared-kernel`). Submission results are published by `submission` (`SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionOutcomeUnknown`, `SubmissionRejected`); `workflows` translates them into Report state changes, which publish `ReportSubmitted` etc. in `reporting`.
+- They are delivered **in-process** via a small dispatcher in `workflows`, without a framework. To survive crashes, events are written to an **outbox table in the same SQLite transaction** as the aggregate state and dispatched after commit; on startup, undelivered outbox entries are dispatched again (handlers are idempotent).
 - **Aggregates are immutable** (records): a command such as `report.confirm(…)` returns `Outcome.Ok(newState, events)` or `Outcome.Refused(reason)`. The application service stores the new state via the repository and then publishes the events. This makes aggregates testable without mocks and thread-safe.
 - Events make the flows testable: "Given events / When command / Then events".
 
@@ -110,7 +116,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 ### A8. Marking and enforcement
 
 - Our own dependency-free marker annotations in `shared-kernel` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
-- **No jMolecules:** that would be an additional dependency in the core (checked: `org.jmolecules:jmolecules-ddd` 2.0.1). Five annotations of our own do the same job here.
+- **No jMolecules:** that would be an additional dependency in the core (checked: `org.jmolecules:jmolecules-ddd` 2.0.1). Four annotations of our own do the same job here.
 - **ArchUnit rules:**
   - `@ValueObject` and `@DomainEvent` are records.
   - `@AggregateRoot` classes are loaded and stored only via their repository.
@@ -140,7 +146,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 Example (structure, not final code):
 
 ```java
-@Test @Tag("R-UI-10") @Tag("R-SUB-3")
+@Test @Tag("R-UI-10") @Tag("R-VAL-2")
 void majorPriceDeviationBlocksReleaseUntilConfirmed() {
   var report = aDraftReport().at(PYRO_GATEWAY_STANTON).side(BUY)
       .row(HYDROGEN_FUEL, price("782"), prior("520", ageDays(1)))   // > price_variation
@@ -155,7 +161,7 @@ void majorPriceDeviationBlocksReleaseUntilConfirmed() {
 
 ### B3. Tools and rules
 
-- **Fakes before mocks:** for every port there is a handwritten fake implementation in the Gradle `java-test-fixtures` source set of the respective module. All tests share these fixtures. Mockito only for interaction checks that a fake cannot sensibly represent.
+- **Fakes before mocks:** for every port there is a handwritten fake implementation in the Gradle `java-test-fixtures` source set of the respective module. All tests share these fixtures. (How `java-test-fixtures` behaves with JPMS modules is not verified – M0 spike; the GradleX `java-module-testing` plugin is the fallback.) Mockito only for interaction checks that a fake cannot sensibly represent.
 - **Test data builders** (`aDraftReport()`, `aCapture()`, `aSnapshot()`) in the same test fixtures, instead of copying test data.
 - **Property-based tests** (jqwik) for parser, fuzzy matcher, fusion, `DeviationAssessor` and the invariants of the `Report` (e.g. "after `correct`, a field is never confirmed").
 - **Golden tests** for the `recognition` pipeline against the corpus (`corpus/`).

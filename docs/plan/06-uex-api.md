@@ -85,3 +85,7 @@ Documentation slug: `post_data_submit`.
 14. **Mixing in one payload:** According to examples, a payload can contain buy and sell rows. We nevertheless send **one report per side**, because each report has its own screenshot of the respective side.
 15. **`data_remove` / `data_info`:** exact parameters (report ID list? per row?) and whether `data_remove` is allowed for every own report or only within a time window – needed for withdrawal (I4) and the history status.
 16. **Rate budgets:** is the 1000-reports-per-30-min limit counted per price row (as `ids_reports` suggests) and per user or per app token?
+17. **`data_edit`:** parameters and semantics (edit a submitted row in place?); decides between R-SUB-10 options (a) and (b).
+18. **Observation time:** does `data_submit` accept a timestamp of the observation (relevant for R-VAL-6 and catch-up imports)?
+19. **PTU data:** does UEX provide PTU prices/terminals (separate endpoint, flag or parameter)? Needed for R-API-6.
+20. **User-Agent:** is there a convention, and can UEX block a faulty client version by User-Agent? (R-API-7)

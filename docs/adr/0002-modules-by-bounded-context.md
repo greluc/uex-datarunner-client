@@ -34,7 +34,7 @@ The bounded contexts existed only as **packages**, protected by ArchUnit rules. 
    - A UEX API change changes `adapter-uex` (and at most `reference-data`).
    - Neither touches a shared "god" `domain` module.
 4. **Ubiquitous language per context.** A term like "Terminal" can mean the full UEX master record in Reference Data and just a `TerminalId` plus display name in Reporting, without one class having to serve both.
-5. **Tests and build per context.** Gradle rebuilds and re-tests only affected modules. PIT and JaCoCo run per context. `tools/ocr-eval` depends only on `recognition` instead of the whole domain.
+5. **Tests and build per context.** Gradle rebuilds and re-tests only affected modules. PIT and JaCoCo run per context. `tools/ocr-eval` depends on `recognition` and the adapters it needs instead of the whole domain; it is a second composition root.
 
 **Disadvantages and how we handle them (honest):**
 
@@ -46,7 +46,7 @@ The bounded contexts existed only as **packages**, protected by ArchUnit rules. 
 | D4 | The shared kernel tends to grow into a new "god module" | medium | Rule: only value objects used by **at least two** contexts. Changes need the maintainer's review (CODEOWNERS). ArchUnit: no aggregates, services or ports in `shared-kernel`. |
 | D5 | Over-engineering risk for a desktop app with one or few developers | medium | Only six contexts, no microservices, no messaging; in-process synchronous events. Option B (adapters per context) is rejected for exactly this reason. |
 | D6 | Cyclic dependencies between contexts (e.g. Submission reports success back to Reporting) | high if ignored | Context map with **one direction only** (below). Feedback flows are handled in `workflows`, not by a back-reference. |
-| D7 | Adapters serving several contexts depend on several context modules | low | Accepted; adapters are leaves (nothing depends on them except `app`). |
+| D7 | Adapters serving several contexts depend on several context modules | low | Accepted; adapters are leaves (nothing depends on them except the composition roots `app` and `tools/ocr-eval`). |
 
 **Why not option B (adapters per context as well)?** It would double the module count and duplicate infrastructure: three HTTP clients for UEX, several SQLite connection setups and migration runners. The benefit (independent deployability of contexts) is worthless for a single desktop application.
 
@@ -100,5 +100,5 @@ app            → everything (composition root, no logic)
   - the `global.ini` parser moves into `adapter-files`.
 - `adapter-capture` is renamed `adapter-files`. It handles folder watching, the stable-file gate and reading game files (`global.ini`, `user.cfg`, RSI launcher log).
 - The core does not use AWT/ImageIO or `java.nio.file` (added in the 2026-10-08 review): images are passed as an own `ImageRaster`, folders as `FolderLocation`, so that `recognition`, `capture` and `reporting` stay free of I/O and do not need the `java.desktop` module.
-- Each context module exports only its `api` package (application services, commands, read models, events, ports); `internal` stays hidden.
+- Each context module exports `api` (application services, commands, read models, events, ports) and `api.model` (aggregates and value objects that ports and other contexts must name); `internal` (domain services, policies) stays hidden. Exported aggregates are protected by their compact constructor plus an ArchUnit rule on constructor calls (corrected in the third review: hiding the whole model made repository ports unimplementable).
 - **Revisit** after M3: if two contexts consistently change together, merge them; if `shared-kernel` grows beyond value objects, split or push types back into contexts.
