@@ -34,7 +34,7 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 ## M3 – Pipeline und Review-UI (Release 0.5)
 
 - [ ] `pipeline`: Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-- [ ] `capture`: Watcher (mehrere Ordner, Umgebung pro Ordner), Drag & Drop, Strg+V, Dedupe, Aufnahmezeit
+- [ ] `capture`: nutzerdefinierte Ordner, Button „Einlesen“ (manuell, Standard), Auto-Watch opt-in pro Ordner (WatchService plus Polling-Fallback, Nachhol-Scan), Stable-File-Gate, Verarbeitet-Register, Drag & Drop, Strg+V, Aufnahmezeit
 - [ ] `app`: Queue-Ansicht, Report-Editor mit Bildausschnitten und Quell-Highlight, Sendesperre, „Alle sicheren übernehmen“
 - [ ] Upload-Screenshot: Zuschnitt, Kontostand schwärzen (Test!)
 
