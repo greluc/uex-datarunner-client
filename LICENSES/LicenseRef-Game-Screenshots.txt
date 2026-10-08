@@ -1,0 +1,13 @@
+Game screenshots in the test corpus
+
+The files marked with LicenseRef-Game-Screenshots are screenshots of the video
+game Star Citizen. The game content they show is copyright Cloud Imperium
+Rights LLC and Cloud Imperium Rights Ltd.
+
+These files are not covered by the GNU General Public License or by any other
+licence of the UEX Datarunner Client project.
+
+They are in this repository only as test data for the project's text
+recognition. They are added under the rules in corpus/README.md (redaction,
+consent). Any use of the game content is subject to Cloud Imperium's terms;
+this project grants no rights in it.

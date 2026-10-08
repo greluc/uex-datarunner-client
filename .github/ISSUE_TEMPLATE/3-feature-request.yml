@@ -1,0 +1,103 @@
+name: Feature request or plan change
+description: Propose a new feature, or a change or correction to the plan documents. Questions also go here until GitHub Discussions opens in M1.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the idea. The project is planned in [docs/plan](https://github.com/greluc/uex-datarunner-client/tree/main/docs/plan): please check the requirements in 01-requirements.md and the roadmap in 04-roadmap.md first, because many ideas are already planned or deliberately left out. Open owner decisions are listed in [docs/adr/0000-open-points.md](https://github.com/greluc/uex-datarunner-client/blob/main/docs/adr/0000-open-points.md).
+
+        If your proposal changes an existing requirement (R-…) or an accepted decision (ADR), name it below. Such changes need the approval of the project owner, @greluc.
+
+        **A question?** Replace the title prefix with `[Question]` and describe it under "Problem or use case"; leave the fields that do not apply empty or write "n/a".
+
+        This issue is public. Do not include your UEX secret key, an app token or an unredacted screenshot.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem does this solve, and for whom? For example a DataRunner capturing while playing, or someone reviewing reports after a session.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How could it work? A workflow, a sketch or the wording of a requirement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What did you consider instead, and why not that?
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Image folders and import (CAP)
+        - Manual entry (MAN)
+        - Recognition, classic OCR (OCR)
+        - AI recognition with Ollama (VLM)
+        - Validation and deviation marking (VAL)
+        - Review screen (UI)
+        - Submission queue and history (SUB)
+        - UEX connection, key check, reference data (API)
+        - Languages (L10N)
+        - Test corpus and evaluation (QA)
+        - Installation, performance, data storage (NF)
+        - User guide and documentation (DOC)
+        - Supply chain, build and CI (SEC)
+        - Plan documents
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: ids
+    attributes:
+      label: Related requirements and decisions
+      description: Requirement IDs, assumptions, open points or ADRs this touches, if any.
+      placeholder: R-OCR-17, A5, ADR-0002
+
+  - type: checkboxes
+    id: considerations
+    attributes:
+      label: Things to consider
+      description: Tick what applies. This only helps planning; nothing here is a reason to hold back an idea.
+      options:
+        - label: It adds work while Star Citizen is running (CPU, GPU or memory load next to the game, R-NF-3; in Automatic mode the AI recognition runs only while the game is closed, R-VLM-1 and R-VLM-3).
+        - label: It would read from or act on the game beyond files, the clipboard and the process list, for example process memory, input or an overlay (ruled out by R-NF-8).
+        - label: It sends data to a new destination, or sends new kinds of data (privacy, 02 §9).
+        - label: It changes what is submitted to UEX.
+        - label: It needs a new library or tool (licence and supply-chain check).
+        - label: It adds a setting (needs a documented default).
+        - label: It adds or changes texts in the app.
+        - label: It changes recognition (needs a corpus evaluation per capture class).
+        - label: It changes stored data (needs a migration, R-NF-11).
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How would we know it is done?
+      value: |
+        - [ ]
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Self-check
+      options:
+        - label: I searched open and closed issues for the same idea.
+          required: true
+        - label: I checked the plan documents and the open-points register for an existing requirement or decision on this.
+          required: true

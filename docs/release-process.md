@@ -1,5 +1,7 @@
 # Release and hotfix process
 
+> **Doc type:** Living spec — binding; followed from release 0.1 on. Last reviewed: 2026-10-08.
+
 Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md](plan/10-supply-chain-security.md). This is a plan; it is followed from release 0.1 on and refined with experience.
 
 ## Versioning
@@ -9,7 +11,8 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
   - MINOR: features.
   - MAJOR: a change to persisted data after which a downgrade loses data or needs the user to act. Every format change still ships a tested forward migration (09 §6, §10).
 - The app version is shown in the UI, written to the logs and sent in the User-Agent (R-API-7).
-- `CHANGELOG.md` follows "Keep a Changelog".
+- `CHANGELOG.md` follows "Keep a Changelog" with an `[Unreleased]` section. Every user-visible change adds its entry in the same commit as the change: one to three sentences on what changed and why it matters to the user, plus the requirement ID ([CLAUDE.md](../CLAUDE.md)).
+- The version comes only from the signed `v<MAJOR>.<MINOR>.<PATCH>` tag: CI passes it to Gradle, which writes it into the build information read by the UI, the logs and the User-Agent; nobody edits a version by hand, and local builds carry a fixed development version.
 
 ## Release checklist
 
@@ -17,12 +20,30 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
 2. Corpus evaluation (R-QA-3): no regression in any `gated` class; no new silently wrong field in any class; every required R-QA-2 class that is not `gated` is named "not verified" in the release notes; classes that exist only in the private corpus are evaluated locally with `UEXDR_CORPUS_DIR`. If the recommended Ollama model or the evaluated-model list changes, the bake-off report is linked in the release notes, and the resource (tag, digest(s), approximate download size, metrics; R-VLM-11, S-27) is updated in the same release.
 3. Live smoke test against UEX with `is_production=0` and a test key (manual, opt-in): onboarding check, one manual report, one OCR report, one withdrawal.
 4. Database migrations tested: an empty DB and the DB of the previous release (with test data) migrate to the new version; the previous release refuses the new schema (R-NF-11); the pre-migration backup of a DB with an un-checkpointed WAL passes `PRAGMA integrity_check`, and restoring it in the previous release sends Released and Queued reports back to Draft and marks OutcomeUnknown ones (see 'After a restore').
-5. Update the changelog and the user guide (`docs/user/`).
-6. Create a signed tag on protected `main`. The release workflow then runs read-only build jobs (installers, archives, SBOM, packaged-app smoke test) and a separate publish job without Gradle that computes SHA256SUMS, attests and publishes (S-14 to S-18). The release notes record the bundled JDK build and the installer tool versions (S-11).
+5. Check that `CHANGELOG.md`, `README.md` and the user guide (`docs/user/`) are complete. They are updated with every user-visible change in the same commit; this step only checks them.
+6. Create a signed tag on protected `main`. The release workflow then runs read-only build jobs (installers, archives, SBOM, packaged-app smoke test) and a separate publish job without Gradle that computes SHA256SUMS, attests and publishes (S-14 to S-18). The release notes record the bundled JDK build and the installer tool versions (S-11). The release also publishes the plain Windows app image as a ZIP next to the MSI and attaches the source archives of R-DOC-4 (see 'Licence compliance'); the release notes link the tag, which is the Corresponding Source.
 7. Verify the published artifacts:
    - `gh attestation verify` on one artifact per OS;
    - install or unpack **every** published artifact (MSI, ZIP, `.deb`, `tar.gz`) on a clean Windows and a clean Linux machine (or VM) and start the app; on Linux start it once in an X11 session and once in a Wayland session via XWayland (R-NF-1);
    - from 1.0 on, the accessibility walkthrough of R-UI-17: keyboard-only use of the main flows, Narrator or NVDA on Windows, 200 % text size at the minimum window size, and scale factors 100–250 % including a monitor pair with different scale factors.
+   - licence duties (R-DOC-3, R-DOC-4, R-UI-18, R-UI-19): every artefact contains `LICENSE`, `NOTICE` and the notices directory; the `.deb` installs the DEP-5 `copyright` file; the MSI adds no licence terms; the About dialog shows the legal notices, the open-source licences and the source link of this version; the Fan Kit unit appears in the About dialog and on the onboarding start screen; the source archives are attached and match their pinned SHA-256 values.
+
+## Licence compliance
+
+The release duties that follow from the project licence (GPL-3.0-or-later, [ADR-0003](adr/0003-licence-and-contributions.md)) and from the licences of the bundled components. `NOTICE` lists every component.
+
+- **Notices.** Every installer and archive ships `LICENSE`, `NOTICE` and the notices directory (R-DOC-3), assembled from the shipped artefacts, not from upstream repositories (the two can differ). The About dialog shows the Appropriate Legal Notices, Logback's copyright line with its LGPL-2.1 reference and the credits of `NOTICE` §6 (R-UI-18).
+- **Source archives.** Every GitHub release links the tagged source and attaches the complete source of every shipped component under GPL-2.0, LGPL, MPL-2.0 or MS-RL (R-DOC-4): the exact source archive of the bundled OpenJDK vendor build (O-25), OpenJFX `27-ga`, Logback, Eigen at the commit ONNX Runtime pins, and the source of the WiX files in the MSI. A read-only build job fetches them from pinned URLs and checks them against committed SHA-256 values; the publish job attaches them. Permissive components are linked from `NOTICE` by pinned tag and Maven Central `-sources` jar. Whether ONNX Runtime's other native dependencies are archived as well is open.
+- **Windows packages.** Next to the MSI the release publishes the plain app image as a ZIP, so the GPL work is also available outside the MSI, which embeds MS-RL files of WiX; the MS-RL text and the WiX source go with every MSI. The MSI adds no licence terms (default: no `--license-file`; GPL-3.0 §9 requires no acceptance).
+- **WiX version and EULA.** The WiX major version is chosen in M1 after jpackage 27 has been tested with each candidate (O-11). From v6 on, the official WiX binaries come with the Open Source Maintenance Fee EULA; such a version is used only after the project owner has accepted the EULA explicitly, recorded here:
+
+  | WiX version | OSMF EULA | Accepted by | Date |
+  |---|---|---|---|
+  | not chosen yet (M1) | – | – | – |
+
+- **`.deb`.** jpackage's default `copyright` file is replaced via `--resource-dir` with a DEP-5 file that lists the bundled components and their licences.
+- **Before the first release only:** a legal review of the Microsoft C/C++ runtime in the Windows packages (the DLLs from the JDK and JavaFX, and the runtime linked statically into the jpackage launcher and `msica.dll`). Until then the project relies on the GPL-3.0 System Library definition. Whether a narrow GPL-3.0 §7 additional permission is added is decided before the first external contribution (O-12).
+- **Star Citizen Fan Kit.** `NOTICE` §4 records the checked kit version (`Fankit_2025_11_19`). The Fankit Agreement lets Cloud Imperium change its documents (clause 11, as recorded in basetool); when a newer kit is published, the project owner re-checks the unit (R-UI-19) against it before the next release.
 
 ## Security release
 
@@ -32,7 +53,7 @@ Users get fixes for the bundled runtime and libraries only through our releases 
    - each quarterly JDK security update (Oracle/OpenJDK Critical Patch Update in January, April, July and October; dates are published in advance): rebuild with the new Temurin update of the bundled JDK line (S-11; the scheduled pin check flags it);
    - the end of support of the bundled JDK line: JDK 27 support ends when JDK 28 ships (March 2027), so the move to JDK 28 is released before the April 2027 update;
    - a blocking OSV finding (S-19) against the latest release tag, or an advisory for a bundled native component (ONNX Runtime, sqlite-jdbc, JavaFX);
-   - a confirmed report via `SECURITY.md` (S-31).
+   - a confirmed report via `.github/SECURITY.md` (S-31).
 2. **Procedure:** a PATCH release from `main` with the full release checklist, including the corpus evaluation (a JDK update can change image decoding). Target: published within 7 days of the JDK update or of the confirmed report (start value). The CHANGELOG and the release notes get a 'Security' entry; a confirmed vulnerability in our own code also gets a GitHub Security Advisory.
 
 ## Upgrade and downgrade

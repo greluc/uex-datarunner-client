@@ -1,0 +1,190 @@
+name: Misread report
+description: The app read a value from a screenshot wrongly, missed it, or could not recognise a terminal.
+title: "[Misread] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. Misreads with the matching screenshot crops are the most valuable reports for this project: they become regression tests.
+
+        **Most important:** values that the app offered as sendable **without asking for confirmation** although they were wrong ("silently wrong"). Please always say how the wrong value was marked.
+
+        **This issue is public.** Anyone can read it and open its attachments without logging in. Attach only redacted images: no CURRENT BALANCE, no player names, no chat. Never include your UEX secret key or an app token.
+
+        **Do not attach the reference-snapshot file of the "Report a misread" export.** It holds recorded UEX data, which is not published until UEX allows it (open point 7 in [06-uex-api.md](https://github.com/greluc/uex-datarunner-client/blob/main/docs/plan/06-uex-api.md)). It enters only the private corpus; if it is needed, the maintainer asks you for it privately.
+
+        Values that are wrong on UEX itself belong to [UEX Corp](https://uexcorp.space), not here.
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: As shown in the app or written in its log.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: game-environment
+    attributes:
+      label: Star Citizen environment
+      options:
+        - LIVE
+        - PTU
+        - EPTU
+        - HOTFIX
+        - TECH-PREVIEW
+    validations:
+      required: true
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Star Citizen version
+      description: If known. Leave it empty rather than guessing.
+
+  - type: input
+    id: terminal
+    attributes:
+      label: Terminal and location
+      description: As shown in the game, and the terminal the app chose if it differs.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: side
+    attributes:
+      label: Side
+      options:
+        - Buy
+        - Sell (Local Market Value)
+        - Both
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reader
+    attributes:
+      label: Which recognition produced the wrong value?
+      options:
+        - Classic OCR
+        - AI recognition (Ollama)
+        - Both, or the combined result
+        - Don't know
+    validations:
+      required: true
+
+  - type: dropdown
+    id: marking
+    attributes:
+      label: How was the wrong value marked?
+      options:
+        - Sendable without confirmation (no warning)
+        - Marked for confirmation, or flagged
+        - Missing or not recognised
+        - Terminal not recognised
+        - Don't know
+    validations:
+      required: true
+
+  - type: textarea
+    id: fields
+    attributes:
+      label: Wrong values
+      description: One row per wrong field. Fields are price, SCU, status, container sizes, commodity name, terminal.
+      value: |
+        | Commodity | Field | Read as | Correct value |
+        |---|---|---|---|
+        | | | | |
+    validations:
+      required: true
+
+  - type: upload
+    id: export
+    attributes:
+      label: Redacted crops and corrected values
+      description: >-
+        Attach the redacted panel crops and the corrected values from the
+        "Report a misread" export of the report editor (R-QA-5), but not
+        its separate reference-snapshot file. If your app version has no
+        export yet, attach a redacted crop of the shop panel instead. Do
+        not re-save or scale the image more than the redaction needs.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        Capture conditions decide which test class a misread belongs to. Leave a field empty if you do not know it.
+
+  - type: dropdown
+    id: capture-method
+    attributes:
+      label: Capture tool
+      options:
+        - Star Citizen screenshot key
+        - Xbox Game Bar (PNG)
+        - Win+PrtScn
+        - Snipping Tool
+        - NVIDIA overlay
+        - Steam
+        - ShareX
+        - OBS
+        - KDE Spectacle
+        - gamescope
+        - Other
+        - Don't know
+
+  - type: input
+    id: resolution
+    attributes:
+      label: Screenshot resolution
+      placeholder: 2560x1440
+
+  - type: dropdown
+    id: hdr
+    attributes:
+      label: HDR while capturing
+      options:
+        - Windows HDR off
+        - Windows HDR on, game HDR off
+        - Windows HDR on, game HDR on
+        - Linux
+        - Don't know
+
+  - type: input
+    id: ollama
+    attributes:
+      label: Ollama version and model
+      description: Only if the AI recognition was involved.
+
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: For example hover effects, scrolling, dimmed cards, unusual graphics settings.
+
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy and consent
+      description: >-
+        The screenshots show Star Citizen game content, which belongs to
+        Cloud Imperium and is not covered by this project's licence.
+      options:
+        - label: The attached images are redacted. They show no CURRENT BALANCE, no player names and no chat.
+          required: true
+        - label: I took these screenshots myself, or the person who took them agreed to their publication here.
+          required: true
+        - label: This report contains no UEX secret key, no app token and no reference-snapshot file.
+          required: true
+        - label: The project may add the attached crops and corrected values to its public test corpus (corpus/public/), following the rules in corpus/README.md. Without this box they are only used to investigate this report.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Self-check
+      options:
+        - label: I searched open and closed issues for the same misread.
+          required: true

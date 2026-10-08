@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/greluc/uex-datarunner-client/security/advisories/new
+    about: >-
+      Never report a security problem in a public issue. Use GitHub's
+      private vulnerability reporting; .github/SECURITY.md explains the
+      process.
+  - name: Wrong data on UEX, UEX account or DataRunner status
+    url: https://uexcorp.space
+    about: >-
+      Prices, terminals or commodities that are wrong on UEX itself, and
+      questions about your UEX account or DataRunner status, belong to
+      UEX Corp, not to this client.

@@ -1,0 +1,49 @@
+*                                   @greluc
+
+/.github/                           @greluc
+/.github/CODEOWNERS                 @greluc
+/.github/SECURITY.md                @greluc
+/.github/workflows/                 @greluc
+/.github/dependabot.yml             @greluc
+
+/CLAUDE.md                          @greluc
+/CONTRIBUTING.md                    @greluc
+/CODE_OF_CONDUCT.md                 @greluc
+/CLA.md                             @greluc
+/docs/cla-signatures.md             @greluc
+/LICENSE                            @greluc
+/LICENSES/                          @greluc
+/REUSE.toml                         @greluc
+/NOTICE                             @greluc
+/.gitleaks.toml                     @greluc
+/.gitattributes                     @greluc
+/.editorconfig                      @greluc
+**/MadeByTheCommunity_*.png         @greluc
+**/made-by-the-community*.png       @greluc
+
+/docs/plan/                         @greluc
+/docs/adr/                          @greluc
+/docs/release-process.md            @greluc
+/docs/dependency-pins.md            @greluc
+
+/settings.gradle.kts                @greluc
+/build.gradle.kts                   @greluc
+**/*.gradle.kts                     @greluc
+**/gradle.properties                @greluc
+*.lockfile                          @greluc
+/build-logic/                       @greluc
+/gradle/                            @greluc
+/gradle/libs.versions.toml          @greluc
+/gradle/verification-metadata.xml   @greluc
+/gradle/verification-keyring.keys   @greluc
+/gradle/wrapper/                    @greluc
+/gradlew                            @greluc
+/gradlew.bat                        @greluc
+/osv-scanner.toml                   @greluc
+
+/shared-kernel/                     @greluc
+/adapter-uex/                       @greluc
+/adapter-platform/                  @greluc
+/adapter-ocr/                       @greluc
+
+/corpus/                            @greluc

@@ -1,0 +1,24 @@
+Star Citizen Fan Kit artwork
+
+The files marked with LicenseRef-Fankit-Agreement are artwork from the Star
+Citizen Fan Kit of Cloud Imperium: the "Made By The Community" logo. They are
+copyright Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd.
+
+They are used under the Fankit Agreement and the Fan Kit Guidelines of Cloud
+Imperium, which the project owner, Lucas Greuloch, has accepted. This project
+does not modify them.
+
+Agreement:        Fankit Agreement, accepted by Lucas Greuloch
+Kit version:      Fankit_2025_11_19
+Acceptance date:  see docs/adr/0000-open-points.md
+
+The Fankit Agreement and the Fan Kit Guidelines are not reproduced here.
+
+These files are not covered by the GNU General Public License or by any other
+licence of the UEX Datarunner Client project. This project grants no rights in
+them; any use of them is subject to Cloud Imperium's terms.
+
+The logo is shown only together with the trademark notice of the Fan Kit
+Guidelines, section 2b, and the notice of the Fankit Agreement, clause 2(g).
+NOTICE, section 4, quotes both notices and lists every logo file with its
+SHA-256.
