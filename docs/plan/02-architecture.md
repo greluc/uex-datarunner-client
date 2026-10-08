@@ -74,7 +74,7 @@ uex-datarunner-client/
 ├── reference-data/         Reference Data: ReferenceSnapshot per environment, vocabulary indexes, fuzzy matcher, refresh/TTL logic; ports ReferenceDataFetcher, ReferenceDataCache
 ├── capture/                Capture: Capture, WatchedFolder, import use cases; ports CaptureSource, CaptureRepository
 ├── recognition/            Recognition: ImageRaster ops, locate, layout, parse, resolve, fuse, validate, stitch (→ StitchedScan), confidence; ports Reader, TextDetector
-├── reporting/              Reporting: Report aggregate (I1–I5), submission gate, deviation assessment, grouping (StitchedScans → Report), upload composition, review use cases; ports ReportRepository, ImageEncoder
+├── reporting/              Reporting: Report aggregate (I1–I6), submission gate, deviation assessment, grouping (StitchedScans → Report), upload composition, review use cases; ports ReportRepository, ImageEncoder
 ├── submission/             Submission: SubmissionJob, Cooldown, queue use cases; ports SubmissionGateway, SubmissionJobRepository, CooldownRepository
 ├── workflows/              Process managers across contexts: capture→recognition→reporting, reporting→submission, AI re-read (RecognitionPolicy, AI queue); event dispatch incl. outbox; ports AiJobRepository, EventOutbox, UpdateCheck
 │
@@ -172,7 +172,8 @@ public record Field<T>(@Nullable T value, FieldAssessment assessment, List<Findi
 
 public sealed interface Finding permits Finding.Ambiguous, Finding.OutOfTolerance, Finding.NoReference,
         Finding.Repaired, Finding.Inconsistent, Finding.Unreadable, Finding.PartialCard,
-        Finding.Superseded, Finding.UnvalidatedGameVersion, Finding.LowContrastCapture, Finding.PanelTooSmall { … }
+        Finding.Superseded, Finding.UnvalidatedGameVersion, Finding.LowContrastCapture, Finding.ClippedHighlights,
+        Finding.SmallText, Finding.TextTooSmall, Finding.Downscaled { … }   // Downscaled is info only
 
 @ValueObject
 public record ReportRow(CommodityId commodity, Field<PricePerScu> price, Field<ScuQuantity> scu,
@@ -187,7 +188,7 @@ public record Report(ReportId id, long version, Field<TerminalId> terminal, Trad
                      ReportState state) {   // version: optimistic concurrency (user edit vs. AI re-read)
     public Outcome<Report> confirm(CommodityId commodity, FieldKind field) { … }
     public Outcome<Report> correct(CommodityId commodity, FieldKind field, Object newValue) { … } // revokes confirmation (I3)
-    public Outcome<Report> release(SubmissionGate gate) { … }                                  // checks I1, I2, I5
+    public Outcome<Report> release(SubmissionGate gate) { … }                                  // checks I1, I2, I5, I6
 }
 
 public sealed interface ReportState permits Draft, Released, Queued, WaitingForCooldown, Submitted,
@@ -196,10 +197,11 @@ public sealed interface ReportState permits Draft, Released, Queued, WaitingForC
 public sealed interface Outcome<T> permits Outcome.Ok, Outcome.Refused {}
 ```
 
-The domain model (Bounded Contexts, aggregates, invariants I1–I5, events, Ubiquitous Language) is in [11-ddd-and-tdd.md](11-ddd-and-tdd.md). This section only shows its form in code.
+The domain model (Bounded Contexts, aggregates, invariants I1–I6, events, Ubiquitous Language) is in [11-ddd-and-tdd.md](11-ddd-and-tdd.md). This section only shows its form in code.
 
 - **Money:** `BigDecimal`, never `double`. Since SC 4.7 the game shows whole aUEC; the API accepts float.
 - **`ImageRaster`** is a final class (not a record): defensive copy of the `int[]` on construction, no raw-array accessor, explicit `equals`/`hashCode` over the pixels. It is the one documented exemption from the "domain model classes are records" rule.
+- **Decoding is not recognition:** format detection by magic bytes, colour conversion to sRGB and the decode-time reduction above the pixel budget (R-CAP-8, R-OCR-17) happen in `adapter-files` while decoding; together with upload encoding they are the only pixel operations outside the core. HDR-encoded files never become an `ImageRaster` (they are set aside).
 - **Pattern matching:** Pipeline results are `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) and are evaluated with `switch` and record patterns.
 
 ## 4. Recognition pipeline (`recognition`, readers in `adapter-ocr`)
@@ -210,9 +212,9 @@ Locate needs a coarse OCR for the text anchors. So that `recognition` does not d
 
 | Stage | Input → output | Key techniques |
 |---|---|---|
-| 1 Locate | `ImageRaster` → panel quad(s) | Box-filter downscale; color and luminance anchors (theme-agnostic); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); homography to normalized size; manual fallback |
+| 1 Locate | `ImageRaster` → panel quad(s), text-size and tone assessment | Box-filter downscale (factor ≤ 1, native-resolution retry, tiling for very wide frames; 07 §2.1 item 1); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); luma-gradient frame edges with relative thresholds (no theme colour); homography to a working size set by the reference glyph height; text-size gate (R-OCR-17); per-panel tone analysis and normalization (R-OCR-18); manual fallback |
 | 2 OCR | Normalized image → `List<TextBox>` (polygon, text, score) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime 1.30.0, full dictionary |
-| 3 Layout | TextBoxes → `List<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; field assignment relative to the card; tab recognition via color intensity of the tab background |
+| 3 Layout | TextBoxes → `List<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; field assignment relative to the card; tab recognition by comparing the tab fills (relative luminance and saturation) with the section text as witness |
 | 4 Resolution | Cards → commodity/terminal candidates | Normalization (upper/lower case, whitespace, ligatures) plus weighted Levenshtein/Jaro-Winkler against the vocabulary, terminal's assortment preferred |
 | 5 Validation | Candidates → `Field<T>` with findings | Number parser, UEX prior, `data_parameters` tolerances, confusable repair, glyph topology veto, status↔SCU consistency |
 | 6 Stitching | Scans of one group → `StitchedScan` (a `recognition` type) | Merge via `CommodityId` (simpler than in basetool thanks to resolution); edge card rule; later capture wins on conflict (`Superseded`). **Grouping** (terminal, side, environment, time window) and building the `Report` happen in `reporting` (`ReportGrouper`), which consumes `StitchedScan`s. |
@@ -226,14 +228,14 @@ public record WatchedFolder(FolderLocation location, boolean enabled, ImportMode
 public enum ImportMode { MANUAL, AUTOMATIC }
 ```
 
-- **Working copies** (R-CAP-7): After locate, the normalized panel crops are stored in the app data directory; all later steps (review, VLM, upload) work on them.
+- **Working copies** (R-CAP-7): After locate, the perspective-corrected panel crops are stored in the app data directory at about 1:1 source scale (not at the working size, so re-reads keep the source legibility; 07 §2.1 item 4); all later steps (review, VLM, upload) work on them.
 - The types above live in `capture`; **`FolderScanner`, `FolderWatcher` and `StableFileGate` live in `adapter-files`** (they touch the file system) and deliver new files through the `CaptureSource` port.
-- **`FolderScanner`**: It lists the candidates (`Files.walk` or `Files.list`, extension filter), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files. It is used by the "Import" button and the catch-up scan.
+- **`FolderScanner`**: It lists the candidates (`Files.walk` or `Files.list`, extension filter plus the known HDR container extensions, R-CAP-8), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files. It is used by the "Import" button and the catch-up scan.
 - **`FolderWatcher`** per folder in mode `AUTOMATIC`:
   - `WatchService` on a virtual thread; on `OVERFLOW` a full scan follows.
   - Subfolders (option `recursive`) are registered one by one, including newly created ones (Linux inotify has no recursive watch; the Windows tree modifier is an unsupported JDK API and is not used).
   - If registration fails or the file system is known to be unreliable (FUSE and network mounts such as SMB/NFS; a Wine prefix is a normal local directory where inotify works), polling is used instead (`FolderScanner` every 2 s). Polling can be forced per folder.
-- **`StableFileGate`**: waits until size and mtime are stable for a quiet period and `ImageIO` decodes the file; then hands it over to the capture queue.
+- **`StableFileGate`**: waits until size and mtime are stable for a quiet period. A file whose content (magic bytes) is an unsupported format (R-CAP-8) is then handed over at once as "set aside" with its reason, without decode retries. A supported format must decode; otherwise it is retried (R-CAP-1c). Decoded files go to the capture queue.
 - Settings are applied live: if a folder switches between MANUAL and AUTOMATIC, the watcher starts or stops without restarting the app.
 
 ## 4b. Optional AI recognition (`adapter-vlm`, `adapter-platform`, control in `workflows`)

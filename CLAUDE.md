@@ -132,7 +132,11 @@ Valid from M0 once the build exists:
   - If there are several candidates, the app never preselects one silently.
 - **Do not hard-code UEX values:** game version, status levels and tolerances come from the API or the cache, never from constants (see F14).
 - Free OCR strings never reach the API; only resolved IDs from the UEX vocabulary.
-- **Resolution and HDR independence:** no absolute pixel thresholds or absolute RGB colour thresholds in recognition code; geometry relative to the normalized panel, colours via hue/relative saturation after per-panel tone normalization (R-OCR-17, R-OCR-18). Every new recognition rule is evaluated per corpus class (resolution, HDR on/off).
+- **Resolution and HDR independence:**
+  - No absolute pixel thresholds or absolute RGB colour thresholds in recognition code. The only exception is the R-OCR-17 legibility limits on the price-digit cap height in source pixels (typed settings record).
+  - Geometry relative to the normalized panel; colour decisions relative within the panel (comparisons, hue/relative saturation after per-panel tone analysis) (R-OCR-17, R-OCR-18).
+  - Formats are detected by magic bytes; HDR-encoded files (PQ/HLG `cICP`, JPEG XR, AVIF, EXR) are never read as sRGB (R-CAP-8).
+  - Every new recognition rule is evaluated per corpus class (resolution, text-height band, HDR, capture method) and must keep the metamorphic gate green (07 §4).
 - **Image intake:**
   - Images come from **user-defined folders**, by default only when the user clicks "Import". Automatic import when new files appear is opt-in per folder (WatchService plus polling fallback).
   - Read files only once they are completely written (stable-file gate).
@@ -152,12 +156,12 @@ Valid from M0 once the build exists:
 
 **Way of working: TDD.** In the core modules no production code is written without a previously failing test (red → green → refactor). New use cases start outside-in with an acceptance test at the application-service level of the context module (or `workflows`), tagged with the requirement ID (`@Tag("R-…")`). Port fakes from `java-test-fixtures` take precedence over Mockito. For OCR heuristics a spike in the eval harness is allowed; before merging, the behaviour is pinned down with failing golden and unit tests (11 §B1). Mutation testing (PIT) checks that the tests actually catch defects.
 
-**Modelling: DDD.** Domain terms exactly as in 11 §A1. Contexts as modules; other aggregates only by ID; aggregates are immutable records, commands return an `Outcome` (new state + events, or a refusal reason). The invariants of `Report` (I1–I5) belong in the aggregate, not in the UI or services. UEX, game and Ollama formats are translated only in the adapters (anti-corruption layer).
+**Modelling: DDD.** Domain terms exactly as in 11 §A1. Contexts as modules; other aggregates only by ID; aggregates are immutable records, commands return an `Outcome` (new state + events, or a refusal reason). The invariants of `Report` (I1–I6) belong in the aggregate, not in the UI or services. UEX, game and Ollama formats are translated only in the adapters (anti-corruption layer).
 
 - **Unit:** parsers (price, SCU, status, cargo sizes) with jqwik property tests; fuzzy matcher; validation rules; stitching.
 - **API:** WireMock with recorded (anonymised) responses. A live test runs only manually, opt-in via `UEXDR_LIVE_TEST=1` and with `is_production=0`.
 - **OCR:**
-  - Synthetic images for locate and layout.
+  - Synthetic images for locate and layout; synthetic class variants (scale, tone, canvas, JPEG) and the metamorphic gate (07 §4).
   - The golden corpus via `UEXDR_CORPUS_DIR`; without the variable the test is skipped, never falsely green (`Assumptions.assumeTrue`).
   - Digest test for model and runtime updates.
 - **"Silently wrong" metric** (wrong and marked as confident): regressions are blockers.
