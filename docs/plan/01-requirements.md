@@ -49,6 +49,7 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 | R-CAP-5 | Capture time from the file name (regex, interpreted in the system time zone), fallback to `lastModified`. The app detects duplicates via content hash. | M |
 | R-CAP-6 | Optional cleanup function: delete or archive originals after successful submission. Default is **off**. | S |
 | R-CAP-7 | **Working copies:** Per capture, the app stores the perspective-corrected panel crops (not the full-screen screenshot) in its data directory. Upload, AI re-check and review therefore also work if the original was moved or deleted. Retention: up to 7 days after successful submission (configurable). | M |
+| R-CAP-8 | **Image formats and colour:** PNG (8 and 16 bit per channel), JPEG and BMP are read; images are converted to sRGB 8-bit for recognition (16-bit PNG are scaled, embedded ICC profiles are honoured if present). **JPEG XR (`.jxr`, HDR captures of the Xbox Game Bar) is not read**; such files are listed with the message "HDR format not supported – use the PNG/SDR copy" (assumption A16). | M |
 
 ## Manual capture (MAN)
 
@@ -81,6 +82,8 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 | R-OCR-14 | **Neighbor names** (distinguished only by a short token such as "SIZE 1"/"SIZE 7") are only assigned automatically if the distinguishing token was read exactly, otherwise `Ambiguous` (07 §2.5). | M |
 | R-OCR-15 | Dimmed cards (hypothesis A14: not buyable) are read with their own contrast normalization and not discarded as a partial card. | S |
 | R-OCR-16 | **Not a terminal screenshot:** images that do not show a commodity terminal (other UI, wrong tab, "YOUR INVENTORIES" selection elsewhere) are recognized as such and set aside with a notice and a "process anyway / crop manually" action – never a generic "failed to process" error (fix for F7). | M |
+| R-OCR-17 | **Resolution and scale independence:** recognition works for any capture resolution from 1920×1080 up to 3840×2160 and for ultrawide (21:9, 32:9) and windowed captures. The panel is located via text anchors and normalized by homography to a fixed working size; all layout tolerances are relative to that size, never absolute pixels. Because the panel size also depends on distance to the terminal and FOV, the app measures the **effective text height** of the located panel; below a minimum (start value: cap height 10 px in the original, to be calibrated) the scan gets the finding "panel too small – move closer" instead of guessing. | M |
+| R-OCR-18 | **HDR and tone variations:** recognition works with captures taken with HDR on or off. Before recognition, each located panel is **normalized per panel** (robust black/white points from percentiles, then contrast stretch on the luminance/max channel); colour-based steps (tab, status colour, hover) use hue/relative saturation instead of absolute RGB thresholds. Washed-out captures (raised black level, compressed range – typical for SDR screenshots of an HDR desktop) are detected from the histogram; if normalization cannot restore enough contrast, the scan gets the finding "low-contrast capture (HDR?)" with a hint on how to capture correctly. | M |
 
 ## Optional AI recognition (VLM)
 
@@ -166,8 +169,8 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | ID | Requirement | Prio |
 |---|---|---|
 | R-QA-1 | Golden corpus: real screenshots plus hand-transcribed expected values (JSON). **Storage location outside the public repo** if the images contain private data (balance!). If necessary, check in only redacted versions. | M |
-| R-QA-2 | The corpus covers at least: Buy and Sell tab, scrolling with and without overlap, red/orange themes (Patch City), blue theme with uppercase font (Pyro Gateway Stanton – first entry available), Pyro, Nyx, Gateway, long and nearly identical names, dimmed cards, 4K/1440p/1080p/ultrawide | M |
-| R-QA-3 | Eval CLI: field accuracy per field type, share of "silently wrong" (wrong and marked as confident) – **target ≈ 0**, share of "flagged", runtime. The value runs in CI as a regression test (thresholds that may only rise). | M |
+| R-QA-2 | The corpus covers at least: **resolutions 1920×1080, 2560×1440, 3840×2160, 3440×1440 (21:9), 5120×1440 (32:9) and one windowed capture; HDR on and off for every capture method in use (SC screenshot key, Xbox Game Bar PNG, Snipping Tool, Steam)**; Buy and Sell tab, scrolling with and without overlap, red/orange themes (Patch City), blue theme with uppercase font (Pyro Gateway Stanton – first entry available), Pyro, Nyx, Gateway, long and nearly identical names, dimmed cards, 4K/1440p/1080p/ultrawide | M |
+| R-QA-3 | Eval CLI: field accuracy per field type **and per corpus class (resolution, HDR on/off, theme)** – a regression in any single class fails the check, share of "silently wrong" (wrong and marked as confident) – **target ≈ 0**, share of "flagged", runtime. The value runs in CI as a regression test (thresholds that may only rise). | M |
 | R-QA-4 | OCR digest test: hash of all raw OCR outputs over the corpus, so that model or runtime updates happen deliberately | S |
 
 ## Non-functional (NF)
@@ -219,3 +222,4 @@ Details, threat model and implementation: [10-supply-chain-security.md](10-suppl
 | A13 | The terminal theme (blue vs. orange) correlates with the star system (e.g. Gateway station on the Stanton vs. Pyro side). Used at most as a weak hint. |
 | A14 | A card is dimmed if the available stock is smaller than the smallest offered container size (IRON 4 SCU < 8; Fluorine 2 < 8; DynaFlex 13 < 16). To be confirmed on the corpus. |
 | A15 | `data_parameters.commodity.price_variation` is a percentage and `scu_variation` an absolute SCU amount. Units are unconfirmed (06 open point 6); until verified, the thresholds are configurable and default to conservative values. |
+| A16 | How Star Citizen's own screenshot key stores images while the game outputs HDR (tone-mapped SDR, clipped SDR, or HDR data) is **not documented**; the SC wiki only states that experimental HDR output exists since Alpha 3.20. Windows SDR screenshots of an HDR desktop are commonly reported as washed out; the Xbox Game Bar additionally stores an HDR `.jxr` file. To be verified in M2 with paired captures (HDR on/off, same terminal) for each capture method. |

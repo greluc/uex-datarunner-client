@@ -12,7 +12,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 
 | File | Contents |
 |---|---|
-| `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A15** (unverified!) |
+| `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A16** (unverified!) |
 | `docs/plan/02-architecture.md` | Modules (bounded contexts + adapters), context map, domain model, threading |
 | `docs/adr/` | Architecture decision records (ADR-002: modules by bounded context) |
 | `docs/plan/03-language-decision.md` | ADR Java vs. Rust, including licence note on basetool (GPL-3.0) |
@@ -130,6 +130,7 @@ Valid from M0 once the build exists:
   - If there are several candidates, the app never preselects one silently.
 - **Do not hard-code UEX values:** game version, status levels and tolerances come from the API or the cache, never from constants (see F14).
 - Free OCR strings never reach the API; only resolved IDs from the UEX vocabulary.
+- **Resolution and HDR independence:** no absolute pixel thresholds or absolute RGB colour thresholds in recognition code; geometry relative to the normalized panel, colours via hue/relative saturation after per-panel tone normalization (R-OCR-17, R-OCR-18). Every new recognition rule is evaluated per corpus class (resolution, HDR on/off).
 - **Image intake:**
   - Images come from **user-defined folders**, by default only when the user clicks "Import". Automatic import when new files appear is opt-in per folder (WatchService plus polling fallback).
   - Read files only once they are completely written (stable-file gate).
