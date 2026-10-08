@@ -48,7 +48,7 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 4. **Homography** to a normalized width (e.g. 1000 px for the shop panel), then bilinear resampling.
 5. **Theme-agnostic:** For recognition the max channel or luminance is used; color only serves for tab, status and hover.
 6. **Resolution and scale (R-OCR-17):**
-   - Anchor search runs on a box-filtered pyramid (1/4, 1/2) so that 1080p and 4K captures produce anchors of similar pixel size.
+   - Before the anchor search the image is box-filtered down to a **target height** (start value 1080 px; i.e. factor 1/2 for 4K, 1 for 1080p), so that anchors have similar pixel sizes across resolutions. (Fixed factors for all inputs would keep the size ratio and were an error in an earlier version.)
    - The homography maps the panel to a **fixed working size**; layout tolerances are fractions of that size.
    - Effective text height is measured on the anchors in the original image. Below the minimum, the scan is flagged "panel too small" (upscaling cannot invent detail; it may only help slightly above the minimum).
    - Ultrawide: the panel can sit far off-centre; the anchor search covers the full width, there is no centre crop.
@@ -78,13 +78,14 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 - Delimit cards via the recurring structure: name at the top left, "… SCU" at the top right, price "/SCU" on the right below it, label "AVAILABLE CARGO SIZE" at the bottom.
 - Row clustering via vertical overlap, columns via x centers. Tolerances are given **relative** to the normalized width, not as fixed pixels.
 - Screen order (`screenOrder`) via the y position.
+- **Currency glyph separation:** inside the price token, the character boxes are split at gaps; a leading box whose width/height ratio and position match the `¤` glyph profile (calibrated on the corpus) is marked as the currency glyph.
 
 ### 2.4 Field parsers (pure, property-tested)
 
 - **Price** (procedural, not a single regex; an earlier regex version rejected e.g. `96705/SCU` and numbers without separators):
   1. Strip the suffix `/SCU` (tolerant: `/5CU`, `SCU` without slash). If it is missing, the token is not a price.
   2. Remember an optional suffix `K`/`M`.
-  3. If the first character is a non-digit character (`¤`, `@`, `¢`, …), it is discarded. If it is a digit from the confusion set of the currency symbol (`9`, `8`, `0`, to be determined on the corpus), **two candidates** are created: with and without this digit. If the geometric separation (§2.1) yields a separate glyph box in front of the number, only "without" is used.
+  3. If the first character is a non-digit character (`¤`, `@`, `¢`, …), it is discarded. If it is a digit from the confusion set of the currency symbol (`9`, `8`, `0`, to be determined on the corpus), **two candidates** are created: with and without this digit. If the geometric separation (§2.3) yields a separate glyph box in front of the number, only "without" is used.
   4. Evaluate separators structurally:
      - Groups of exactly 3 digits after `,`/`.`/space count as thousands separators.
      - A last separator followed by 1–2 digits is decimal.
@@ -115,11 +116,11 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
    - **Real price changes** are thus neither blocked nor silently "repaired back" to the old value.
    - **Without a prior** (R-VAL-2a): commodity average with double tolerance; otherwise no repair.
 4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`.
-5. **Glyph topology** (hole counting for 0/6/8/9, concept from basetool, reimplemented) works only as a **veto** against repairs.
+5. **Glyph topology** (hole counting for 0/6/8/9, concept from basetool, reimplemented) classifies a digit or **abstains**. Its role is defined once here and applies everywhere: a classification that **agrees** with a repair candidate counts as an independent witness (R-VAL-2b); a classification that **contradicts** it is a veto; abstention counts as neither.
 
 ### 2.5b Stitching without overlap
 
-1. Captures of the same terminal, the same side and the same time window are sorted by **scrollbar position**. The fallback is the capture time.
+1. Captures of one group are sorted by **scrollbar position** (grouping by terminal, side, environment and time window is done by `ReportGrouper` in `reporting`, R-OCR-13). The fallback is the capture time.
 2. Cards are merged via the resolved `CommodityId`. If images overlap, that is an additional witness (values read twice must match), but not a prerequisite.
 3. **Gap check:**
    - If the scrollbar sections do not cover the list without gaps, or if commodities are missing that UEX lists for the terminal, the report shows "possibly incomplete" together with the missing names.
@@ -134,7 +135,7 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 | Read identically by OCR and VLM, validated | 0.97 |
 | Clean read (no unresolved confusable digit) | 0.95 |
 | Repaired, unambiguous, **with independent witness** | 0.85 |
-| Single-reader value (other reader unreadable), validated | 0.85 |
+| VLM-only value (OCR unreadable), validated | 0.85 |
 | Repaired only via the prior (without witness), or confusable digit without any prior to check against (R-VAL-2a) | 0.75 → **confirm** |
 | Ambiguous / conflict between scans or readers | 0.60 → **select** |
 | Unreadable / implausible | 0.30 → **correct** |
@@ -146,7 +147,7 @@ Confidence deliberately does **not** depend on whether a value lies within the p
 - *Confidence* says how reliably the value was **read**.
 - *Deviation* says how strongly the value deviates from the **previous UEX state** (R-UI-10).
 
-Both are computed separately (`DeviationLevel`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`, each with the flag `referenceStale`) and displayed separately. For the submission gate the **stricter** of the two applies: `MAJOR` always requires a confirmation, even with high reading confidence. A transposed number that was read cleanly but deviates strongly from the UEX value is therefore never sent unchecked.
+Both are computed separately (`Deviation`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`) and displayed separately. **Stale reference rule** (defined once here): if the prior is older than the staleness limit (default 7 days, R-UI-11), the level is lowered by one step (`MAJOR` → `MINOR`, `MINOR` → `EQUAL`) and the field shows "reference outdated"; `NO_REFERENCE` stays. The lowered level is the one that counts for I2. For the submission gate the **stricter** of the two applies: `MAJOR` always requires a confirmation, even with high reading confidence. A transposed number that was read cleanly but deviates strongly from the UEX value is therefore never sent unchecked.
 
 The report confidence equals the worst mandatory field, not the mean, so that individual errors are not "averaged away".
 
@@ -165,7 +166,7 @@ The numbers come from the refinery domain; whether they transfer is checked by t
 1. While the game is running, the classic OCR delivers results immediately. Reports with warnings are queued for the AI; the user can still correct and send them manually at any time.
 2. When the game is closed (hysteresis), the AI queue processes the flagged or all **Draft** reports (never released, queued or submitted ones). The input is the perspective-corrected panel crops (shop panel, location field), limited to an edge of approx. 1000–1500 px.
 3. The result runs through the parser and vocabulary resolution (identical to OCR). Then OCR and VLM are **fused per field**, and only the fused result is validated once (prior, consistency, confidence). Afterwards the report is re-stitched.
-4. If the game starts, the request is aborted and the model is unloaded; the jobs are retained.
+4. If the game starts (mode Automatic), the request is aborted and the model is unloaded; the jobs are retained.
 
 **Prompt** (`adapter-vlm/src/main/resources/prompts/shop_panel_v1.txt`, versioned):
 
@@ -189,9 +190,9 @@ The numbers come from the refinery domain; whether they transfer is checked by t
 | OCR | VLM | Result |
 |---|---|---|
 | Value a | same value a | a, confidence 0.97 "double-confirmed" |
-| a | b ≠ a, differing in only one confusable position | Glyph topology and prior decide unambiguously, otherwise `Ambiguous` (both candidates in the UI) |
-| a | b, strongly different | The candidate within the prior band wins only if exactly one lies within it; otherwise `Ambiguous` |
-| unreadable | b | b as candidate; after validation 0.85 (single-reader value) if plausible, otherwise below the send threshold |
+| a | b ≠ a, differing in only one confusable position | If glyph topology classifies the digit (witness), that candidate wins with 0.85; if only the prior favours one candidate, it is proposed with **0.75 (confirm)** – never sendable on the prior alone (R-VAL-2b); otherwise `Ambiguous` (both candidates in the UI) |
+| a | b, strongly different | `Ambiguous` (both candidates in the UI); the candidate within the prior band is pre-selected as a suggestion, but the field stays below the send threshold |
+| unreadable | b | b as candidate; after validation 0.85 if plausible (this 0.85 applies only to a value read by the **VLM alone**), otherwise below the send threshold |
 | a | unreadable | unchanged (OCR confidence) |
 | Commodity/terminal resolution differs | | always `Ambiguous` → mandatory selection |
 

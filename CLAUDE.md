@@ -15,6 +15,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 | `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A16** (unverified!) |
 | `docs/plan/02-architecture.md` | Modules (bounded contexts + adapters), context map, domain model, threading |
 | `docs/adr/` | Architecture decision records (ADR-002: modules by bounded context) |
+| `docs/release-process.md` | Versioning, release checklist, upgrade/downgrade, SC patch-day and UEX API-change procedures |
 | `docs/plan/03-language-decision.md` | ADR Java vs. Rust, including licence note on basetool (GPL-3.0) |
 | `docs/plan/05-datarunner-bug-analysis.md` | Known bugs of the predecessor (F1–F30) and our fixes |
 | `docs/plan/06-uex-api.md` | API notes; **unverified points are marked** |
@@ -53,7 +54,7 @@ If a change contradicts a requirement or architecture decision, update the docum
 | Format | Spotless with google-java-format (Google Java Style, default style, 2-space indent, 100 columns) | Spotless plugin 8.10.3 / google-java-format 1.37.0 |
 | Tests | JUnit Jupiter, AssertJ, Mockito, WireMock, jqwik, TestFX | 6.1.3 / 3.27.7 / 5.24.0 / 3.13.2 / 1.10.1 / 4.0.18 |
 | Mutation testing | PIT, Gradle plugin `info.solidsoft.pitest`, `pitest-junit5-plugin` (verify compatibility with JUnit 6 and JDK 27 in M0) | 1.30.0 / 1.19.0 / 1.2.3 |
-| Architecture/coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (verify JDK 27 support in M0) |
+| Architecture/coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (both read Java 27 class files – verified) |
 | Supply chain | CycloneDX Gradle plugin `org.cyclonedx.bom`; OSV-Scanner; GitHub Actions `gradle/actions` (wrapper-validation, dependency-submission), `actions/attest-build-provenance`, `actions/setup-java`, `actions/checkout` | 3.5.0; v2.6.0; v6.4.0, v4.2.2, v6.0.1, v7.0.1 (pin by SHA) |
 | Gradle plugins | `net.ltgt.errorprone` 5.1.1, `org.beryx.jlink` 4.1.1, `com.github.ben-manes.versions` 0.65.0, `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | |
 
@@ -97,10 +98,11 @@ Valid from M0 once the build exists:
 - **Concurrency:**
   - **Virtual threads** for I/O (`Executors.newVirtualThreadPerTaskExecutor()`).
   - CPU-heavy OCR runs in a **bounded** platform thread pool.
-  - `ScopedValue` instead of `ThreadLocal` for context.
-  - UI updates only via `Platform.runLater`.
+  - `ScopedValue` instead of `ThreadLocal` for context (exception: the logging MDC, set at task start from the scoped context and cleared at task end).
+  - UI updates only via an injected UI executor (`Platform::runLater` in production), so ViewModels are testable without a toolkit.
+  - JNI calls (SQLite, ONNX) pin virtual threads; run them on bounded platform executors.
 - **Collections and streams:** sequenced collections (`getFirst()`/`getLast()`/`reversed()`), stream gatherers where they make code clearer. Immutable collections (`List.of`, `Stream.toList()`).
-- **Native access:** **FFM API** (`java.lang.foreign`) for native calls (Credential Manager, libsecret); no JNA, no JNI.
+- **Native access:** **FFM API** (`java.lang.foreign`) for our own native calls (Credential Manager, libsecret – prefer the non-variadic `secret_password_storev_sync`/`lookupv_sync`); no JNA or JNI in our own code. Libraries (ONNX Runtime, sqlite-jdbc, JavaFX) use JNI; all native-using modules get `--enable-native-access` (JEP 472).
 - **Money and units:**
   - Money as `BigDecimal`, never `double`.
   - Time as `java.time` (`Instant` internally, `Duration` for TTL and cooldown).
@@ -114,7 +116,7 @@ Valid from M0 once the build exists:
 
 ## Architecture guardrails
 
-- **Modules by bounded context + ports & adapters** (ADR-002): core = `shared-kernel`, the context modules `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`, plus `workflows` for cross-context processes (no JavaFX, HTTP, SQL, ONNX, file system; time via `Clock`). Adapters (`adapter-uex`, `-storage`, `-ocr`, `-vlm`, `-files`, `-platform`) are cut by technology and implement the ports of the context modules. `ui` talks only to the context modules' application APIs and `workflows`; `app` is a pure composition root. Dependencies only along the context map in `02-architecture.md` §2, acyclic, enforced by Gradle, JPMS and ArchUnit. `submission` never depends on `reporting`; feedback goes through `workflows`. `shared-kernel` holds only value objects/IDs used by at least two contexts.
+- **Modules by bounded context + ports & adapters** (ADR-002): core = `shared-kernel`, the context modules `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`, plus `workflows` for cross-context processes (no JavaFX, HTTP, SQL, ONNX, file system; time via `Clock`). Adapters (`adapter-uex`, `-storage`, `-ocr`, `-vlm`, `-files`, `-platform`) are cut by technology and implement the ports of the context modules. `ui` talks only to the context modules' application APIs and `workflows`; `app` is a pure composition root. Dependencies only along the context map in `02-architecture.md` §2, acyclic, enforced by Gradle, JPMS and ArchUnit. `submission` never depends on `reporting`; feedback goes through `workflows`. `shared-kernel` holds only IDs, value objects, `Outcome`, the event base and marker annotations used by at least two contexts. Context modules export `api` and `api.model`; aggregate constructors may only be called by the aggregate and the persistence mapper (ArchUnit).
 - Modules export only their `api` package; implementation lives in `internal`. No technology types (DTOs, `ResultSet`, `OrtSession`, JavaFX) across module boundaries.
 - Package-by-feature inside a module; no service locators, no static singletons, no global mutable state.
 - The core uses no `java.awt`, `javax.imageio` or `java.nio.file`; images enter as `ImageRaster`, folders as `FolderLocation`.
@@ -136,7 +138,8 @@ Valid from M0 once the build exists:
   - Read files only once they are completely written (stable-file gate).
   - Every file is processed only once (processed-file register with hash).
   - Never add or remove folders silently.
-- The upload screenshot contains only the shop panel and the location field; **the balance is always redacted** (test mandatory).
+- The upload screenshot contains only the shop panel and the location field; **the balance is always redacted** (test mandatory). Manual attachments before automatic locate exists (M1) are user-selected regions that require a confirmed full-size preview.
+- **Submission lifecycle:** requests with unknown outcome are never retried automatically and never sent to the fallback host; partial `ids_reports` are never treated as success; error classes per R-SUB-11; observation age limits per R-VAL-6.
 - **Optional AI recognition (VLM/Ollama):**
   - Classic OCR is always the primary path; the app must be fully functional without Ollama.
   - In "Automatic" mode the VLM runs **only while the game is closed**. When the game starts, the request is cancelled and the model unloaded immediately (`keep_alive: 0`); jobs are never lost.

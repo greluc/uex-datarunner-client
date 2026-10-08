@@ -18,24 +18,24 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 | Rule | Enforcement |
 |---|---|
 | Ports & Adapters: the core modules (`shared-kernel`, the context modules, `workflows`) know no technology | JPMS: core modules `requires` only other core modules (along the context map) and JSpecify. **ArchUnit:** no classes from `javafx..`, `java.awt..`, `javax.imageio..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..`, `java.nio.file..` in the core (images as `ImageRaster`, locations as `FolderLocation`). |
-| Modules cut by bounded context ([ADR-002](../adr/0002-modules-by-bounded-context.md)); dependency direction as in the context map in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().should().beFreeOfCycles()` also for packages **within** a module |
-| Every module has a narrow public API | `module-info.java` exports only `…<module>.api` (or deliberately chosen packages); the implementation lives in `…<module>.internal`; ArchUnit: no access to other modules' `internal` packages |
-| Adapters do not depend on each other; they are leaves | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |
+| Modules cut by bounded context ([ADR-002](../adr/0002-modules-by-bounded-context.md)); dependency direction as in the context map in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().matching("..<module>.(*)..").should().beFreeOfCycles()` also for packages **within** a module |
+| Every module has a narrow public API | `module-info.java` exports only `…<module>.api` and `…<module>.api.model` (types that ports and other contexts must name); the implementation lives in `…<module>.internal`; ArchUnit: no access to other modules' `internal` packages |
+| Adapters do not depend on each other; they are leaves (only `app` and the second composition root `tools/ocr-eval` may depend on adapters) | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |
 | `shared-kernel` contains only value objects, IDs, `Outcome`, event base and marker annotations used by at least two contexts | ArchUnit: no aggregates, services or ports in `shared-kernel`; CODEOWNERS review for every change |
 | Cross-context processes only in `workflows`; context modules never call each other's application services backwards against the context map | Gradle/JPMS (missing dependency = does not compile) plus ArchUnit |
 | No passing of technology types across module boundaries (DTOs, `ResultSet`, `OrtSession`, JavaFX types) | Ports use only types of their context module or `shared-kernel`; adapters map at the boundary (ArchUnit: port signatures only with core types) |
 | Package-by-feature within a module (e.g. `recognition.locate`, `recognition.parse`, `recognition.stitch`) instead of package-by-layer | Review checklist |
-| `app` contains only wiring and startup | ArchUnit: no class in `app` except `Main`, `*Wiring`/`*Module` and configuration loaders; line budget as a review hint |
+| `app` contains only wiring and startup | ArchUnit: no class in `app` except `Main`, `*Wiring`/`*Module` and the bootstrap loader (data directory, portable marker; user settings go through the `*SettingsStore` ports in `adapter-files`); line budget as a review hint |
 | No service locator, no static singletons, no global mutable state | ArchUnit: no non-final `static` fields; `static final` only for loggers and immutable constants |
 
 ## 3. Clean Code
 
 | Rule | Enforcement |
 |---|---|
-| **Meaningful names** in the domain language of the glossary (01 "Terms"): `Capture`, `Scan`, `Report`, `Prior`, `Finding` – the same everywhere | Review; the glossary is binding |
+| **Meaningful names** in the ubiquitous language of [11 §A1](11-ddd-and-tdd.md) (e.g. `Capture`, `Scan`, `Report`, `PricePrior`, `Finding`) – the same everywhere | Review; 11 §A1 is binding |
 | **One responsibility** per class and method. Guideline values: methods ≤ ~30 lines, classes ≤ ~300 lines. Exceeding them requires a reason. | Review checklist (guideline, not dogma) |
 | **No magic numbers:** thresholds (send threshold, tolerances, quiet periods, hysteresis, grouping windows) live in typed settings records with documented defaults, not scattered across the code. UEX values come from `ReferenceSnapshot`. | Review; Error Prone; tests check the defaults in one place |
-| **Immutable by default:** records, `List.copyOf`, no setters in the core; aggregates are records too (commands return new state + events, 11 §A6) | ArchUnit: domain-model classes in the core modules are records, enums, sealed interfaces, ports (interfaces) or annotations; DDD rules from 11 §A8 |
+| **Immutable by default:** records, `List.copyOf`, no setters in the core; aggregates are records too (commands return new state + events, 11 §A6) | ArchUnit: domain-model classes in the core modules are records, enums, sealed interfaces, ports (interfaces) or annotations (documented exemption: `ImageRaster`); the canonical constructor of an aggregate may only be called by the aggregate itself and the persistence mapper in `adapter-storage`; DDD rules from 11 §A8 |
 | **No boolean control parameters** in public APIs (`process(x, true)`) → enums or separate methods | Review |
 | **Null-free:** JSpecify `@NullMarked`, NullAway at error level | The build fails on violations |
 | **Errors are values:** expected errors as sealed `Result`/`Finding` types, no exceptions for control flow; never swallow exceptions | Error Prone (`CatchAndPrintStackTrace`, unused return values via `@CheckReturnValue`), review |
@@ -51,7 +51,7 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
   - technically expected (network down, file locked) → retry or notice
   - programming errors → exception, log at ERROR, diagnostics export
 - **User texts** only via keys in ResourceBundles, with English texts; error codes are mapped to keys centrally (one table, covered by tests: every known UEX code has a text).
-- **Logging:** SLF4J, context via MDC (`captureId`, `reportId`), no logging of secrets, image data or complete payloads at INFO. A test proves that the masking filter takes effect.
+- **Logging:** SLF4J, context via MDC (`captureId`, `reportId`) – the one accepted `ThreadLocal`: the MDC is set at task start from the `ScopedValue` context and cleared at task end, because it does not propagate into executor tasks; ONNX Runtime logs via `java.util.logging`, bridged with `jul-to-slf4j`; no logging of secrets, image data or complete payloads at INFO. A test proves that the masking filter takes effect.
 
 ## 5. Concurrency
 
@@ -103,7 +103,7 @@ Further test rules:
 
 ## 10. Documentation and decisions
 
-- **ADRs** for architecture decisions under `docs/adr/NNNN-title.md`. ADR-001 is the language decision ([03](03-language-decision.md)); more will follow, e.g. for Ports & Adapters, the deviation model and the license.
+- **ADRs** for architecture decisions under `docs/adr/NNNN-title.md`. ADR-001 is the language decision (historically located at [03](03-language-decision.md)); ADR-002 is [modules by bounded context](../adr/0002-modules-by-bounded-context.md); more will follow, e.g. for the deviation model and the license.
 - `docs/plan/` remains the domain source of truth. Code that deviates from it changes the document in the same PR.
 - `CHANGELOG.md` following "Keep a Changelog"; versioning following **SemVer**. Persisted data (DB, config) counts as a public interface: if the format breaks, there is a migration.
 

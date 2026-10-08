@@ -7,7 +7,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] Project owner decides: project and package name, license (GPL-3.0 if code is ported from basetool), JDK 27 vs. 25 LTS
 - [ ] **Toolchain check JDK 27:** Do Gradle 9.8.1 (toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` and jpackage (WiX ≥ 4 on Windows) run with JDK 27? If not: JDK 25 LTS (see ADR)
 - [ ] **Sharpen the domain model** ([11](11-ddd-and-tdd.md)): go through Ubiquitous Language, Bounded Contexts, report invariants I1–I5 together with the project owner (short event storming pass); create marker annotations and ArchUnit DDD rules
-- [ ] TDD infrastructure: `java-test-fixtures` per module (fakes of the ports, test data builders), jqwik, PIT (check compatibility with JUnit 6 and JDK 27), tag report for requirement IDs
+- [ ] TDD infrastructure: `java-test-fixtures` per module (fakes of the ports, test data builders; **spike: behaviour with JPMS**, fallback GradleX `java-module-testing`), jqwik (**check compatibility with JUnit Platform 6** – jqwik 1.10.1 is built against Platform 1.x), PIT (check compatibility with JUnit 6 and JDK 27), TestFX headless on CI (Monocle availability for JavaFX 27, else Xvfb), tag report for requirement IDs
+- [ ] Already verified by the third review: ArchUnit 1.5.1 and JaCoCo 0.8.15 read Java 27 class files. Still open: Gradle 9.8.1 toolchain support for 27, whether Gradle detects the `setup-java` JDK with auto-download off (`org.gradle.java.installations.fromEnv`)
 - [ ] Gradle multi-project according to [02-architecture.md](02-architecture.md), `build-logic`, version catalog, Spotless, Error Prone/NullAway, JUnit 6
 - [ ] Quality gates according to [09-engineering-principles.md](09-engineering-principles.md): ArchUnit rules (layers, cycles, forbidden dependencies), JaCoCo thresholds, Dependabot, PR template with checklist – **before** the first domain code, so that the rules apply from the start
 - [ ] CI: GitHub Actions, matrix Windows/Linux, `./gradlew check`
@@ -27,7 +28,11 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] `ui`: onboarding (key → `/user` check, test submission), settings, **manual capture** (R-MAN-*) with deviation marking (R-UI-10..12), history, diagnostics
 - [ ] Screenshot attachment for manual reports (R-MAN-5): the user **selects the shop-panel region** (no automatic locate before M3); only that region is uploaded, so the balance is never included; test with the corpus images
 - [ ] `app`: composition root, configuration
-- [ ] Packaging: MSI / `.deb` / archives from CI, with SHA256SUMS, SBOM and build attestation (R-SEC-6)
+- [ ] Packaging: MSI / `.deb` / archives from CI, with SHA256SUMS, SBOM and build attestation (R-SEC-6); jlink image incl. `jdk.crypto.mscapi` (Windows), `--enable-native-access`, JavaFX from jmods, portable marker (R-NF-2)
+- [ ] Single instance (R-NF-10), DB backup before migrations and refusal of newer schemas (R-NF-11), `docs/release-process.md` followed for 0.1
+- [ ] Submission lifecycle completely implemented: error classes (R-SUB-11), unknown outcome and partial acceptance (R-SUB-9), cooldown waiting (R-SUB-4), observation age (R-VAL-6), fresh reference at release (R-VAL-7), account binding (R-SUB-12), first start without cache (R-UI-13), connection test (R-UI-15)
+- [ ] `docs/user/` skeleton (R-DOC-1) and issue templates (R-DOC-2)
+- [ ] Opt-in scheduled CI job (weekly) against the live UEX API with `is_production=0` and a test key stored in a protected GitHub environment; it only reports changes in fields and error codes (detects API drift before users do)
 
 **Acceptance criteria:** A user captures a terminal manually in < 1 min (target value), submits it and sees the report IDs. A cooldown survives a restart of the app. All M requirements of this milestone have acceptance tests (`@Tag`) that were written **before** the implementation; mutation score of the core measured and frozen as a lower bound.
 
@@ -46,7 +51,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 - [ ] `recognition` (second slice): resolution against the vocabulary, validation, repair, stitching without overlap, confidence, not-a-terminal detection (R-OCR-16)
 - [ ] `capture` + `adapter-files` + `workflows` (capture → recognition → reporting): report grouping (R-OCR-13), game version at capture time (R-CAP-3b), working copies (R-CAP-7), user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
-- [ ] `ui`: queue view, report editor with image crops and source highlight, deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"
+- [ ] `ui`: queue view, session overview with "release all ready" (R-UI-14), report editor with image crops and source highlight, manual crop/corner correction (R-UI-6), deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"; background processing with bounded parallelism (R-OCR-12)
+- [ ] Layout profiles with validated game versions and the `UnvalidatedGameVersion` cap (R-OCR-19); "report a misread" export (R-QA-5)
 - [ ] Upload screenshot: cropping, redact balance (test!)
 
 **Acceptance criteria:** On the corpus, "silently wrong" is ≈ 0. The field accuracy after validation is measured, and the target values are set **based on the measurement** and frozen in CI.
@@ -55,7 +61,7 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 - [ ] Further themes/layouts (blue standard, Nyx, gateways, red scrapyard terminals), ultrawide/1080p/4K
 - [ ] Game localization (`global.ini`) and SC installation detection including Wine/Proton (assumptions A3/A4 verified)
-- [ ] Second reader for status (bar/color) and cargo sizes
+- [ ] Second reader for status (bar/color) and cargo sizes; dimmed cards (R-OCR-15); optional cleanup of originals (R-CAP-6)
 - [ ] HiDPI, accessibility (keyboard, contrast)
 - [ ] Update notice (R-NF-7), "delete all local data" (R-NF-9)
 - [ ] Resource measurement next to the running game; set heap and thread limits
@@ -83,12 +89,12 @@ Every requirement group from [01-requirements.md](01-requirements.md) is assigne
 
 | Milestone | Requirements |
 |---|---|
-| M0 | R-SEC-1…5, R-QA-1 (corpus structure) |
-| M1 | R-MAN-*, R-VAL-1…4 (manual path), R-UI-2, R-UI-4, R-UI-7, R-UI-8, R-UI-10…12 (manual path), R-SUB-*, R-API-*, R-CAP-3/3a (manual environment), R-L10N-1, R-NF-2, R-NF-4…6, R-NF-8, R-SEC-6…8 |
-| M2 | R-OCR-1, R-OCR-2 (locate), R-OCR-5, R-OCR-17, R-OCR-18, R-CAP-8, R-QA-3 (eval CLI), R-QA-4 |
-| M3 | R-CAP-1…1e, R-CAP-2, R-CAP-3b, R-CAP-5, R-CAP-7, R-OCR-3, R-OCR-4, R-OCR-6…8, R-OCR-11…14, R-OCR-16, R-VAL-1…5 (OCR path), R-UI-1, R-UI-3, R-UI-5, R-UI-6, R-UI-10…12 (OCR path), R-QA-2 |
-| M4 | R-CAP-4, R-CAP-6, R-OCR-9, R-OCR-10, R-OCR-15, R-L10N-2, R-NF-1 (Linux/XWayland tests), R-NF-3, R-NF-7, R-NF-9 |
-| M5 | R-VLM-* |
+| M0 | R-SEC-1, R-SEC-2, R-SEC-3, R-SEC-4, R-SEC-5, R-QA-1 (corpus structure) |
+| M1 | R-SCOPE-1, R-SCOPE-2 (model), R-MAN-1…6, R-VAL-1, R-VAL-2, R-VAL-2a, R-VAL-2b, R-VAL-3, R-VAL-4, R-VAL-6, R-VAL-7 (manual path), R-UI-2, R-UI-4, R-UI-7 (theme; HiDPI tests in M4), R-UI-8, R-UI-10…13, R-UI-15 (manual path), R-SUB-1…6, R-SUB-7 (manual path: user-selected region + confirmed preview), R-SUB-8…12, R-API-1…7, R-CAP-3/3a (manual environment), R-L10N-1, R-VLM-12, R-NF-2, R-NF-4…6, R-NF-8, R-NF-10, R-NF-11, R-DOC-2, R-SEC-6, R-SEC-8 |
+| M2 | R-OCR-1, R-OCR-2 (locate), R-OCR-5, R-OCR-17, R-OCR-18, R-CAP-8, R-QA-3 (eval CLI), R-QA-4, R-SEC-7 |
+| M3 | R-CAP-1, R-CAP-1a, R-CAP-1b, R-CAP-1c, R-CAP-1d, R-CAP-1e, R-CAP-2, R-CAP-3 (folder path), R-CAP-3b, R-CAP-5, R-CAP-7, R-OCR-3, R-OCR-4, R-OCR-6, R-OCR-7 (UEX names), R-OCR-8, R-OCR-11…14, R-OCR-16, R-OCR-19, R-VAL-1…7 (OCR path), R-UI-1, R-UI-3, R-UI-5, R-UI-6, R-UI-10…12 (OCR path), R-UI-14, R-SUB-7 (OCR path), R-QA-2, R-QA-5 |
+| M4 | R-CAP-4, R-CAP-6, R-OCR-7 (localized names), R-OCR-9, R-OCR-10, R-OCR-15, R-L10N-2, R-UI-7 (HiDPI tests), R-NF-1 (Linux/XWayland tests), R-NF-3, R-NF-7, R-NF-9, R-DOC-1 |
+| M5 | R-VLM-1…11 |
 | later | R-UI-9, R-L10N-3, R-SCOPE-2 (UI), R-SEC-9 |
 
 ## Risks

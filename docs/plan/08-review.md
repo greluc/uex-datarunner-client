@@ -134,3 +134,36 @@ All documents were re-read after the switch to English and the module re-cut. Fi
 - UEX app token and terms of use (A2) remain the biggest risk.
 - The exact `data_submit` semantics remain unverified: header, `container_sizes`, sell-side SCU, duplicate lock, environments (A1, A9–A12, A15).
 - All thresholds are start values until measured on the corpus.
+
+## I. Third review (2026-10-08) – three independent reviewers
+
+Three reviewers ran in parallel, without knowledge of the earlier reviews: cross-document consistency, technical correctness (claims checked against JDK, Gradle, GitHub, ONNX Runtime, sqlite-jdbc and Ollama sources), and completeness along end-to-end scenarios. They produced about 75 findings. A sample of the technical claims was re-checked against primary sources before changing anything:
+
+- `actions/attest` README: `artifact-metadata: write`, and public repositories only on small plans.
+- `gradle/actions` dependency-submission docs: `contents: write`.
+- ONNX Runtime 1.30.0 source: `onnxruntime.native.path`.
+
+The most important fixes:
+
+| Area | Finding | Fix |
+|---|---|---|
+| JPMS | Repository ports in `api` named aggregates hidden in `internal`, so adapters could not implement them | Export `api` + `api.model`; aggregates protected by the compact constructor plus an ArchUnit constructor rule (02 §2, ADR-002, 09, 11) |
+| Ownership | Recognition produced a Reporting aggregate (`Report`) although the context map forbids it | `Stitcher` → `StitchedScan` (recognition); `ReportGrouper` builds the `Report` (reporting) |
+| Fusion | The prior alone could decide between OCR and VLM, contradicting R-VAL-2b | The prior alone gives at most 0.75 (confirm); glyph-topology role defined once (witness when agreeing, veto when contradicting) |
+| Submission lifecycle | Unknown outcome → possible double submission; partial `ids_reports`; rejected and withdrawn reports were dead ends; no error classes; cooldown vs. multi-row reports; no correction path | R-SUB-9…12, extended R-SUB-4, report states and transitions in 11 §A3 |
+| Data quality for UEX | Old captures sent as fresh data; PTU compared against LIVE priors; patch-day layout drift could produce confident wrong reads; stale snapshot at release | R-VAL-6, R-API-6, R-OCR-19, R-VAL-7 |
+| Security/platform | Linux jlink runtime ignores the system CA store; `Windows-ROOT` missing from a minimal jlink image; composite trust manager could silently skip hostname verification; native libraries extracted into shared temp (incl. JavaFX); JEP 472 native-access warnings; locking did not cover buildscript/settings/build-logic; plugins mostly unsigned; dependency-submission and attestation permissions | 02 §8, S-3, S-4, S-14, S-16, S-24, S-26 |
+| Robustness | Game detection on Linux via `ProcessHandle` misses Wine (argv[0] dropped); HttpClient cancel is best effort and Ollama unloads only after the request ends; in-process events lost on crash; MDC vs. `ScopedValue`; pyramid scaling wrong | `/proc` primary; cancel + verify via `/api/ps`; transactional outbox; MDC exception; target-height downscale |
+| Operations | No release, upgrade/downgrade or patch-day process; no user documentation; no single instance; "portable" undefined; diagnostics redaction unspecified; no path for real misreads into the corpus | `docs/release-process.md`, R-NF-10/11, R-NF-2, R-NF-6, R-DOC-1/2, R-QA-5 |
+| Consistency | About 20 smaller mismatches, among them: `Deviation` naming and stale rule; "same PR" vs "separate PR"; R-VLM-3 vs mode "Always"; requirement-to-milestone table gaps; wrong citations (R-UI-4, `data_parameters`, R-SUB-3 tag); annotation count; A6 scope; §-reference; `tools/ocr-eval` dependencies | Fixed in place |
+
+Verified as correct by the technical reviewer:
+
+- ArchUnit 1.5.1 and JaCoCo 0.8.15 read Java 27 class files.
+- ScopedValue is final in JDK 25.
+- The Gradle option names used are real.
+- Dependabot `cooldown`.
+- OSV-Scanner supports Gradle lockfiles.
+- The ONNX Runtime and sqlite-jdbc artifacts are as described.
+
+Still unverified, and listed in M0: jqwik with JUnit Platform 6; TestFX headless with JavaFX 27; `java-test-fixtures` with JPMS; Gradle 9.8.1 toolchain 27; Wine argv[0] in practice; EAC and `ProcessHandle` on Windows.
