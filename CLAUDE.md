@@ -103,6 +103,11 @@ Vor jedem Commit muss `./gradlew check` grün sein.
   - Wenn es mehrere Kandidaten gibt, wählt die App nichts still vor.
 - **UEX-Werte nicht hartkodieren:** Spielversion, Statusstufen und Toleranzen kommen aus der API bzw. dem Cache, niemals aus Konstanten (siehe F14).
 - Freie OCR-Strings erreichen nie die API; nur aufgelöste IDs aus dem UEX-Vokabular.
+- **Bildeingang:**
+  - Bilder kommen aus **nutzerdefinierten Ordnern**, standardmäßig nur per Klick auf „Einlesen“. Automatisches Einlesen beim Anlegen neuer Dateien ist opt-in pro Ordner (WatchService plus Polling-Fallback).
+  - Dateien erst lesen, wenn sie fertig geschrieben sind (Stable-File-Gate).
+  - Jede Datei wird nur einmal verarbeitet (Verarbeitet-Register mit Hash).
+  - Ordner nie still hinzufügen oder entfernen.
 - Der Upload-Screenshot enthält nur das Shop-Panel und das Location-Feld; **der Kontostand wird immer geschwärzt** (Test Pflicht).
 - **Optionale KI-Erkennung (VLM/Ollama):**
   - Die klassische OCR ist immer der Primärweg; die App muss ohne Ollama voll funktionieren.

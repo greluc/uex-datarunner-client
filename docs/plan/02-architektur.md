@@ -5,7 +5,7 @@
 ```mermaid
 flowchart LR
     subgraph Eingang
-        W[Ordner-Watcher<br/>LIVE/PTU/…] --> Q
+        W[Nutzer-Ordner<br/>„Einlesen“-Klick oder<br/>Auto-Watch] --> Q
         D[Drag & Drop / Strg+V / Datei] --> Q
         M[Manuelle Erfassung]
     end
@@ -60,7 +60,7 @@ uex-datarunner-client/
 ├── vlm/                    Optional: Ollama-Client, Prompt-Ressourcen, Antwort-Parser, KI-Queue, Modellverwaltung
 ├── ocr/                    ONNX-Runtime-Sessions, DB-Detektion, CTC-Erkennung, Bildoperationen, Homographie
 ├── pipeline/               Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-├── capture/                Ordner-Watcher, SC-Installationserkennung (Win/Linux/Wine), Spiel-Prozess-Monitor, Clipboard, Dedupe
+├── capture/                Ordner-Register, Einlese-Scan, Auto-Watcher, SC-Installationserkennung (Win/Linux/Wine), Spiel-Prozess-Monitor, Clipboard, Dedupe
 ├── submission/             Report→Payload, Sende-Queue, Cooldown, Historie, data_remove
 ├── app/                    JavaFX-UI (MVVM), Einstellungen, Secret-Store (FFM), Onboarding, Packaging
 └── tools/ocr-eval/         CLI: Golden-Korpus-Auswertung, Crop-Dumps, Digest
@@ -126,7 +126,23 @@ Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfas
 | 5 Validierung | Kandidaten → `Field<T>` mit Findings | Zahlparser, UEX-Prior, `data_parameters`-Toleranzen, Confusable-Reparatur, Glyph-Topologie-Veto, Status↔SCU-Konsistenz |
 | 6 Stitching | Scans → `ReportDraft` | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
 
-## 4a. Optionale KI-Erkennung (`vlm` + Spiel-Monitor)
+## 4a. Bildeingang (`capture`)
+
+```java
+public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean recursive,
+                            Set<String> extensions, EnvironmentChoice environment,
+                            @Nullable Instant onlyNewerThan) {}
+public enum ImportMode { MANUAL, AUTOMATIC }
+```
+
+- **`FolderScanner`** (rein bis auf das Dateisystem-Listing): Er listet die Kandidaten (`Files.walk` bzw. `Files.list`, Endungsfilter), gleicht sie gegen das **Verarbeitet-Register** ab (Pfad, Größe und mtime als schneller Schlüssel, Inhalts-Hash als Identität) und liefert die neuen Dateien. Ihn nutzen der Button „Einlesen“ und der Nachhol-Scan.
+- **`FolderWatcher`** pro Ordner im Modus `AUTOMATIC`:
+  - `WatchService` auf einem Virtual Thread; bei `OVERFLOW` folgt ein Voll-Scan.
+  - Scheitert die Registrierung oder ist das Dateisystem bekannt unzuverlässig (Wine-/FUSE-/SMB-Pfade, per Einstellung erzwingbar), wird stattdessen gepollt (`FolderScanner` alle 2 s).
+- **`StableFileGate`**: wartet, bis Größe und mtime eine Ruhezeit lang stabil sind und `ImageIO` die Datei dekodiert; danach Übergabe an die Capture-Queue.
+- Einstellungen werden live übernommen: Wechselt ein Ordner zwischen MANUAL und AUTOMATIC, startet bzw. stoppt der Watcher ohne Neustart der App.
+
+## 4b. Optionale KI-Erkennung (`vlm` + Spiel-Monitor)
 
 - **Leser-Abstraktion** (in `domain`):
 
