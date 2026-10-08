@@ -6,7 +6,7 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 - [ ] Project owner decides: project and package name, license (GPL-3.0 if code is ported from basetool), JDK 27 vs. 25 LTS
 - [ ] **Toolchain check JDK 27:** Do Gradle 9.8.1 (toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` and jpackage (WiX ≥ 4 on Windows) run with JDK 27? If not: JDK 25 LTS (see ADR)
-- [ ] **Sharpen the domain model** ([11](11-ddd-and-tdd.md)): go through Ubiquitous Language, Bounded Contexts, report invariants I1–I5 together with the project owner (short event storming pass); create marker annotations and ArchUnit DDD rules
+- [ ] **Sharpen the domain model** ([11](11-ddd-and-tdd.md)): go through Ubiquitous Language, Bounded Contexts, report invariants I1–I6 together with the project owner (short event storming pass); create marker annotations and ArchUnit DDD rules
 - [ ] TDD infrastructure: `java-test-fixtures` per module (fakes of the ports, test data builders; **spike: behaviour with JPMS**, fallback GradleX `java-module-testing`), jqwik (**check compatibility with JUnit Platform 6** – jqwik 1.10.1 is built against Platform 1.x), PIT (check compatibility with JUnit 6 and JDK 27), TestFX headless on CI (Monocle availability for JavaFX 27, else Xvfb), tag report for requirement IDs
 - [ ] Already verified by the third review: ArchUnit 1.5.1 and JaCoCo 0.8.15 read Java 27 class files. Still open: Gradle 9.8.1 toolchain support for 27, whether Gradle detects the `setup-java` JDK with auto-download off (`org.gradle.java.installations.fromEnv`)
 - [ ] Gradle multi-project according to [02-architecture.md](02-architecture.md), `build-logic`, version catalog, Spotless, Error Prone/NullAway, JUnit 6
@@ -41,11 +41,25 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] `adapter-ocr`: ORT sessions, DB postprocessing, CTC decode
 - [ ] `recognition` (first slice, needed for measuring): `ImageRaster` operations, locate, homography, layout, field parsers – without resolution, fusion, repair and stitching
 - [ ] `tools/ocr-eval`: corpus runner, metrics, crop dumps, digest
-- [ ] Corpus extension: resolutions 1080p/1440p/4K/21:9/32:9/windowed, **paired HDR on/off captures** per capture method (verifies A16)
-- [ ] Tone normalization and scale handling in the first `recognition` slice (R-OCR-17, R-OCR-18)
-- [ ] Baseline measurement on the corpus: raw accuracy per field type **and per corpus class** (resolution, HDR, theme), runtime, RAM
+- [ ] Capture protocol `docs/user/corpus-capture.md` and `expected.json` schema version 2 with `conditions`/`measured` and `tools/ocr-eval annotate`; migrate `pyro-gateway-stanton-01` (07 §4)
+- [ ] Corpus extension along the R-QA-2 ladders: resolution (1080p/1440p/4K/21:9/32:9/windowed; DSR/VSR allowed and recorded), distance, **paired HDR captures** per capture method **and renderer** (DX11/Vulkan, where selectable) and at two Windows SDR-brightness values, with tool name and version recorded (verifies A16); Linux captures if a tester is available (low priority)
+- [ ] `adapter-files` decoding per R-CAP-8 (magic bytes, colour metadata, HDR set-aside, pixel budget) with the decode fixtures (07 §4)
+- [ ] Scale handling and per-panel tone analysis in the first `recognition` slice (R-OCR-17, R-OCR-18; 07 §2.1 items 1–7)
+- [ ] **Synthetic class variants** in `tools/ocr-eval` (07 §4), including the **scale sweep** (box and nearest) down to 4.5 px price cap height: per corpus class and model export, the reading-limit curve per field type (raw reads). It runs again on every model or runtime update (digest test); from M3 on it also reports "silently wrong".
+- [ ] Synthetic tone fixtures (07 §4): expected R-CAP-8 outcome, tone class, and no increase in wrong reads
+- [ ] Run the sweeps with the official Hugging Face PP-OCRv6 export (pinned by SHA-256); the planning figures came from the third-party onnxocr 4.0.0 export
+- [ ] Calibrate the text-size gate (R-OCR-17) per theme and the tone-finding thresholds (R-OCR-18) on the sweeps and the paired captures
+- [ ] Check every capture tip and every format message (R-CAP-8, R-DOC-1) against the paired captures and the current game build; drop or reword tips that do not hold
+- [ ] Baseline measurement on the corpus: raw accuracy per field type **and per corpus class** with class status (R-QA-3), runtime, peak heap
 
-**Acceptance criteria:** Reproducible eval report; the raw accuracy is documented (still without a target value).
+**Acceptance criteria:**
+
+- Reproducible eval report including the class-coverage matrix with a status per class (R-QA-3) and the raw accuracy per class (still without a target value).
+- Synthetic sweep (07 §4) on all public entries with the **official, SHA-pinned** model export: a reading-limit curve per field type (price, SCU, status, name, label; raw reads) over the price cap height, for `scale-box` and `scale-nearest`. The R-OCR-17 lower and confirm limits are set from it as settings values, or the start values are kept with a documented reason. The `TextTooSmall` finding below the lower limit is pinned by tests that failed first; the confirm cap follows in M3 with confidence.
+- Metamorphic gate, M2 stage (07 §4: locate-quad and layout invariance, raw-read comparison reported), green in CI on Windows and Linux.
+- Paired captures for the SC screenshot key (DX11 and Vulkan) and the Game Bar PNG exist, and A16 is updated with the classification per capture method (07 §4). If no HDR display is available, the classes are marked `missing`, A16 stays open and the risk row "no HDR/ultrawide hardware" applies. The washed-out detector raises no finding on any normal-contrast capture with Windows HDR off, and raises it on every `tone-*` variant whose expected label is "washed out" (07 §4). The R-OCR-18 thresholds are measured values or kept with a documented reason.
+- A real resolution ladder (1080p/1440p/2160p, same view) exists and the synthetic-to-real validity check (07 §4) is reported, or the ladder is marked `missing` under the same risk row.
+- R-CAP-8 decode fixtures (07 §4) green.
 
 ## M3 – Pipeline and review UI (release 0.5)
 
@@ -54,8 +68,9 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] `ui`: queue view, session overview with "release all ready" (R-UI-14), report editor with image crops and source highlight, manual crop/corner correction (R-UI-6), deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"; background processing with bounded parallelism (R-OCR-12)
 - [ ] Layout profiles with validated game versions and the `UnvalidatedGameVersion` cap (R-OCR-19); "report a misread" export (R-QA-5)
 - [ ] Upload screenshot: cropping, redact balance (test!)
+- [ ] Confidence caps from capture findings (07 §2.6); decide per tone finding whether the "confirm" cap stays (R-OCR-18, based on "silently wrong" per class); per-digit certainty rule (07 §2.6)
 
-**Acceptance criteria:** On the corpus, "silently wrong" is ≈ 0. The field accuracy after validation is measured, and the target values are set **based on the measurement** and frozen in CI.
+**Acceptance criteria:** On the corpus, "silently wrong" is ≈ 0. The field accuracy after validation is measured, and the target values are set **based on the measurement** and frozen in CI (R-QA-3 gates with `tools/ocr-eval/baseline.json`). The metamorphic gate (07 §4) is fully green, including the send-threshold rules and the R-OCR-17 confirm cap. For every capture method in the corpus, the plan states "supported", "supported with confirmation" or "not supported", together with the message the user sees.
 
 ## M4 – Robustness and platform (release 1.0)
 
@@ -65,6 +80,9 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] HiDPI, accessibility (keyboard, contrast)
 - [ ] Update notice (R-NF-7), "delete all local data" (R-NF-9)
 - [ ] Resource measurement next to the running game; set heap and thread limits
+- [ ] Capture check in diagnostics and onboarding (R-CAP-9); capture tips in the user guide (R-DOC-1) with the classes that are not verified
+
+**Acceptance criteria (release 1.0):** every *required* R-QA-2 class is `gated` with no silently wrong field, or is named "not verified" in the release notes and in R-DOC-1 together with the capture advice that avoids it. Runtime (p95) and peak heap are measured per resolution class, including 5120×1440 and one input larger than 3840×2160.
 
 ## M5 – Optional AI recognition with the game closed (release 1.1, can be brought forward)
 
@@ -91,9 +109,9 @@ Every requirement group from [01-requirements.md](01-requirements.md) is assigne
 |---|---|
 | M0 | R-SEC-1, R-SEC-2, R-SEC-3, R-SEC-4, R-SEC-5, R-QA-1 (corpus structure) |
 | M1 | R-SCOPE-1, R-SCOPE-2 (model), R-MAN-1…6, R-VAL-1, R-VAL-2, R-VAL-2a, R-VAL-2b, R-VAL-3, R-VAL-4, R-VAL-6, R-VAL-7 (manual path), R-UI-2, R-UI-4, R-UI-7 (theme; HiDPI tests in M4), R-UI-8, R-UI-10…13, R-UI-15 (manual path), R-SUB-1…6, R-SUB-7 (manual path: user-selected region + confirmed preview), R-SUB-8…12, R-API-1…7, R-CAP-3/3a (manual environment), R-L10N-1, R-VLM-12, R-NF-2, R-NF-4…6, R-NF-8, R-NF-10, R-NF-11, R-DOC-2, R-SEC-6, R-SEC-8 |
-| M2 | R-OCR-1, R-OCR-2 (locate), R-OCR-5, R-OCR-17, R-OCR-18, R-CAP-8, R-QA-3 (eval CLI), R-QA-4, R-SEC-7 |
-| M3 | R-CAP-1, R-CAP-1a, R-CAP-1b, R-CAP-1c, R-CAP-1d, R-CAP-1e, R-CAP-2, R-CAP-3 (folder path), R-CAP-3b, R-CAP-5, R-CAP-7, R-OCR-3, R-OCR-4, R-OCR-6, R-OCR-7 (UEX names), R-OCR-8, R-OCR-11…14, R-OCR-16, R-OCR-19, R-VAL-1…7 (OCR path), R-UI-1, R-UI-3, R-UI-5, R-UI-6, R-UI-10…12 (OCR path), R-UI-14, R-SUB-7 (OCR path), R-QA-2, R-QA-5 |
-| M4 | R-CAP-4, R-CAP-6, R-OCR-7 (localized names), R-OCR-9, R-OCR-10, R-OCR-15, R-L10N-2, R-UI-7 (HiDPI tests), R-NF-1 (Linux/XWayland tests), R-NF-3, R-NF-7, R-NF-9, R-DOC-1 |
+| M2 | R-OCR-1, R-OCR-2 (locate), R-OCR-5, R-OCR-17, R-OCR-18, R-CAP-8, R-QA-2 (ladders started), R-QA-3 (eval CLI), R-QA-4, R-SEC-7 |
+| M3 | R-CAP-1, R-CAP-1a, R-CAP-1b, R-CAP-1c, R-CAP-1d, R-CAP-1e, R-CAP-2, R-CAP-3 (folder path), R-CAP-3b, R-CAP-5, R-CAP-7, R-OCR-3, R-OCR-4, R-OCR-6, R-OCR-7 (UEX names), R-OCR-8, R-OCR-11…14, R-OCR-16, R-OCR-19, R-VAL-1…7 (OCR path), R-UI-1, R-UI-3, R-UI-5, R-UI-6, R-UI-10…12 (OCR path), R-UI-14, R-SUB-7 (OCR path), R-QA-5 |
+| M4 | R-CAP-4, R-CAP-6, R-OCR-7 (localized names), R-OCR-9, R-OCR-10, R-OCR-15, R-L10N-2, R-UI-7 (HiDPI tests), R-NF-1 (Linux/XWayland tests), R-NF-3, R-NF-7, R-NF-9, R-DOC-1, R-CAP-9, R-QA-2 (required classes, 1.0 criteria) |
 | M5 | R-VLM-1…11 |
 | later | R-UI-9, R-L10N-3, R-SCOPE-2 (UI), R-SEC-9 |
 
@@ -109,6 +127,7 @@ Every requirement group from [01-requirements.md](01-requirements.md) is assigne
 | Linux specifics (Wine paths, game detection, Secret Service, XWayland) deviate from the assumptions | Linux functions restricted | Manual configuration as fallback everywhere; tests on real systems in M4/M5 |
 | Compromised dependency, CI action or compromised build artifact | Malicious code at users, theft of the secret key | Measures S-1…S-31 in [10](10-supply-chain-security.md); residual risk "malicious, correctly signed new version" remains medium |
 | UEX API changes (fields, error codes) | Submission fails | Defensive parsing, contract tests with recorded responses, understandable error messages |
+| No access to an HDR monitor, an ultrawide monitor or some capture tools | Classes stay `synthetic only`/`missing`; HDR and ultrawide independence cannot be shown | Publish the capture protocol (07 §4) so that DataRunners can contribute redacted full frames; synthetic variants as interim coverage; unverified classes named in the release notes |
 
 ## Afterwards (1.x / later)
 

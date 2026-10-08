@@ -167,3 +167,24 @@ Verified as correct by the technical reviewer:
 - The ONNX Runtime and sqlite-jdbc artifacts are as described.
 
 Still unverified, and listed in M0: jqwik with JUnit Platform 6; TestFX headless with JavaFX 27; `java-test-fixtures` with JPMS; Gradle 9.8.1 toolchain 27; Wine argv[0] in practice; EAC and `ProcessHandle` on Windows.
+
+## J. Resolution and HDR review (2026-10-08) – three lenses, cross-checked
+
+Three reviewers looked at the earlier resolution/HDR plan (algorithm, measurement, user experience). Every proposal was then checked by a second agent against sources and against the rest of the plan; only proposals that survived were applied. Overlapping proposals were merged into one version per requirement.
+
+| Area | Finding | Fix |
+|---|---|---|
+| Scale gate | The gate used anchor height with a 10 px start value. A preliminary downscale experiment (third-party PP-OCRv6 small export, one unverified entry) showed that the price digits are the limiting glyph and that the limit lies lower | R-OCR-17: gate on the **price-digit cap height** (smallest fully visible card), start values < 6 px `TextTooSmall`, 6–8 px `SmallText`, ≥ 8 px normal; calibrated in M2 with the official export |
+| Anchor search | A fixed factor or a detector `max_side_limit` (PaddleOCR default 4000) can shrink anchors below legibility on ultrawide or distant captures | 07 §2.1 item 1: factor min(1, 1080/height), native-resolution retry, tiling instead of a size limit |
+| Large inputs | 7680×4320 DSR captures could exceed the heap budget | Pixel budget with decode-time box reduction and `Downscaled` finding; resource test |
+| Recognizer input | Recognition crops came from the resampled normalized panel; preprocessing parity with PaddleOCR training was not specified | Crops from the original raster; `INTER_LINEAR`, BGR, normalization and padding pinned by a golden test (07 §2.1 item 4) |
+| Colour decoding | `ImageIO.read` skips colour chunks; the JDK does not apply `iCCP`/`gAMA` and does not know `cICP`, so PQ PNGs would be read as washed-out sRGB | R-CAP-8: magic-byte detection, explicit colour metadata, PQ/HLG never read as sRGB, JXR/AVIF/EXR always listed with tool-specific hints; decode fixtures (07 §4) |
+| Tone handling | One "washed out" finding mixed recoverable low contrast with lost detail; the stretched panel was also fed to the recognizer | Tone classes `NORMAL`/`LOW_CONTRAST`/`PQ_SUSPECTED`/`CLIPPED`; findings `LowContrastCapture` and `ClippedHighlights`; recognizer gets the un-stretched crop by default; colour decisions relative within the panel |
+| Confidence | A line-mean OCR score hides one uncertain digit; letters like B/O/S inside numbers were not handled | Per-digit minimum probability (07 §2.6); letter–digit confusables (07 §2.4) |
+| Measurement | Corpus classes had no minimum sample sizes; "0 silently wrong" on a few fields looked like proof; HDR and resolution could not be tested without the hardware | R-QA-2 ladders and text-height bands; R-QA-3 class status and rule-of-three bound; synthetic class variants, metamorphic gate, capture protocol, schema version 2 (07 §4) |
+| User guidance | HDR and framing advice was one phrase; hints could nag on every capture | R-DOC-1 capture tips (each marked "verified on game version X"); non-modal per-source hints (R-OCR-18); "Check a screenshot" (R-CAP-9) |
+| Smaller fixes | Invariant count I1–I5 vs. I6 in four documents; R-OCR-2 and F7 still named colour anchors | Fixed |
+
+Rejected: a proposal on folder-name casing (out of scope for this review).
+
+**Still unverified** (marked in the documents): what the SC screenshot key stores with HDR on (A16); the Game Bar PNG tone curve; the NVIDIA overlay output; all start values. The planning experiments are not reproducible from the repository yet; M2 repeats them with the official, SHA-pinned model export.

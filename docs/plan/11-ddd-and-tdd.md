@@ -64,8 +64,8 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 | I2 | Release (`release()`) is only possible if: the terminal is resolved; every mandatory field is ≥ send threshold **or** confirmed; every `MAJOR` deviation is confirmed; environment and game version match the UEX acceptance state. |
 | I3 | A confirmation applies to exactly one value. `correct(field, newValue)` revokes the confirmation. |
 | I4 | A submitted Report is immutable; only `withdraw()` is possible (leads to `data_remove`). Corrections create a **new** Draft (`duplicateAsDraft()`), never an edit in place (unless `data_edit` is verified, R-SUB-10). |
-| I6 | A Report is released only if its observation age is within the limits (R-VAL-6) and its rows are evaluated against the current reference snapshot (R-VAL-7). |
 | I5 | The game version is the one valid at capture time; a version change marks the Report as "to be checked". |
+| I6 | A Report is released only if its observation age is within the limits (R-VAL-6) and its rows are evaluated against the current reference snapshot (R-VAL-7). |
 
 The `Report` carries a `version` number for optimistic concurrency: every command is applied to a specific version, and the repository rejects writes based on a stale version (e.g. user edit and AI re-read at the same time).
 

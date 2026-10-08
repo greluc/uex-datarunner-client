@@ -28,7 +28,7 @@ The bounded contexts existed only as **packages**, protected by ArchUnit rules. 
 **Advantages of cutting the core by context (B and C):**
 
 1. **Boundaries enforced by the compiler.** JPMS refuses access to non-exported packages of another context. With A this rested only on ArchUnit rules.
-2. **High cohesion.** Everything about the reporting rules (Report aggregate, invariants I1–I5, submission gate, deviation assessment, review use cases) is in **one** module. With A it was spread over `domain` and `application`.
+2. **High cohesion.** Everything about the reporting rules (Report aggregate, invariants I1–I6, submission gate, deviation assessment, review use cases) is in **one** module. With A it was spread over `domain` and `application`.
 3. **Change locality.**
    - A Star Citizen UI patch changes `recognition` (and `adapter-ocr`).
    - A UEX API change changes `adapter-uex` (and at most `reference-data`).

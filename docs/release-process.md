@@ -14,7 +14,7 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
 ## Release checklist
 
 1. `main` is green on Windows and Linux (`./gradlew check`: tests, ArchUnit, JaCoCo, PIT gate, OSV scan).
-2. Corpus evaluation: no regression in any corpus class (resolution, HDR, theme); "silently wrong" ≈ 0 (R-QA-3).
+2. Corpus evaluation (R-QA-3): no regression in any `gated` class; no new silently wrong field in any class; every required R-QA-2 class that is not `gated` is named "not verified" in the release notes; classes that exist only in the private corpus are evaluated locally with `UEXDR_CORPUS_DIR`.
 3. Live smoke test against UEX with `is_production=0` and a test key (manual, opt-in): onboarding check, one manual report, one OCR report, one withdrawal.
 4. Database migrations tested: an empty DB and the DB of the previous release (with test data) migrate to the new version; the previous release refuses the new schema (R-NF-11).
 5. Update the changelog and the user guide (`docs/user/`).
@@ -32,7 +32,7 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
 ## Star Citizen patch day (hotfix process)
 
 1. **Detection.** The `UnvalidatedGameVersion` cap (R-OCR-19) protects UEX automatically: after a patch, OCR values are not sendable without confirmation.
-2. **Capture.** On the new version, capture fresh screenshots for at least one blue and one orange terminal, buy and sell, and add them to the private corpus.
+2. **Capture.** On the new version, capture fresh screenshots for at least one blue and one orange terminal, buy and sell, and add them to the corpus (public after redaction, `corpus/README.md`). If the patch notes mention graphics options, HDR, the renderer, upscaling or screenshots, also capture one paired HDR on/off set with the SC screenshot key (if an HDR display is available; otherwise note the unchecked HDR behaviour in the changelog), and re-check every in-game setting name quoted in the user guide and the in-app hints (R-DOC-1, R-OCR-17, R-OCR-18). Outdated tips are corrected in the same PATCH release.
 3. **Measure.** Run the corpus evaluation:
    - If nothing regresses, add the new game version to the validated versions of the layout profiles and make a PATCH release.
    - If something regresses, fix the layout profile or recognition rule test-first (11 §B1), then make a PATCH release.
