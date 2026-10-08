@@ -23,6 +23,7 @@ While the game is running, a lightweight local OCR does the work. Optionally, a 
 | [11 – DDD and TDD](docs/plan/11-ddd-and-tdd.md) | Ubiquitous language, bounded contexts, aggregates and invariants; test-driven approach |
 | [Release process](docs/release-process.md) | Versioning, release checklist, upgrade/downgrade, patch-day and API-change procedures |
 | [ADR-002 – Modules by bounded context](docs/adr/0002-modules-by-bounded-context.md) | Why the core is cut by bounded context and adapters by technology |
+| [Design-system prompt](docs/prompts/design-system.md) | Staged task prompt for Claude Code: design tokens, themes, state language and JavaFX CSS, inspired by the current RSI website and Spectrum (not yet run) |
 
 ## Disclaimer
 
