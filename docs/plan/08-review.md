@@ -46,7 +46,7 @@ Geprüft wurden alle Dokumente unter `docs/plan/`, dazu `CLAUDE.md` und `README.
 | # | Fehlte | Ergänzt in |
 |---|---|---|
 | C-1 | Risikoregister (u. a. App-Token als möglicher Projektblocker, UEX-Nutzungsbedingungen, OCR-Genauigkeit, Layout-Patches) | 04 „Risiken“ |
-| C-2 | Prüfung, ob die Toolchain (Error Prone, NullAway, palantir-java-format, jlink-Plugin, jpackage/WiX) mit **JDK 27** läuft | 04 M0, ADR §4 |
+| C-2 | Prüfung, ob die Toolchain (Error Prone, NullAway, google-java-format, jlink-Plugin, jpackage/WiX) mit **JDK 27** läuft | 04 M0, ADR §4 |
 | C-3 | Offene API-Fragen: Sell-SCU-Feld (`scu_sell` vs. `scu_sell_stock`), `container_sizes` pro Commodity vs. pro Report, `is_missing`-Pflichtfelder, Screenshot-Komposit | 06 Offene Punkte 8–14, A10–A12 |
 | C-4 | Bearbeitungsstatus der eigenen Reports bei UEX (`data_info`) in der Historie | R-SUB-4 |
 

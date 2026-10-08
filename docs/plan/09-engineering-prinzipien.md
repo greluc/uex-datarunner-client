@@ -39,7 +39,7 @@ Regeln ohne Durchsetzung sind Wunschdenken. Deshalb gibt es bewusst wenige Regel
 | **Fehler sind Werte:** Erwartbare Fehler als sealed `Result`/`Finding`-Typen, keine Exceptions für Kontrollfluss; nie Exceptions schlucken | Error Prone (`CatchAndPrintStackTrace`, ungenutzte Rückgabewerte über `@CheckReturnValue`), Review |
 | **Kommentare erklären das Warum**, nicht das Was. Öffentliche Ports und Module haben Javadoc. | Javadoc-Lint für exportierte Packages (`-Xdoclint` auf `api`-Packages) |
 | **Kein toter Code, keine auskommentierten Blöcke**; `TODO` nur mit Issue-Nummer | Error Prone (`UnusedVariable`, `UnusedMethod`); CI-Schritt prüft `TODO` ohne `#<Issue>` |
-| **Einheitliches Format** | Spotless (palantir-java-format) im `check` |
+| **Einheitliches Format** | Spotless mit google-java-format (Google Java Style) im `check`; Formatierung wird nie von Hand diskutiert |
 | **Kleine, testbare reine Funktionen** in `pipeline`; Seiteneffekte nur in Adaptern | Modulschnitt plus ArchUnit (siehe §2) |
 
 ## 4. Fehlerbehandlung, Logging, Beobachtbarkeit
