@@ -26,7 +26,7 @@ While the game is running, a lightweight local OCR does the work. Optionally, a 
 | [ADR-0003 – Licence and contributions](docs/adr/0003-licence-and-contributions.md) | GPL-3.0-or-later, DCO and CLA, the Star Citizen Fan Kit unit, notice and source duties, licence gate |
 | [Open points](docs/adr/0000-open-points.md) | The single register of open owner decisions and open verifications |
 | [Dependency pins](docs/dependency-pins.md) | Tags of SHA-pinned GitHub Actions; versions and checksums of CI tools |
-| [Design-system prompt](docs/prompts/design-system.md) | Staged task prompt for Claude Code: design tokens, themes, state language and JavaFX CSS, inspired by the current RSI website and Spectrum (not yet run) |
+| [Design-system brief](docs/prompts/design-system.md) | Staged brief for Claude Design: an original design system and a screens canvas, at genre level close to the current Star Citizen website and forum, with the Fan Kit unit and the About dialog; with its [stage messages](docs/prompts/design-system-kickoff.md), the [owner checklist](docs/prompts/design-system-owner-checklist.md) and the [JavaFX handoff](docs/prompts/design-system-javafx-handoff.md) for Claude Code (not yet run) |
 
 ## Contributing
 
