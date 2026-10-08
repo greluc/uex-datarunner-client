@@ -1,141 +1,141 @@
-# Domain-Driven Design und Test-Driven Development
+# Domain-Driven Design and Test-Driven Development
 
-Wie wir fachlich modellieren (DDD) und wie wir Code entstehen lassen (TDD). Beides ergänzt [02-architektur.md](02-architektur.md) (Ports & Adapters) und [09-engineering-prinzipien.md](09-engineering-prinzipien.md) (Durchsetzung).
+How we model the domain (DDD) and how we let code come into being (TDD). Both complement [02-architecture.md](02-architecture.md) (Ports & Adapters) and [09-engineering-principles.md](09-engineering-principles.md) (enforcement).
 
-**Grundsatz „soweit möglich“:**
+**Principle "as far as possible":**
 
-- **DDD** lohnt sich dort, wo echte Fachregeln liegen: Report, Sende-Gate, Abweichungen, Erkennung, Cooldown. In technischen Randbereichen (Dateiüberwachung, OS-Integration) wäre es Zeremonie.
-- **TDD** gilt für den Kern ohne Ausnahme. Bei OCR-Schwellwerten, UI-Layout und nativer OS-Integration ist es nur eingeschränkt sinnvoll; dafür gibt es unten ausdrücklich andere Regeln, statt TDD vorzutäuschen.
+- **DDD** pays off where real domain rules live: Report, submission gate, deviations, recognition, cooldown. In technical peripheral areas (file watching, OS integration) it would be ceremony.
+- **TDD** applies to the core without exception. For OCR thresholds, UI layout and native OS integration it is only of limited use; for these there are explicitly different rules below, instead of pretending to do TDD.
 
-## Teil A – Domain-Driven Design
+## Part A – Domain-Driven Design
 
 ### A1. Ubiquitous Language
 
-Die Fachbegriffe sind verbindlich, in Doku (Deutsch) und Code (Englisch) jeweils gleich. Ein Begriff = eine Bedeutung. Neue Begriffe kommen zuerst hierher, dann in den Code.
+The domain terms are binding: the same terms in docs, UI and code (all English). One term = one meaning. New terms come here first, then into the code.
 
-| Begriff (Doku) | Code | Bedeutung |
-|---|---|---|
-| Capture | `Capture` | ein eingelesener Screenshot (Datei-Identität, Quelle, Umgebung, Aufnahmezeit, Spielversion zur Aufnahmezeit) |
-| Scan | `Scan` | Ergebnis der Erkennung eines Captures: gelesene Karten mit Findings |
-| Karte | `CardReading` | eine gelesene Commodity-Karte (Rohwerte pro Leser) |
-| Leser | `Reader`, `ReaderKind` | Verfahren, das ein Panel liest (OCR, VLM) |
-| Report | `Report` | Meldung für **ein** Terminal, **eine** Seite, **eine** Umgebung; Einheit für `data_submit` |
-| Zeile | `ReportRow` | eine Commodity im Report mit Preis, SCU, Status, Kistengrößen |
-| Seite | `TradeSide` | BUY („Buy“-Tab) / SELL („Local Market Value“-Tab) |
-| Prior | `PricePrior` | bisheriger UEX-Wert für (Terminal, Commodity, Seite) samt Alter |
-| Finding | `Finding` | begründeter Hinweis auf Unsicherheit (Grund-Code) |
-| Konfidenz | `Confidence` | wie sicher **gelesen** wurde |
-| Abweichung | `Deviation` | wie stark ein Wert vom Prior abweicht (`EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`) |
-| Feldbewertung | `FieldAssessment` | Konfidenz + Abweichung + Referenz eines Felds |
-| Bestätigung | `Confirmation` | ausdrückliche Freigabe eines Felds durch den Nutzer, an genau diesen Wert gebunden |
-| Sendeschwelle | `SendThreshold` | Mindestkonfidenz für Senden ohne Bestätigung |
-| Sende-Gate | `SubmissionGate` | Regelwerk, ob ein Report gesendet werden darf |
-| Cooldown | `Cooldown` | Sperrzeit nach erfolgreicher Meldung für (Terminal, Commodity, Umgebung) |
-| Umgebung | `GameEnvironment` | LIVE, PTU, EPTU, HOTFIX, TECH-PREVIEW |
-| Referenzdaten | `ReferenceSnapshot` | unveränderlicher Stand der UEX-Daten für eine Entscheidung |
+| Term | Meaning |
+|---|---|
+| Capture (`Capture`) | an imported screenshot (file identity, source, environment, capture time, game version at capture time) |
+| Scan (`Scan`) | result of the recognition of a Capture: read cards with findings |
+| Card reading (`CardReading`) | a read commodity card (raw values per reader) |
+| Reader (`Reader`, `ReaderKind`) | method that reads a panel (OCR, VLM) |
+| Report (`Report`) | report for **one** terminal, **one** side, **one** environment; unit for `data_submit` |
+| Row (`ReportRow`) | a commodity in the Report with price, SCU, status, container sizes |
+| Side (`TradeSide`) | BUY ("Buy" tab) / SELL ("Local Market Value" tab) |
+| Prior (`PricePrior`) | previous UEX value for (terminal, commodity, side) including its age |
+| Finding (`Finding`) | justified indication of uncertainty (reason code) |
+| Confidence (`Confidence`) | how reliably something was **read** |
+| Deviation (`Deviation`) | how strongly a value deviates from the prior (`EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`) |
+| Field assessment (`FieldAssessment`) | confidence + deviation + reference of a field |
+| Confirmation (`Confirmation`) | explicit approval of a field by the user, bound to exactly this value |
+| Send threshold (`SendThreshold`) | minimum confidence for sending without confirmation |
+| Submission gate (`SubmissionGate`) | set of rules deciding whether a Report may be sent |
+| Cooldown (`Cooldown`) | lock period after a successful report for (terminal, commodity, environment) |
+| Environment (`GameEnvironment`) | LIVE, PTU, EPTU, HOTFIX, TECH-PREVIEW |
+| Reference snapshot (`ReferenceSnapshot`) | immutable state of the UEX data for one decision |
 
 ### A2. Bounded Contexts
 
-| Kontext | Verantwortung | Kernmodell | Beziehung |
+| Context | Responsibility | Core model | Relationship |
 |---|---|---|---|
-| **Erfassung** (Capture) | Bilder aus Ordnern/Zwischenablage aufnehmen, Duplikate vermeiden, Umgebung und Version zum Aufnahmezeitpunkt festhalten | `Capture`, `WatchedFolder` | liefert `CaptureImported` an Erkennung |
-| **Erkennung** (Recognition) | Panel finden, lesen, auflösen, fusionieren, validieren | `Scan`, `CardReading`, `Finding`, Domain-Services | nutzt Referenzdaten (lesend); liefert `CaptureScanned` |
-| **Meldung** (Reporting) | Reports bilden, prüfen, bestätigen, freigeben – **Kern der Fachregeln** | Aggregat `Report` | nutzt Erkennung und Referenzdaten; liefert `ReportReleased` |
-| **Übermittlung** (Submission) | Senden, Queue, Cooldown, Historie, Rückzug | Aggregate `SubmissionJob`, `Cooldown` | Customer der UEX-API über eine **Anti-Corruption-Layer** |
-| **Referenzdaten** (Reference) | UEX-Stammdaten und Preise als Lesemodell | `ReferenceSnapshot` und Value Objects | **Conformist** zu UEX (wir übernehmen deren Modell), abgeschirmt durch die ACL in `adapter-uex` |
-| **Spielumgebung** (Game) | Umgebung, Version, „Spiel läuft“, Spiel-Lokalisierung | `GameEnvironment`, `GameVersion`, `GameState` | Shared Kernel mit allen |
+| **Capture** | Take in images from folders/clipboard, avoid duplicates, record environment and version at capture time | `Capture`, `WatchedFolder` | delivers `CaptureImported` to Recognition |
+| **Recognition** | Locate, read, resolve, fuse and validate the panel | `Scan`, `CardReading`, `Finding`, domain services | uses Reference Data (read-only); delivers `CaptureScanned` |
+| **Reporting** | Build, check, confirm and release Reports – **core of the domain rules** | Aggregate `Report` | uses Recognition and Reference Data; delivers `ReportReleased` |
+| **Submission** | Sending, queue, cooldown, history, withdrawal | Aggregates `SubmissionJob`, `Cooldown` | Customer of the UEX API via an **Anti-Corruption-Layer** |
+| **Reference Data** | UEX master data and prices as a read model | `ReferenceSnapshot` and value objects | **Conformist** to UEX (we adopt their model), shielded by the ACL in `adapter-uex` |
+| **Game Environment** | Environment, version, "game running", game localization | `GameEnvironment`, `GameVersion`, `GameState` | Shared Kernel with all |
 
-**Umsetzung im Code:**
+**Implementation in code:**
 
-- Die Kontexte sind **Packages** in `domain` und `application` (`…domain.reporting`, `…application.reporting` usw.); die Erkennungslogik liegt im Modul `pipeline`.
-- Gemeinsame Typen (IDs, `PricePerScu`, `ScuQuantity`, `GameEnvironment`) liegen im **Shared Kernel** `…domain.shared`. Er wird klein gehalten; Änderungen dort brauchen besondere Sorgfalt.
-- **Regel:** Kontexte referenzieren andere Aggregate nur per ID und kommunizieren über Domain-Events oder Application-Services, nie über direkte Objektreferenzen. Durchgesetzt wird das per ArchUnit.
+- The contexts are **packages** in `domain` and `application` (`…domain.reporting`, `…application.reporting` etc.); the recognition logic lives in the `pipeline` module.
+- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `GameEnvironment`) live in the **Shared Kernel** `…domain.shared`. It is kept small; changes there require particular care.
+- **Rule:** Contexts reference other aggregates only by ID and communicate via domain events or application services, never via direct object references. This is enforced via ArchUnit.
 
-### A3. Aggregate und Invarianten
+### A3. Aggregates and invariants
 
-**`Report`** (Aggregate Root, Kontext Meldung) – hier liegen die wichtigsten Fachregeln:
+**`Report`** (aggregate root, context Reporting) – this is where the most important domain rules live:
 
-| Invariante | Regel |
+| Invariant | Rule |
 |---|---|
-| I1 | Pro Report gibt es jede Commodity höchstens einmal. |
-| I2 | Freigabe (`release()`) ist nur möglich, wenn: das Terminal aufgelöst ist; jedes Pflichtfeld ≥ Sendeschwelle **oder** bestätigt ist; jede `MAJOR`-Abweichung bestätigt ist; Umgebung und Spielversion zum UEX-Annahmestand passen. |
-| I3 | Eine Bestätigung gilt für genau einen Wert. `correct(field, newValue)` hebt die Bestätigung auf. |
-| I4 | Ein gesendeter Report ist unveränderlich; nur `withdraw()` ist möglich (führt zu `data_remove`). |
-| I5 | Die Spielversion ist die zum Aufnahmezeitpunkt gültige; ein Versionswechsel macht den Report „zu prüfen“. |
+| I1 | Each commodity appears at most once per Report. |
+| I2 | Release (`release()`) is only possible if: the terminal is resolved; every mandatory field is ≥ send threshold **or** confirmed; every `MAJOR` deviation is confirmed; environment and game version match the UEX acceptance state. |
+| I3 | A confirmation applies to exactly one value. `correct(field, newValue)` revokes the confirmation. |
+| I4 | A submitted Report is immutable; only `withdraw()` is possible (leads to `data_remove`). |
+| I5 | The game version is the one valid at capture time; a version change marks the Report as "to be checked". |
 
-Zustände als sealed Typen: `Draft → Released → Queued → Submitted | Rejected`, `Submitted → Withdrawn`. Ungültige Übergänge liefern `Outcome.Refused` mit Grund-Code; es gibt keine Status-Strings.
+States as sealed types: `Draft → Released → Queued → Submitted | Rejected`, `Submitted → Withdrawn`. Invalid transitions return `Outcome.Refused` with a reason code; there are no status strings.
 
-Weitere Aggregate:
+Further aggregates:
 
-- **`Capture`** (Erfassung): Identität = Inhalts-Hash; Zustand `Imported → Scanned | Failed`; Umgebung und Version unveränderlich nach dem Import.
-- **`SubmissionJob`** (Übermittlung): ein Sendeversuch eines freigegebenen Reports; Retry-Zähler, letzter Fehler; persistiert.
-- **`Cooldown`** (Übermittlung): Schlüssel (Terminal, Commodity, Umgebung), `until`-Zeitpunkt; Invariante: Ein Job für einen Schlüssel im Cooldown wird nicht gesendet.
+- **`Capture`** (Capture): identity = content hash; state `Imported → Scanned | Failed`; environment and version immutable after import.
+- **`SubmissionJob`** (Submission): one submission attempt of a released Report; retry counter, last error; persisted.
+- **`Cooldown`** (Submission): key (terminal, commodity, environment), `until` timestamp; invariant: a job for a key in cooldown is not sent.
 
-**Größe:** Aggregate bleiben klein. Ein Report kennt Captures nur per ID, Terminals und Commodities nur per ID.
+**Size:** Aggregates stay small. A Report knows Captures only by ID, terminals and commodities only by ID.
 
 ### A4. Value Objects
 
-Immutable Records mit Validierung im kompakten Konstruktor, Gleichheit über Werte, keine primitiven Typen in fachlichen Signaturen (gegen „Primitive Obsession“):
+Immutable records with validation in the compact constructor, equality by value, no primitive types in domain signatures (against "primitive obsession"):
 
-`TerminalId`, `CommodityId`, `CaptureId`, `ReportId`, `PricePerScu` (BigDecimal ≥ 0), `ScuQuantity` (≥ 0), `InventoryStatus`, `ContainerSizes` (Teilmenge der erlaubten Größen, sortiert), `GameVersion`, `Confidence` (0..1), `Deviation`, `Percent`, `FileFingerprint`, `Confirmation`.
+`TerminalId`, `CommodityId`, `CaptureId`, `ReportId`, `PricePerScu` (BigDecimal ≥ 0), `ScuQuantity` (≥ 0), `InventoryStatus`, `ContainerSizes` (subset of the allowed sizes, sorted), `GameVersion`, `Confidence` (0..1), `Deviation`, `Percent`, `FileFingerprint`, `Confirmation`.
 
-### A5. Domain-Services
+### A5. Domain services
 
-Zustandslose Fachlogik, die zu keinem einzelnen Aggregat gehört (reine Funktionen):
+Stateless domain logic that belongs to no single aggregate (pure functions):
 
-- **Erkennung** (in `pipeline`): `CommodityResolver`, `TerminalResolver`, `PriceCandidateEvaluator`, `ReaderFusion`, `Stitcher`
-- **Meldung**: `DeviationAssessor` (→ `FieldAssessment`), `ReportGrouper`, `SubmissionGate`
+- **Recognition** (in `pipeline`): `CommodityResolver`, `TerminalResolver`, `PriceCandidateEvaluator`, `ReaderFusion`, `Stitcher`
+- **Reporting**: `DeviationAssessor` (→ `FieldAssessment`), `ReportGrouper`, `SubmissionGate`
 
-### A6. Domain-Events
+### A6. Domain events
 
 `CaptureImported`, `CaptureScanned`, `ReportDraftCreated`, `ReportReleased`, `ReportSubmitted`, `SubmissionRejected`, `ReportWithdrawn`, `GameStateChanged`, `ReferenceDataRefreshed`.
 
-- Events sind unveränderliche Records in `domain`.
-- Zugestellt werden sie **in-process und synchron** über einen kleinen Dispatcher in `application`, ohne Framework.
-- **Aggregate sind unveränderlich** (Records): Ein Befehl wie `report.confirm(…)` liefert `Outcome.Ok(neuerZustand, events)` oder `Outcome.Refused(grund)`. Der Application-Service speichert den neuen Zustand über das Repository und veröffentlicht danach die Events. So sind Aggregate ohne Mocks testbar und thread-sicher.
-- Events machen die Abläufe testbar: „Given Events / When Command / Then Events“.
+- Events are immutable records in `domain`.
+- They are delivered **in-process and synchronously** via a small dispatcher in `application`, without a framework.
+- **Aggregates are immutable** (records): a command such as `report.confirm(…)` returns `Outcome.Ok(newState, events)` or `Outcome.Refused(reason)`. The application service stores the new state via the repository and then publishes the events. This makes aggregates testable without mocks and thread-safe.
+- Events make the flows testable: "Given events / When command / Then events".
 
-### A7. Repositories und Anti-Corruption-Layer
+### A7. Repositories and Anti-Corruption-Layer
 
-- **Ein Repository pro Aggregat** (Port in `domain`, Implementierung in `adapter-storage`). Es gibt keine Repositories für Entities innerhalb eines Aggregats.
-- **ACL zu UEX** (`adapter-uex`):
-  - UEX-DTOs (snake_case, Zahlen als Strings, 0/1-Flags, Status-Strings) werden an der Grenze in Value Objects übersetzt.
-  - UEX-Fehlercodes werden zu sealed `SubmissionError`-Typen.
-  - Kein UEX-Begriff „leckt“ in den Kern.
-- **ACL zum Spiel:** `global.ini` und Ingame-Texte werden über Mapping-Tabellen in Fachbegriffe übersetzt (`InventoryStatus`, `TradeSide`).
-- **ACL zu Ollama:** Die Modellantwort wird zu `CardReading`.
+- **One repository per aggregate** (port in `domain`, implementation in `adapter-storage`). There are no repositories for entities within an aggregate.
+- **ACL to UEX** (`adapter-uex`):
+  - UEX DTOs (snake_case, numbers as strings, 0/1 flags, status strings) are translated into value objects at the boundary.
+  - UEX error codes become sealed `SubmissionError` types.
+  - No UEX term "leaks" into the core.
+- **ACL to the game:** `global.ini` and in-game texts are translated into domain terms via mapping tables (`InventoryStatus`, `TradeSide`).
+- **ACL to Ollama:** the model response becomes a `CardReading`.
 
-### A8. Markierung und Durchsetzung
+### A8. Marking and enforcement
 
-- Eigene, abhängigkeitsfreie Marker-Annotationen in `domain` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
-- **Kein jMolecules:** Das wäre eine zusätzliche Abhängigkeit im Kern (geprüft: `org.jmolecules:jmolecules-ddd` 2.0.1). Fünf eigene Annotationen leisten hier dasselbe.
-- **ArchUnit-Regeln:**
-  - `@ValueObject` und `@DomainEvent` sind Records.
-  - `@AggregateRoot`-Klassen werden nur über ihr Repository geladen und gespeichert.
-  - Aggregate referenzieren fremde Aggregate nur über `*Id`-Typen.
-  - Domain-Typen haben keine öffentlichen Setter.
-  - Kontext-Packages greifen nicht auf Interna anderer Kontexte zu.
+- Our own dependency-free marker annotations in `domain` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
+- **No jMolecules:** that would be an additional dependency in the core (checked: `org.jmolecules:jmolecules-ddd` 2.0.1). Five annotations of our own do the same job here.
+- **ArchUnit rules:**
+  - `@ValueObject` and `@DomainEvent` are records.
+  - `@AggregateRoot` classes are loaded and stored only via their repository.
+  - Aggregates reference other aggregates only via `*Id` types.
+  - Domain types have no public setters.
+  - Context packages do not access the internals of other contexts.
 
-## Teil B – Test-Driven Development
+## Part B – Test-Driven Development
 
-### B1. Wo TDD gilt
+### B1. Where TDD applies
 
-| Bereich | Vorgehen |
+| Area | Approach |
 |---|---|
-| `domain`, `pipeline`, `application` | **TDD verpflichtend:** Red → Green → Refactor. Kein Produktionscode ohne einen vorher fehlschlagenden Test. |
-| Adapter (`adapter-uex`, `adapter-storage`, `adapter-refdata`, `adapter-capture`) | **Test-first, soweit möglich:** Kontrakt- und Integrationstests (WireMock, echte SQLite-Datei, echtes Temp-Verzeichnis) zuerst, dann die Implementierung |
-| `adapter-ocr`, `adapter-vlm` und OCR-Schwellwerte | **Spike & Stabilize:** Exploration im Eval-Harness ist erlaubt (Ergebnis: Messwerte, kein Merge). Vor dem Merge wird das gewünschte Verhalten mit Golden- und Unit-Tests festgeschrieben, die ohne die Änderung fehlschlagen. |
-| `ui` | ViewModels per TDD (ohne Fenster); Views (Layout, CSS) ohne TDD, kritische Flows per TestFX nach der Umsetzung |
-| `adapter-platform` (FFM, Prozessliste) | Schmale Wrapper hinter Ports; der Port wird per Fake getestet, die native Seite durch Integrationstests auf dem Ziel-OS (CI-Matrix) |
-| Bugfix (überall) | Zuerst ein Test, der den Fehler reproduziert |
+| `domain`, `pipeline`, `application` | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
+| Adapters (`adapter-uex`, `adapter-storage`, `adapter-refdata`, `adapter-capture`) | **Test-first, as far as possible:** contract and integration tests (WireMock, real SQLite file, real temp directory) first, then the implementation |
+| `adapter-ocr`, `adapter-vlm` and OCR thresholds | **Spike & Stabilize:** exploration in the eval harness is allowed (result: measurements, no merge). Before the merge, the desired behavior is pinned down with golden and unit tests that fail without the change. |
+| `ui` | ViewModels via TDD (without a window); views (layout, CSS) without TDD, critical flows via TestFX after implementation |
+| `adapter-platform` (FFM, process list) | Thin wrappers behind ports; the port is tested via a fake, the native side via integration tests on the target OS (CI matrix) |
+| Bugfix (everywhere) | First a test that reproduces the bug |
 
-### B2. Outside-in pro Use-Case
+### B2. Outside-in per use case
 
-1. **Akzeptanztest** auf Ebene `application` (fachliche Sprache, Fakes für alle Ports), abgeleitet aus der Anforderung. Der Testname bzw. das Tag verweist auf die Anforderungs-ID, z. B. `@Tag("R-UI-10")`.
-2. Daraus folgen Unit-Tests für Aggregate, Value Objects und Domain-Services.
-3. Zum Schluss kommen die Adapter mit ihren Kontrakttests.
+1. **Acceptance test** at the `application` level (domain language, fakes for all ports), derived from the requirement. The test name or tag refers to the requirement ID, e.g. `@Tag("R-UI-10")`.
+2. Unit tests for aggregates, value objects and domain services follow from it.
+3. Finally come the adapters with their contract tests.
 
-Beispiel (Struktur, nicht finaler Code):
+Example (structure, not final code):
 
 ```java
 @Test @Tag("R-UI-10") @Tag("R-SUB-3")
@@ -151,20 +151,20 @@ void majorPriceDeviationBlocksReleaseUntilConfirmed() {
 }
 ```
 
-### B3. Werkzeuge und Regeln
+### B3. Tools and rules
 
-- **Fakes vor Mocks:** Für jeden Port gibt es eine handgeschriebene Fake-Implementierung im Gradle-`java-test-fixtures`-Source-Set des jeweiligen Moduls. Diese Fixtures nutzen alle Tests gemeinsam. Mockito nur für Interaktionsprüfungen, die ein Fake nicht sinnvoll abbildet.
-- **Test-Data-Builder** (`aDraftReport()`, `aCapture()`, `aSnapshot()`) in denselben Test-Fixtures, statt Testdaten zu kopieren.
-- **Property-based Tests** (jqwik) für Parser, Fuzzy-Matcher, Fusion, `DeviationAssessor` und die Invarianten des `Report` (z. B. „nach `correct` ist ein Feld nie bestätigt“).
-- **Golden-Tests** für die Pipeline gegen den Korpus (`corpus/`).
-- **Mutation-Testing** (PIT) für `domain`, `pipeline` und `application`, um zu prüfen, ob die Tests Fehler wirklich finden – bei TDD die ehrliche Kontrolle gegen „Tests ohne Aussage“:
-  - Startwert für den Mutation-Score ≥ 70 %; er wird nach der ersten Messung festgelegt und darf nur steigen.
-  - Läuft im PR für geänderte Klassen und nightly vollständig.
-  - Versionen geprüft: PIT 1.30.0, Gradle-Plugin `info.solidsoft.pitest` 1.19.0, `pitest-junit5-plugin` 1.2.3. **Dass das JUnit-5-Plugin mit JUnit 6 und JDK 27 zusammenarbeitet, ist nicht geprüft** → M0.
-- **Rot nie auf `main`:** Red/Green findet lokal bzw. im Feature-Branch statt; jeder Commit auf `main` ist grün.
-- **Refactor-Schritt ist Pflicht:** Nach Grün wird aufgeräumt (Namen nach Ubiquitous Language, Duplikate entfernen), solange die Tests grün sind.
+- **Fakes before mocks:** for every port there is a handwritten fake implementation in the Gradle `java-test-fixtures` source set of the respective module. All tests share these fixtures. Mockito only for interaction checks that a fake cannot sensibly represent.
+- **Test data builders** (`aDraftReport()`, `aCapture()`, `aSnapshot()`) in the same test fixtures, instead of copying test data.
+- **Property-based tests** (jqwik) for parser, fuzzy matcher, fusion, `DeviationAssessor` and the invariants of the `Report` (e.g. "after `correct`, a field is never confirmed").
+- **Golden tests** for the pipeline against the corpus (`corpus/`).
+- **Mutation testing** (PIT) for `domain`, `pipeline` and `application`, to check whether the tests really find bugs – with TDD, the honest check against "tests that assert nothing":
+  - Initial value for the mutation score ≥ 70 %; it is fixed after the first measurement and may only rise.
+  - Runs in the PR for changed classes and fully nightly.
+  - Versions checked: PIT 1.30.0, Gradle plugin `info.solidsoft.pitest` 1.19.0, `pitest-junit5-plugin` 1.2.3. **That the JUnit 5 plugin works together with JUnit 6 and JDK 27 has not been checked** → M0.
+- **Never red on `main`:** red/green happens locally or in the feature branch; every commit on `main` is green.
+- **The refactor step is mandatory:** after green, clean up (names according to the Ubiquitous Language, remove duplicates) while the tests stay green.
 
-### B4. Rückverfolgbarkeit
+### B4. Traceability
 
-- Jede M-Anforderung aus 01 hat mindestens einen Akzeptanztest mit `@Tag("<R-ID>")`.
-- Ein kleiner Report im Build listet R-IDs ohne Test (Gradle-Task über JUnit-Tags). In M0 ist das eine Warnung, ab M3 ein Fehler für M-Anforderungen.
+- Every M requirement from 01 has at least one acceptance test with `@Tag("<R-ID>")`.
+- A small report in the build lists R-IDs without a test (Gradle task over JUnit tags). In M0 this is a warning, from M3 on an error for M requirements.

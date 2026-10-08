@@ -1,136 +1,136 @@
-# Engineering-Prinzipien: Modularisierung, Wartbarkeit, Clean Code
+# Engineering Principles: Modularization, Maintainability, Clean Code
 
-Dieses Dokument macht „Best Practices“ **überprüfbar**: Jede Regel nennt, *wie* sie durchgesetzt wird. Wo möglich, geschieht das automatisch (Compiler, JPMS, ArchUnit, Error Prone, CI), sonst über Review-Checkliste und Definition of Done.
+This document makes "best practices" **verifiable**: every rule states *how* it is enforced. Where possible this happens automatically (compiler, JPMS, ArchUnit, Error Prone, CI), otherwise via the review checklist and the Definition of Done.
 
-Regeln ohne Durchsetzung sind Wunschdenken. Deshalb gibt es bewusst wenige Regeln, und diese sind verbindlich.
+Rules without enforcement are wishful thinking. That is why there are deliberately few rules, and they are binding.
 
-## 1. Qualitätsziele (Priorität absteigend)
+## 1. Quality goals (descending priority)
 
-1. **Korrektheit der gesendeten Daten:** keine still falschen Werte an UEX.
-2. **Wartbarkeit:** SC-Patches ändern das Terminal-Layout, UEX ändert die API. Solche Änderungen sollen lokal in einem Modul bleiben.
-3. **Testbarkeit:** Fachlogik ohne UI, Netz, Datenbank und Spiel testbar.
-4. **Sicherheit und Datenschutz:** Secret-Key, Kontostand.
-5. **Portabilität:** Windows und Linux.
-6. **Ressourcenschonung** neben dem laufenden Spiel.
+1. **Correctness of the submitted data:** no silently wrong values sent to UEX.
+2. **Maintainability:** SC patches change the terminal layout, UEX changes the API. Such changes should stay local to one module.
+3. **Testability:** domain logic testable without UI, network, database and game.
+4. **Security and privacy:** secret key, balance.
+5. **Portability:** Windows and Linux.
+6. **Resource efficiency** alongside the running game.
 
-## 2. Modularisierung
+## 2. Modularization
 
-| Regel | Durchsetzung |
+| Rule | Enforcement |
 |---|---|
-| Ports & Adapters: Kern (`domain`, `pipeline`, `application`) kennt keine Technik | JPMS: Kernmodule `requires` nur `domain` bzw. JSpecify. **ArchUnit:** keine Klassen aus `javafx..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..` im Kern; kein `java.nio.file.Files` in `domain`/`pipeline`/`application`. |
-| Abhängigkeitsrichtung wie in [02 §2](02-architektur.md), zyklenfrei | Gradle-Projektabhängigkeiten plus JPMS (Zyklen kompilieren nicht); ArchUnit `slices().should().beFreeOfCycles()` auch für Packages **innerhalb** eines Moduls |
-| Jedes Modul hat eine schmale öffentliche API | `module-info.java` exportiert nur `…<modul>.api` (bzw. bewusst gewählte Packages); Implementierung liegt in `…<modul>.internal`; ArchUnit: kein Zugriff auf fremde `internal`-Packages |
-| Adapter sprechen nicht miteinander, außer den in 02 genannten Kanten | Gradle-Abhängigkeiten in `build-logic` zentral erlaubt; ArchUnit-Regel pro Adapter |
-| Kein Durchreichen von Technik-Typen über Modulgrenzen (DTOs, `ResultSet`, `OrtSession`, JavaFX-Typen) | Ports verwenden nur `domain`-Typen; Adapter mappen an der Grenze (ArchUnit: Port-Signaturen nur mit `domain`-Typen) |
-| Package-by-Feature innerhalb eines Moduls (z. B. `pipeline.locate`, `pipeline.parse`, `pipeline.stitch`) statt Package-by-Layer | Review-Checkliste |
-| `app` enthält nur Verdrahtung und Start | ArchUnit: keine Klasse in `app` außer `Main`, `*Wiring`/`*Module` und Konfigurationsladern; Zeilenbudget als Review-Hinweis |
-| Kein Service-Locator, keine statischen Singletons, keine globalen veränderlichen Zustände | ArchUnit: keine nicht-finalen `static` Felder; `static final` nur für Logger und unveränderliche Konstanten |
+| Ports & Adapters: the core (`domain`, `pipeline`, `application`) knows no technology | JPMS: core modules `requires` only `domain` or JSpecify. **ArchUnit:** no classes from `javafx..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..` in the core; no `java.nio.file.Files` in `domain`/`pipeline`/`application`. |
+| Dependency direction as in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().should().beFreeOfCycles()` also for packages **within** a module |
+| Every module has a narrow public API | `module-info.java` exports only `…<module>.api` (or deliberately chosen packages); the implementation lives in `…<module>.internal`; ArchUnit: no access to other modules' `internal` packages |
+| Adapters do not talk to each other, except for the edges named in 02 | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |
+| No passing of technology types across module boundaries (DTOs, `ResultSet`, `OrtSession`, JavaFX types) | Ports use only `domain` types; adapters map at the boundary (ArchUnit: port signatures only with `domain` types) |
+| Package-by-feature within a module (e.g. `pipeline.locate`, `pipeline.parse`, `pipeline.stitch`) instead of package-by-layer | Review checklist |
+| `app` contains only wiring and startup | ArchUnit: no class in `app` except `Main`, `*Wiring`/`*Module` and configuration loaders; line budget as a review hint |
+| No service locator, no static singletons, no global mutable state | ArchUnit: no non-final `static` fields; `static final` only for loggers and immutable constants |
 
 ## 3. Clean Code
 
-| Regel | Durchsetzung |
+| Rule | Enforcement |
 |---|---|
-| **Sprechende Namen** in der Fachsprache des Glossars (01 „Begriffe“): `Capture`, `Scan`, `Report`, `Prior`, `Finding` – überall gleich | Review; Glossar ist verbindlich |
-| **Eine Verantwortung** pro Klasse und Methode. Richtwerte: Methoden ≤ ~30 Zeilen, Klassen ≤ ~300 Zeilen. Überschreitungen brauchen einen Grund. | Review-Checkliste (Richtwert, kein Dogma) |
-| **Keine magischen Zahlen:** Schwellwerte (Sendeschwelle, Toleranzen, Ruhezeiten, Hysterese, Gruppierungsfenster) liegen in typisierten Settings-Records mit dokumentierten Defaults, nicht verstreut im Code. UEX-Werte kommen aus `ReferenceSnapshot`. | Review; Error Prone; Tests prüfen die Defaults an einer Stelle |
-| **Unveränderlich als Standard:** Records, `List.copyOf`, keine Setter in `domain`/`pipeline`; auch Aggregate sind Records (Befehle liefern neuen Zustand + Events, 11 §A6) | ArchUnit: Klassen in `domain` sind Records, Enums, sealed Interfaces, Ports (Interfaces) oder Annotationen; DDD-Regeln aus 11 §A8 |
-| **Keine Booleschen Steuerparameter** in öffentlichen APIs (`process(x, true)`) → Enums oder eigene Methoden | Review |
-| **Null-frei:** JSpecify `@NullMarked`, NullAway auf Fehler-Level | Build bricht bei Verstößen |
-| **Fehler sind Werte:** Erwartbare Fehler als sealed `Result`/`Finding`-Typen, keine Exceptions für Kontrollfluss; nie Exceptions schlucken | Error Prone (`CatchAndPrintStackTrace`, ungenutzte Rückgabewerte über `@CheckReturnValue`), Review |
-| **Kommentare erklären das Warum**, nicht das Was. Öffentliche Ports und Module haben Javadoc. | Javadoc-Lint für exportierte Packages (`-Xdoclint` auf `api`-Packages) |
-| **Kein toter Code, keine auskommentierten Blöcke**; `TODO` nur mit Issue-Nummer | Error Prone (`UnusedVariable`, `UnusedMethod`); CI-Schritt prüft `TODO` ohne `#<Issue>` |
-| **Einheitliches Format** | Spotless mit google-java-format (Google Java Style) im `check`; Formatierung wird nie von Hand diskutiert |
-| **Kleine, testbare reine Funktionen** in `pipeline`; Seiteneffekte nur in Adaptern | Modulschnitt plus ArchUnit (siehe §2) |
+| **Meaningful names** in the domain language of the glossary (01 "Terms"): `Capture`, `Scan`, `Report`, `Prior`, `Finding` – the same everywhere | Review; the glossary is binding |
+| **One responsibility** per class and method. Guideline values: methods ≤ ~30 lines, classes ≤ ~300 lines. Exceeding them requires a reason. | Review checklist (guideline, not dogma) |
+| **No magic numbers:** thresholds (send threshold, tolerances, quiet periods, hysteresis, grouping windows) live in typed settings records with documented defaults, not scattered across the code. UEX values come from `ReferenceSnapshot`. | Review; Error Prone; tests check the defaults in one place |
+| **Immutable by default:** records, `List.copyOf`, no setters in `domain`/`pipeline`; aggregates are records too (commands return new state + events, 11 §A6) | ArchUnit: classes in `domain` are records, enums, sealed interfaces, ports (interfaces) or annotations; DDD rules from 11 §A8 |
+| **No boolean control parameters** in public APIs (`process(x, true)`) → enums or separate methods | Review |
+| **Null-free:** JSpecify `@NullMarked`, NullAway at error level | The build fails on violations |
+| **Errors are values:** expected errors as sealed `Result`/`Finding` types, no exceptions for control flow; never swallow exceptions | Error Prone (`CatchAndPrintStackTrace`, unused return values via `@CheckReturnValue`), review |
+| **Comments explain the why**, not the what. Public ports and modules have Javadoc. | Javadoc lint for exported packages (`-Xdoclint` on `api` packages) |
+| **No dead code, no commented-out blocks**; `TODO` only with an issue number | Error Prone (`UnusedVariable`, `UnusedMethod`); a CI step checks for `TODO` without `#<Issue>` |
+| **Uniform formatting** | Spotless with google-java-format (Google Java Style) in `check`; formatting is never discussed by hand |
+| **Small, testable pure functions** in `pipeline`; side effects only in adapters | Module split plus ArchUnit (see §2) |
 
-## 4. Fehlerbehandlung, Logging, Beobachtbarkeit
+## 4. Error handling, logging, observability
 
-- **Fehlerkategorien:**
-  - fachlich (`Finding`, UEX-Statuscodes) → werden dem Nutzer erklärt
-  - technisch erwartbar (Netz weg, Datei gesperrt) → Retry oder Hinweis
-  - Programmierfehler → Exception, Log auf ERROR, Diagnose-Export
-- **Nutzertexte** nur über i18n-Schlüssel; Fehlercodes werden zentral auf Schlüssel gemappt (eine Tabelle, testabgedeckt: jeder bekannte UEX-Code hat einen Text).
-- **Logging:** SLF4J, Kontext über MDC (`captureId`, `reportId`), kein Logging von Secrets, Bilddaten oder kompletten Payloads auf INFO. Ein Test belegt, dass der Masking-Filter greift.
+- **Error categories:**
+  - domain (`Finding`, UEX status codes) → explained to the user
+  - technically expected (network down, file locked) → retry or notice
+  - programming errors → exception, log at ERROR, diagnostics export
+- **User texts** only via keys in ResourceBundles, with English texts; error codes are mapped to keys centrally (one table, covered by tests: every known UEX code has a text).
+- **Logging:** SLF4J, context via MDC (`captureId`, `reportId`), no logging of secrets, image data or complete payloads at INFO. A test proves that the masking filter takes effect.
 
-## 5. Nebenläufigkeit
+## 5. Concurrency
 
-- Geteilter Zustand ist unveränderlich (Records). Veränderlicher Zustand hat **genau einen Besitzer** (z. B. Queue-Service) und wird nur über dessen API geändert.
-- Executor werden injiziert und beim Beenden geordnet geschlossen (`AutoCloseable`, `try-with-resources` in `app`). Es gibt keine selbst erzeugten Threads in Fachcode.
-- Abbruch ist ein regulärer Pfad: KI-Lauf, Einlesen und Senden sind abbrechbar, und das ist getestet.
-- Zeit kommt immer über `java.time.Clock` (injiziert): Cooldown, Hysterese und Gruppierung sind damit deterministisch testbar.
+- Shared state is immutable (records). Mutable state has **exactly one owner** (e.g. the queue service) and is changed only via its API.
+- Executors are injected and closed in an orderly way on shutdown (`AutoCloseable`, `try-with-resources` in `app`). There are no self-created threads in domain code.
+- Cancellation is a regular path: AI run, import and submission are cancellable, and this is tested.
+- Time always comes via `java.time.Clock` (injected): this makes cooldown, hysteresis and grouping deterministically testable.
 
-## 6. Persistenz
+## 6. Persistence
 
-- `adapter-storage` besitzt die Verbindung. Jede fachliche Tabelle gehört genau einem Repository.
-- **Kein SQL außerhalb der Repositories** (ArchUnit: `java.sql..` nur in `adapter-storage`).
-- Schema-Migrationen sind versioniert, nur vorwärts und haben je einen Test (leere DB → aktuelle Version; Vorversion mit Testdaten → aktuelle Version).
-- Konfigurationsdateien haben eine Schema-Version und eine Migration (siehe F17).
+- `adapter-storage` owns the connection. Every domain table belongs to exactly one repository.
+- **No SQL outside the repositories** (ArchUnit: `java.sql..` only in `adapter-storage`).
+- Schema migrations are versioned, forward-only and each has a test (empty DB → current version; previous version with test data → current version).
+- Configuration files have a schema version and a migration (see F17).
 
 ## 7. UI (MVVM)
 
-- **Views** sind passiv (Layout, Binding, CSS) und enthalten keine Logik.
-- **ViewModels** halten den UI-Zustand und rufen Use-Cases auf; sie sind ohne Fenster unit-testbar.
-- Formatierung (Zahlen, Δ %, „vor 3 Tagen“) liegt an **einer** Stelle (Formatter-Klasse) und ist lokalisiert.
-- Abweichungs- und Konfidenzdarstellung entsteht über CSS-Pseudoklassen aus `FieldAssessment` (02 §7); keine Farbwerte im Java-Code.
+- **Views** are passive (layout, binding, CSS) and contain no logic.
+- **ViewModels** hold the UI state and call use cases; they are unit-testable without a window.
+- Formatting (numbers, Δ %, "3 days ago") lives in **one** place (formatter class) and is localized.
+- The display of deviation and confidence is derived via CSS pseudo-classes from `FieldAssessment` (02 §7); no color values in Java code.
 
-## 8. Tests (Testpyramide)
+## 8. Tests (test pyramid)
 
-Vorgehen: **Test-Driven Development** und Outside-in; Regeln, Ausnahmen und Werkzeuge (Fakes in `java-test-fixtures`, PIT-Mutation-Testing, Rückverfolgbarkeit über Anforderungs-Tags) in [11-ddd-und-tdd.md](11-ddd-und-tdd.md) Teil B.
+Approach: **Test-Driven Development** and outside-in; rules, exceptions and tools (fakes in `java-test-fixtures`, PIT mutation testing, traceability via requirement tags) in [11-ddd-and-tdd.md](11-ddd-and-tdd.md) Part B.
 
 
-| Ebene | Was | Werkzeug |
+| Level | What | Tool |
 |---|---|---|
-| Unit (Basis, die meisten) | `domain`, `pipeline`, `application` mit Fakes der Ports | JUnit 6, AssertJ, jqwik (Parser, Fuzzy-Matcher, Fusion, Abweichungsbewertung) |
-| Architektur | Regeln aus §2/§3/§6 | ArchUnit |
-| Adapter-Integration | SQLite (echte Datei-DB im Temp-Ordner), UEX-Client gegen WireMock, Ordner-Watcher gegen echtes Temp-Verzeichnis | JUnit, WireMock |
-| Kontrakt | UEX-Antworten (aufgezeichnet, anonymisiert) gegen unsere DTOs | JUnit |
-| Golden/Korpus | OCR- und Pipeline-Ergebnis gegen Erwartungswerte, Metrik „still falsch“ | `tools/ocr-eval`, opt-in über `UEXDR_CORPUS_DIR` |
-| UI (wenige) | Onboarding, Sendesperre, Abweichungsbestätigung | TestFX |
+| Unit (base, the majority) | `domain`, `pipeline`, `application` with fakes of the ports | JUnit 6, AssertJ, jqwik (parser, fuzzy matcher, fusion, deviation assessment) |
+| Architecture | Rules from §2/§3/§6 | ArchUnit |
+| Adapter integration | SQLite (real file DB in the temp folder), UEX client against WireMock, folder watcher against a real temp directory | JUnit, WireMock |
+| Contract | UEX responses (recorded, anonymized) against our DTOs | JUnit |
+| Golden/corpus | OCR and pipeline result against expected values, metric "silently wrong" | `tools/ocr-eval`, opt-in via `UEXDR_CORPUS_DIR` |
+| UI (few) | Onboarding, submission lock, deviation confirmation | TestFX |
 
-Weitere Testregeln:
+Further test rules:
 
-- **Testnamen** beschreiben das Verhalten (`rejectsSubmissionWhenMajorDeviationUnconfirmed`); Aufbau Given/When/Then; Testdaten über Builder statt Copy-Paste.
-- **Flaky Tests** werden nicht toleriert: Ursache beheben, nicht deaktivieren.
-- **Coverage-Gate (JaCoCo):** Startwert ≥ 85 % Zeilen für `domain`, `pipeline`, `application`. Für Adapter gibt es keine Quote, dafür Integrationstests. Die Quote dient der Lückenfindung, nicht als Selbstzweck.
+- **Test names** describe the behavior (`rejectsSubmissionWhenMajorDeviationUnconfirmed`); structure Given/When/Then; test data via builders instead of copy-paste.
+- **Flaky tests** are not tolerated: fix the cause, do not disable them.
+- **Coverage gate (JaCoCo):** initial value ≥ 85 % lines for `domain`, `pipeline`, `application`. There is no quota for adapters; integration tests instead. The quota serves to find gaps, not as an end in itself.
 
-## 9. Abhängigkeiten und Build
+## 9. Dependencies and build
 
-- Versionen nur im Version-Catalog; Convention-Plugins in `build-logic` statt Copy-Paste in `build.gradle.kts`.
-- **Dependabot** (GitHub-nativ) für Gradle und GitHub Actions; Updates nur auf stabile Versionen, jeweils mit grüner CI.
-- Neue Abhängigkeit nur mit Begründung im PR. Zu prüfen sind Lizenz, Wartungszustand (letztes Release, Maintainer) und Größe. Lieber 50 Zeilen eigener Code als eine schwere Bibliothek für eine Funktion.
-- Reproduzierbare und verifizierte Builds: Gradle-Wrapper mit Checksumme, Dependency-Locking, Dependency-Verification (SHA-256 + PGP), SHA-gepinnte Actions. Die Einzelheiten und das Bedrohungsmodell stehen in [10-supply-chain-security.md](10-supply-chain-security.md).
+- Versions only in the version catalog; convention plugins in `build-logic` instead of copy-paste in `build.gradle.kts`.
+- **Dependabot** (GitHub-native) for Gradle and GitHub Actions; updates only to stable versions, each with green CI.
+- A new dependency only with a justification in the PR. License, maintenance status (last release, maintainers) and size must be checked. Better 50 lines of our own code than a heavy library for one function.
+- Reproducible and verified builds: Gradle wrapper with checksum, dependency locking, dependency verification (SHA-256 + PGP), SHA-pinned actions. The details and the threat model are in [10-supply-chain-security.md](10-supply-chain-security.md).
 
-## 10. Dokumentation und Entscheidungen
+## 10. Documentation and decisions
 
-- **ADRs** für Architekturentscheidungen unter `docs/adr/NNNN-titel.md`. ADR-001 ist die Sprachentscheidung ([03](03-sprachentscheidung.md)); weitere folgen, z. B. für Ports & Adapters, Abweichungsmodell und Lizenz.
-- `docs/plan/` bleibt die fachliche Wahrheit. Code, der davon abweicht, ändert das Dokument im selben PR.
-- `CHANGELOG.md` nach „Keep a Changelog“; Versionierung nach **SemVer**. Persistierte Daten (DB, Config) gelten als öffentliche Schnittstelle: Bricht sich das Format, gibt es eine Migration.
+- **ADRs** for architecture decisions under `docs/adr/NNNN-title.md`. ADR-001 is the language decision ([03](03-language-decision.md)); more will follow, e.g. for Ports & Adapters, the deviation model and the license.
+- `docs/plan/` remains the domain source of truth. Code that deviates from it changes the document in the same PR.
+- `CHANGELOG.md` following "Keep a Changelog"; versioning following **SemVer**. Persisted data (DB, config) counts as a public interface: if the format breaks, there is a migration.
 
-## 11. Prozess: Definition of Done und Review-Checkliste
+## 11. Process: Definition of Done and review checklist
 
-**Definition of Done** für jede Änderung:
+**Definition of Done** for every change:
 
-- [ ] `./gradlew check` grün auf Windows und Linux (CI-Matrix)
-- [ ] Im Kern per TDD entstanden: Test zuerst (rot), dann Implementierung (grün), dann Refactoring; Bugfix mit reproduzierendem Test
-- [ ] Fachbegriffe entsprechen der Ubiquitous Language (11 §A1); Aggregat-Invarianten sind durch Tests abgedeckt
-- [ ] Keine neuen ArchUnit-, Error-Prone- oder NullAway-Verstöße; keine Unterdrückung ohne Kommentar mit Begründung
-- [ ] Nutzertexte in DE und EN
-- [ ] Betroffene Plan- oder ADR-Dokumente aktualisiert
-- [ ] Keine Secrets, privaten Screenshots oder großen Binärdateien im Diff
-- [ ] Bei geänderten Abhängigkeiten: Lockfile und `verification-metadata.xml` im selben PR aktualisiert; neue Signaturschlüssel geprüft und im PR dokumentiert
+- [ ] `./gradlew check` green on Windows and Linux (CI matrix)
+- [ ] Developed via TDD in the core: test first (red), then implementation (green), then refactoring; bugfix with a reproducing test
+- [ ] Domain terms match the Ubiquitous Language (11 §A1); aggregate invariants are covered by tests
+- [ ] No new ArchUnit, Error Prone or NullAway violations; no suppression without a comment giving the reason
+- [ ] UI texts in English, via ResourceBundles (no hard-coded strings)
+- [ ] Affected plan or ADR documents updated
+- [ ] No secrets, private screenshots or large binary files in the diff
+- [ ] For changed dependencies: lockfile and `verification-metadata.xml` updated in the same PR; new signing keys checked and documented in the PR
 
-**Review-Checkliste** (PR-Vorlage `.github/pull_request_template.md`):
+**Review checklist** (PR template `.github/pull_request_template.md`):
 
-- Liegt der Code im richtigen Modul und Package? Neue Modulkante nötig – und erlaubt?
-- Ist die Fachlogik frei von Technik?
-- Gibt es magische Zahlen, Boolean-Parameter, Null-Rückgaben oder verschluckte Exceptions?
-- Sind Namen glossar-konform?
-- Sind Fehlerfälle und Abbruch behandelt und getestet?
-- Ist die Änderung so klein wie möglich (eine Sache pro PR)?
+- Is the code in the right module and package? Is a new module edge needed – and allowed?
+- Is the domain logic free of technology?
+- Are there magic numbers, boolean parameters, null returns or swallowed exceptions?
+- Do names conform to the glossary?
+- Are error cases and cancellation handled and tested?
+- Is the change as small as possible (one thing per PR)?
 
-## 12. Werkzeug-Versionen (geprüft am 2026-10-08)
+## 12. Tool versions (checked on 2026-10-08)
 
-| Werkzeug | Version | Hinweis |
+| Tool | Version | Note |
 |---|---|---|
-| ArchUnit (`com.tngtech.archunit:archunit-junit5`) | 1.5.1 | Unterstützung für Class-Files von JDK 27 in M0 prüfen |
-| JaCoCo | 0.8.15 (Juni 2026) | Unterstützung für JDK-27-Class-Files in M0 prüfen; sonst Coverage-Gate bis zum Update aussetzen (nicht den JDK wechseln) |
-| Übrige | siehe [CLAUDE.md](../../CLAUDE.md) | |
+| ArchUnit (`com.tngtech.archunit:archunit-junit5`) | 1.5.1 | Check support for JDK 27 class files in M0 |
+| JaCoCo | 0.8.15 (June 2026) | Check support for JDK 27 class files in M0; otherwise suspend the coverage gate until the update (do not switch the JDK) |
+| Others | see [CLAUDE.md](../../CLAUDE.md) | |
