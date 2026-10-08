@@ -75,3 +75,20 @@ A second review focusing on modularization, clean code and best practices yielde
 | F-4 | Best practices were named but not **enforced** | 09: rules with enforcement (JPMS, ArchUnit, Error Prone/NullAway, JaCoCo gate, Dependabot, PR checklist, Definition of Done); M0 sets up the gates before the first domain code |
 | F-5 | Time-dependent logic (cooldown, hysteresis, grouping) was not deterministically testable | `java.time.Clock` as an injected port |
 | F-6 | Deviations from the previous UEX value were only indirectly visible via the confidence. A **cleanly read but wrong** value (transposed digits in the source, wrong row) would have remained unmarked. | Separate dimension "deviation" with color marking, Δ display, age of the reference and mandatory confirmation for strong deviation (R-UI-10..12, 07 §2.6, 02 §7) |
+
+## G. Addendum: module cut by bounded context
+
+The project owner asked whether the modules can follow DDD. Assessment and decision are in [ADR-002](../adr/0002-modules-by-bounded-context.md).
+
+In short:
+
+- The core is now cut by bounded context (`capture`, `recognition`, `reporting`, `submission`, `reference-data`, `game`) plus `shared-kernel` and `workflows`. Adapters stay cut by technology.
+- `adapter-refdata` was dissolved: fuzzy matching and indexes are domain logic. `adapter-capture` became `adapter-files`.
+- Module names in sections A–F above refer to the earlier cuts.
+
+Disadvantages accepted, with handling documented in the ADR:
+
+- more modules
+- explicit translation between contexts
+- more expensive re-cuts
+- the risk that the shared kernel grows

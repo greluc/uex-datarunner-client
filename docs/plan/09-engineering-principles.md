@@ -17,12 +17,14 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 
 | Rule | Enforcement |
 |---|---|
-| Ports & Adapters: the core (`domain`, `pipeline`, `application`) knows no technology | JPMS: core modules `requires` only `domain` or JSpecify. **ArchUnit:** no classes from `javafx..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..` in the core; no `java.nio.file.Files` in `domain`/`pipeline`/`application`. |
-| Dependency direction as in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().should().beFreeOfCycles()` also for packages **within** a module |
+| Ports & Adapters: the core modules (`shared-kernel`, the context modules, `workflows`) know no technology | JPMS: core modules `requires` only other core modules (along the context map) and JSpecify. **ArchUnit:** no classes from `javafx..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..`, `java.nio.file..` in the core. |
+| Modules cut by bounded context ([ADR-002](../adr/0002-modules-by-bounded-context.md)); dependency direction as in the context map in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().should().beFreeOfCycles()` also for packages **within** a module |
 | Every module has a narrow public API | `module-info.java` exports only `…<module>.api` (or deliberately chosen packages); the implementation lives in `…<module>.internal`; ArchUnit: no access to other modules' `internal` packages |
-| Adapters do not talk to each other, except for the edges named in 02 | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |
-| No passing of technology types across module boundaries (DTOs, `ResultSet`, `OrtSession`, JavaFX types) | Ports use only `domain` types; adapters map at the boundary (ArchUnit: port signatures only with `domain` types) |
-| Package-by-feature within a module (e.g. `pipeline.locate`, `pipeline.parse`, `pipeline.stitch`) instead of package-by-layer | Review checklist |
+| Adapters do not depend on each other; they are leaves | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |
+| `shared-kernel` contains only value objects, IDs, `Outcome`, event base and marker annotations used by at least two contexts | ArchUnit: no aggregates, services or ports in `shared-kernel`; CODEOWNERS review for every change |
+| Cross-context processes only in `workflows`; context modules never call each other's application services backwards against the context map | Gradle/JPMS (missing dependency = does not compile) plus ArchUnit |
+| No passing of technology types across module boundaries (DTOs, `ResultSet`, `OrtSession`, JavaFX types) | Ports use only types of their context module or `shared-kernel`; adapters map at the boundary (ArchUnit: port signatures only with core types) |
+| Package-by-feature within a module (e.g. `recognition.locate`, `recognition.parse`, `recognition.stitch`) instead of package-by-layer | Review checklist |
 | `app` contains only wiring and startup | ArchUnit: no class in `app` except `Main`, `*Wiring`/`*Module` and configuration loaders; line budget as a review hint |
 | No service locator, no static singletons, no global mutable state | ArchUnit: no non-final `static` fields; `static final` only for loggers and immutable constants |
 
@@ -33,14 +35,14 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 | **Meaningful names** in the domain language of the glossary (01 "Terms"): `Capture`, `Scan`, `Report`, `Prior`, `Finding` – the same everywhere | Review; the glossary is binding |
 | **One responsibility** per class and method. Guideline values: methods ≤ ~30 lines, classes ≤ ~300 lines. Exceeding them requires a reason. | Review checklist (guideline, not dogma) |
 | **No magic numbers:** thresholds (send threshold, tolerances, quiet periods, hysteresis, grouping windows) live in typed settings records with documented defaults, not scattered across the code. UEX values come from `ReferenceSnapshot`. | Review; Error Prone; tests check the defaults in one place |
-| **Immutable by default:** records, `List.copyOf`, no setters in `domain`/`pipeline`; aggregates are records too (commands return new state + events, 11 §A6) | ArchUnit: classes in `domain` are records, enums, sealed interfaces, ports (interfaces) or annotations; DDD rules from 11 §A8 |
+| **Immutable by default:** records, `List.copyOf`, no setters in the core; aggregates are records too (commands return new state + events, 11 §A6) | ArchUnit: domain-model classes in the core modules are records, enums, sealed interfaces, ports (interfaces) or annotations; DDD rules from 11 §A8 |
 | **No boolean control parameters** in public APIs (`process(x, true)`) → enums or separate methods | Review |
 | **Null-free:** JSpecify `@NullMarked`, NullAway at error level | The build fails on violations |
 | **Errors are values:** expected errors as sealed `Result`/`Finding` types, no exceptions for control flow; never swallow exceptions | Error Prone (`CatchAndPrintStackTrace`, unused return values via `@CheckReturnValue`), review |
 | **Comments explain the why**, not the what. Public ports and modules have Javadoc. | Javadoc lint for exported packages (`-Xdoclint` on `api` packages) |
 | **No dead code, no commented-out blocks**; `TODO` only with an issue number | Error Prone (`UnusedVariable`, `UnusedMethod`); a CI step checks for `TODO` without `#<Issue>` |
 | **Uniform formatting** | Spotless with google-java-format (Google Java Style) in `check`; formatting is never discussed by hand |
-| **Small, testable pure functions** in `pipeline`; side effects only in adapters | Module split plus ArchUnit (see §2) |
+| **Small, testable pure functions** in `recognition`; side effects only in adapters | Module split plus ArchUnit (see §2) |
 
 ## 4. Error handling, logging, observability
 
@@ -79,7 +81,7 @@ Approach: **Test-Driven Development** and outside-in; rules, exceptions and tool
 
 | Level | What | Tool |
 |---|---|---|
-| Unit (base, the majority) | `domain`, `pipeline`, `application` with fakes of the ports | JUnit 6, AssertJ, jqwik (parser, fuzzy matcher, fusion, deviation assessment) |
+| Unit (base, the majority) | core modules (context modules, `shared-kernel`, `workflows`) with fakes of the ports | JUnit 6, AssertJ, jqwik (parser, fuzzy matcher, fusion, deviation assessment) |
 | Architecture | Rules from §2/§3/§6 | ArchUnit |
 | Adapter integration | SQLite (real file DB in the temp folder), UEX client against WireMock, folder watcher against a real temp directory | JUnit, WireMock |
 | Contract | UEX responses (recorded, anonymized) against our DTOs | JUnit |
@@ -90,7 +92,7 @@ Further test rules:
 
 - **Test names** describe the behavior (`rejectsSubmissionWhenMajorDeviationUnconfirmed`); structure Given/When/Then; test data via builders instead of copy-paste.
 - **Flaky tests** are not tolerated: fix the cause, do not disable them.
-- **Coverage gate (JaCoCo):** initial value ≥ 85 % lines for `domain`, `pipeline`, `application`. There is no quota for adapters; integration tests instead. The quota serves to find gaps, not as an end in itself.
+- **Coverage gate (JaCoCo):** initial value ≥ 85 % lines for the core modules. There is no quota for adapters; integration tests instead. The quota serves to find gaps, not as an end in itself.
 
 ## 9. Dependencies and build
 

@@ -50,77 +50,94 @@ Guiding principles:
 3. **Pure domain logic and I/O are separated.** Pipeline stages are pure functions on immutable records. This makes them testable with golden data, without UI and without network.
 4. **Language-neutral cut.** The module boundaries allow individual parts (e.g. the OCR core) to be replaced later.
 
-## 2. Modules (Gradle multi-project, JPMS modules) – Ports & Adapters
+## 2. Modules (Gradle multi-project, JPMS modules) – bounded contexts + ports & adapters
 
-The cut follows **Ports & Adapters** (hexagonal architecture):
+The cut combines **DDD bounded contexts** with **ports & adapters** (decision and trade-offs: [ADR-002](../adr/0002-modules-by-bounded-context.md)):
 
-- **Core** (`domain`, `pipeline`, `application`): contains the domain logic and knows no technology (no JavaFX, no HTTP, no SQL, no file system, no clock except via `java.time.Clock`).
-- **Adapters** implement the **ports** (interfaces in `domain`).
-- **`ui`** uses only the use cases from `application`.
+- **Core** = one module per bounded context ([11 §A2](11-ddd-and-tdd.md)), plus `shared-kernel` and `workflows`.
+  - Each context module contains its domain model **and** its application services (use cases).
+  - The core knows no technology: no JavaFX, no HTTP, no SQL, no ONNX, no file system, no clock except via `java.time.Clock`.
+- **Adapters** are cut by **technology** and implement the **ports** of the context modules. Inside an adapter there is one package per context.
+- **`ui`** uses only the public application API of the context modules and `workflows`.
 - **`app`** is exclusively composition root and packaging.
 
 Detailed rules and their enforcement are in [09-engineering-principles.md](09-engineering-principles.md).
 
 ```
 uex-datarunner-client/
-├── build-logic/            Convention plugins (toolchain, Error Prone/NullAway, Spotless, tests, JaCoCo, ArchUnit)
+├── build-logic/            Convention plugins (toolchain, Error Prone/NullAway, Spotless, tests, JaCoCo, ArchUnit, PIT)
 │
-│   ── Core ──
-├── domain/                 Entities/value objects (records, sealed types), ports (interfaces), error types; only JSpecify
-├── pipeline/               Recognition logic as pure functions: locate, layout, parser, resolution, fusion, validation, stitching, confidence
-├── application/            Use cases and workflows: import, process, group, review, submit (queue, cooldown, send threshold), AI queue + RecognitionPolicy, settings
+│   ── Core: bounded contexts (pure) ──
+├── shared-kernel/          IDs, money/quantity value objects, Outcome, domain-event base, DDD marker annotations
+├── game/                   Game Environment: environment, version, game state, localization mapping model; port GameStateProbe
+├── reference-data/         Reference Data: ReferenceSnapshot, vocabulary indexes, fuzzy matcher; port ReferenceDataSource
+├── capture/                Capture: Capture, WatchedFolder, import use cases; ports CaptureSource, CaptureRepository
+├── recognition/            Recognition: locate, layout, parse, resolve, fuse, validate, stitch, confidence; ports Reader, TextDetector
+├── reporting/              Reporting: Report aggregate (I1–I5), submission gate, deviation assessment, grouping, review use cases; port ReportRepository
+├── submission/             Submission: SubmissionJob, Cooldown, queue use cases; ports SubmissionGateway, SubmissionJobRepository, CooldownRepository
+├── workflows/              Process managers across contexts: capture→recognition→reporting, reporting→submission, AI re-read (RecognitionPolicy, AI queue)
 │
-│   ── Adapters (implement ports) ──
-├── adapter-uex/            UEX HTTP client, DTOs + mapping to domain, envelope, error codes, rate limiter, host fallback
-├── adapter-refdata/        Reference data cache, refresh, vocabulary indexes, fuzzy matcher, global.ini parser → `ReferenceSnapshot`
-├── adapter-ocr/            ONNX Runtime, DB detection, CTC recognition → implements `Reader`, `TextDetector`
-├── adapter-vlm/            Optional: Ollama client, prompt resources, answer parser → implements `Reader`
-├── adapter-capture/        Folder register, import scan, auto-watcher, stable-file gate, clipboard → implements `CaptureSource`
-├── adapter-storage/        SQLite: connection, migrations, repositories (captures, reports, queue, history, cache)
-├── adapter-platform/       OS integration: secret store (FFM), game process monitor, SC installation detection, paths, truststore
+│   ── Adapters (by technology, one package per context inside) ──
+├── adapter-uex/            UEX HTTP client, DTO mapping (anti-corruption layer), envelope, error codes, rate limiter, host fallback
+├── adapter-storage/        SQLite: connection, migrations, repositories for all contexts, reference-data cache
+├── adapter-ocr/            ONNX Runtime, DB detection, CTC recognition → implements Reader, TextDetector
+├── adapter-vlm/            Optional: Ollama client, prompt resources, answer parser → implements Reader
+├── adapter-files/          Folder register scan, auto-watcher, stable-file gate, clipboard; game files (global.ini, user.cfg, RSI launcher log)
+├── adapter-platform/       OS integration: secret store (FFM), game process monitor, paths, truststore
 │
 │   ── Presentation & startup ──
-├── ui/                     JavaFX (MVVM): views, ViewModels, resources/CSS/i18n – talks only to application
+├── ui/                     JavaFX (MVVM): views, ViewModels, resources/CSS/messages – talks only to application APIs and workflows
 ├── app/                    main(), composition root (wiring), load configuration, jlink/jpackage
 └── tools/ocr-eval/         CLI: golden corpus evaluation, crop dumps, digest
 ```
 
-Dependencies (only in arrow direction, **cycle-free**):
+**Context map / dependencies** (only in arrow direction, **cycle-free**, enforced by Gradle + JPMS + ArchUnit):
 
 ```
-pipeline      → domain
-application   → pipeline, domain
-ui            → application, domain
-adapter-*     → domain                (implement ports)
-adapter-refdata → adapter-uex, adapter-storage   (only allowed adapter→adapter edges)
-adapter-capture, adapter-vlm → adapter-storage    (only if own tables are needed; otherwise via ports)
-app           → all                   (wires; contains no logic)
-tools/ocr-eval → pipeline, adapter-ocr, adapter-vlm, adapter-refdata
+shared-kernel  ← every module
+game           → shared-kernel
+reference-data → shared-kernel
+capture        → game
+recognition    → reference-data, game
+reporting      → recognition (published language: Scan, CardReading), reference-data, game
+submission     → reference-data, game                 (does NOT know reporting)
+workflows      → capture, recognition, reporting, submission, reference-data, game
+ui             → workflows + public application API of the context modules
+adapter-*      → the context modules whose ports they implement   (adapters are leaves)
+app            → all                                  (wires; contains no logic)
+tools/ocr-eval → recognition, adapter-ocr, adapter-vlm, adapter-storage, reference-data
 ```
 
-**Ports** (excerpt, in `domain`):
+- Each context module exports only its `api` package: application services, commands, read models, events and ports. The domain model stays in `internal`.
+- `submission` never references `reporting`. `workflows` converts a released `Report` into a `SubmissionRequest` (a `submission` type) and applies `ReportSubmitted`/`SubmissionRejected` back to the report. This keeps the context map acyclic.
 
-| Port | Purpose | Implemented in |
-|---|---|---|
-| `Reader` | read panel → `ReaderResult` | adapter-ocr, adapter-vlm |
-| `TextDetector` | coarse OCR for locate anchors | adapter-ocr |
-| `ReferenceDataSource` | provide current `ReferenceSnapshot`, trigger refresh | adapter-refdata |
-| `SubmissionGateway` | send report to UEX, withdraw, query status | adapter-uex |
-| `CaptureSource` | captures from folders, drag & drop, clipboard | adapter-capture |
-| `CaptureRepository`, `ReportRepository`, `SubmissionQueueRepository`, `HistoryRepository` | persistence | adapter-storage |
-| `SecretStore` | store/read secret key | adapter-platform |
-| `GameStateProbe` | is Star Citizen running? | adapter-platform |
-| `java.time.Clock` | time (cooldown, hysteresis, grouping) | JDK, fixed in tests |
+**Ports** (excerpt, each defined in the context module that owns it):
 
-**Why this split?** (Compared with the first version, in which `app` combined UI, secret store and AI control, and `submission`/`capture` mixed domain logic with technology.)
+| Port | Context | Purpose | Implemented in |
+|---|---|---|---|
+| `Reader` | recognition | read panel → `ReaderResult` | adapter-ocr, adapter-vlm |
+| `TextDetector` | recognition | coarse OCR for locate anchors | adapter-ocr |
+| `ReferenceDataSource` | reference-data | provide current `ReferenceSnapshot`, trigger refresh | adapter-uex (fetch) + adapter-storage (cache) |
+| `SubmissionGateway` | submission | send to UEX, withdraw, query status | adapter-uex |
+| `CaptureSource` | capture | captures from folders, drag & drop, clipboard | adapter-files |
+| `CaptureRepository` / `ReportRepository` / `SubmissionJobRepository`, `CooldownRepository` | capture / reporting / submission | persistence (one repository per aggregate) | adapter-storage |
+| `GameLocalizationSource` | game | localized names from `global.ini` | adapter-files |
+| `SecretStore` | submission | store/read secret key | adapter-platform |
+| `GameStateProbe` | game | is Star Citizen running? | adapter-platform |
+| `java.time.Clock` | all | time (cooldown, hysteresis, grouping) | JDK, fixed in tests |
 
-- Use cases (`application`) are **testable without JavaFX, network and database** – with fakes of the ports.
-- A technology change (e.g. a different OCR model, a different secret store, later a different UI) affects exactly one module.
-- Each module has one task; `app` stays small and free of logic.
+**Why this split?**
+
+- Bounded-context boundaries are enforced by the compiler (JPMS), not only by ArchUnit.
+- Everything about one context, model and use cases, is in one module.
+- A change stays local: an SC UI patch touches `recognition` and `adapter-ocr`; a UEX API change touches `adapter-uex`.
+- Use cases are **testable without JavaFX, network and database**, using fakes of the ports.
+- A technology change (OCR model, secret store, UI) affects exactly one adapter.
+- The disadvantages (more modules, explicit translation between contexts, more expensive re-cuts, shared-kernel growth) and their handling are documented in ADR-002.
 
 Package root: `space.uexdatarunner.<module>` (placeholder – project name and reverse domain are to be determined by the project owner).
 
-## 3. Domain model (excerpt, `domain`)
+## 3. Domain model (excerpt, context modules)
 
 ```java
 public enum GameEnvironment { LIVE, PTU, EPTU, HOTFIX, TECH_PREVIEW }
@@ -174,11 +191,11 @@ The domain model (Bounded Contexts, aggregates, invariants I1–I5, events, Ubiq
 - **Money:** `BigDecimal`, never `double`. Since SC 4.7 the game shows whole aUEC; the API accepts float.
 - **Pattern matching:** Pipeline results are `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) and are evaluated with `switch` and record patterns.
 
-## 4. Recognition pipeline (`pipeline`, readers in `adapter-ocr`)
+## 4. Recognition pipeline (`recognition`, readers in `adapter-ocr`)
 
 Details and derivation are in [07-ocr-concept.md](07-ocr-concept.md). Short version:
 
-Locate needs a coarse OCR for the text anchors. So that `pipeline` does not depend on `adapter-ocr`, the port `TextDetector` (in `domain`) is injected into it for this purpose.
+Locate needs a coarse OCR for the text anchors. So that `recognition` does not depend on `adapter-ocr`, the port `TextDetector` (in `recognition`) is injected into it for this purpose.
 
 | Stage | Input → output | Key techniques |
 |---|---|---|
@@ -189,7 +206,7 @@ Locate needs a coarse OCR for the text anchors. So that `pipeline` does not depe
 | 5 Validation | Candidates → `Field<T>` with findings | Number parser, UEX prior, `data_parameters` tolerances, confusable repair, glyph topology veto, status↔SCU consistency |
 | 6 Stitching | Scans → `Report` (state `Draft`) | Grouping by terminal, side and time window; merge via `CommodityId` (simpler than in basetool thanks to resolution); edge card rule; conflict ⇒ `Ambiguous` |
 
-## 4a. Image input (`adapter-capture`, control in `application`)
+## 4a. Image input (`capture`, technology in `adapter-files`)
 
 ```java
 public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean recursive,
@@ -206,9 +223,9 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - **`StableFileGate`**: waits until size and mtime are stable for a quiet period and `ImageIO` decodes the file; then hands it over to the capture queue.
 - Settings are applied live: if a folder switches between MANUAL and AUTOMATIC, the watcher starts or stops without restarting the app.
 
-## 4b. Optional AI recognition (`adapter-vlm`, `adapter-platform`, control in `application`)
+## 4b. Optional AI recognition (`adapter-vlm`, `adapter-platform`, control in `workflows`)
 
-- **Reader abstraction** (in `domain`):
+- **Reader abstraction** (in `recognition`):
 
   ```java
   public enum ReaderKind { OCR, VLM }
@@ -232,7 +249,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - Publishes the states `RUNNING` and `CLOSED` with hysteresis as a JavaFX property or listener.
   - Has no further permissions and no process access.
 
-- **`RecognitionPolicy`** (`application`) decides, based on the setting (Off / Automatic / Always) and the game state, whether the AI queue may work:
+- **`RecognitionPolicy`** (`workflows`) decides, based on the setting (Off / Automatic / Always) and the game state, whether the AI queue may work:
 
   | Setting | Game running | Game closed |
   |---|---|---|
@@ -240,7 +257,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   | Automatic | OCR only; reports are flagged for the AI | AI queue runs (only reports with warnings or all) |
   | Always | OCR + AI (warning) | OCR + AI |
 
-- **AI queue** (`application`, persistence via `adapter-storage`):
+- **AI queue** (`workflows`, persistence via `adapter-storage`):
   - One job per capture, one after the other (the VLM uses the GPU exclusively), persisted in SQLite as "AI pending".
   - While a job is running, the game monitor checks at a 2 s interval instead of a 5 s interval.
   - On switching to `RUNNING`: abort the running request (`HttpClient` future `cancel`), unload the model (`keep_alive: 0`), jobs back into the queue.
@@ -248,7 +265,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
 - **`OllamaClient`** (`adapter-vlm`): `java.net.http` and Jackson; endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (streaming progress) and `/api/chat` (`stream: false`, `images` as Base64, `options.temperature = 0`). Host allowlist: localhost; other hosts only after confirmation (R-VLM-6).
 
-## 5. Reference data (`adapter-refdata`)
+## 5. Reference data (`reference-data`, fetching in `adapter-uex`, cache in `adapter-storage`)
 
 - The endpoints and TTLs are in [06-uex-api.md](06-uex-api.md). At startup, data is loaded from the cache (immediately usable), then refreshed in the background.
 - **In-memory indexes:**
@@ -260,11 +277,13 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - The **price prior** is loaded on demand when a terminal is opened or recognized (`commodities_prices?id_terminal=`) and cached (30 min).
 - **Persistence:** SQLite (`sqlite-jdbc`), tables `ref_*` with raw JSON and extracted index columns; schema migrations versioned (simple custom migration script, no ORM).
 
-## 6. Submission (logic in `application`, HTTP in `adapter-uex`, persistence in `adapter-storage`)
+## 6. Submission (`reporting` gate, `submission` queue, HTTP in `adapter-uex`, persistence in `adapter-storage`)
 
 - **Responsibilities:**
-  - `application` (`SubmissionService`): submission gate, queue states, cooldown, grouping.
-  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, rate limiter, retry, error code mapping to `domain` error types.
+  - `reporting`: submission gate, grouping (a report is released only if the gate passes).
+  - `submission` (`SubmissionService`): queue states, cooldown, retry policy.
+  - `workflows`: hands released reports to `submission` and applies the results back to `reporting`.
+  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, rate limiter, retry, error code mapping to `submission` error types.
   - `adapter-storage`: persistence.
 - **Payload building** (in `adapter-uex`): one list `prices[]` per report. Buy rows contain `price_buy`/`scu_buy`/`status_buy`, sell rows the `_sell` fields. In addition there are `container_sizes` and `screenshot` (Base64 without `data:` prefix), `game_version` and `is_production`.
 - **Queue:**
@@ -279,7 +298,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
 ## 7. UI (`ui`, JavaFX 27)
 
-- **MVVM:** views in Java code or FXML (passive, no logic); ViewModels with JavaFX properties call only use cases from `application`; dependencies via constructor (no DI framework). ViewModels are unit-testable without a started window.
+- **MVVM:** views in Java code or FXML (passive, no logic); ViewModels with JavaFX properties call only the application APIs of the context modules and `workflows`; dependencies via constructor (no DI framework). ViewModels are unit-testable without a started window.
 - **Threading:** pipeline and network run in an `ExecutorService` on virtual threads. UI updates happen exclusively via `Platform.runLater`. CPU-heavy OCR runs in a **bounded** platform thread pool (default: `max(1, min(2, cores / 2))`), so that the game is not slowed down.
 - **Views:**
   1. Input/queue
@@ -291,7 +310,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   7. Diagnostics
 - **Theming:** own CSS (dark/light), independent of the OS. The colors for recognition confidence and deviation are theme variables (palette suitable for color vision deficiency, replaceable in the theme).
 - **Deviation marking** (R-UI-10..12):
-  - `application` computes a `FieldAssessment(confidence, deviation, reference, referenceAge, delta)` per field. The function is pure and property-tested.
+  - `reporting` computes a `FieldAssessment(confidence, deviation, reference, referenceAge, delta)` per field. The function is pure and property-tested.
   - The ViewModel only maps this to CSS pseudo-classes (`:deviation-minor`, `:deviation-major`, `:no-reference`, `:needs-confirmation`).
   - The view contains no comparison logic; this guarantees the same assessment in OCR and manual capture.
 

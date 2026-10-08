@@ -13,7 +13,8 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 | File | Contents |
 |---|---|
 | `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A14** (unverified!) |
-| `docs/plan/02-architecture.md` | Modules, dependency direction, domain model, threading |
+| `docs/plan/02-architecture.md` | Modules (bounded contexts + adapters), context map, domain model, threading |
+| `docs/adr/` | Architecture decision records (ADR-002: modules by bounded context) |
 | `docs/plan/03-language-decision.md` | ADR Java vs. Rust, including licence note on basetool (GPL-3.0) |
 | `docs/plan/05-datarunner-bug-analysis.md` | Known bugs of the predecessor (F1–F30) and our fixes |
 | `docs/plan/06-uex-api.md` | API notes; **unverified points are marked** |
@@ -113,7 +114,7 @@ Valid from M0 once the build exists:
 
 ## Architecture guardrails
 
-- **Ports & adapters:** core = `domain`, `pipeline`, `application` (no JavaFX, HTTP, SQL, ONNX, file system; time via `Clock`). Adapters (`adapter-*`) implement ports from `domain`. `ui` talks only to `application`; `app` is a pure composition root. Dependencies only as in `02-architecture.md` §2, acyclic, enforced by JPMS and ArchUnit.
+- **Modules by bounded context + ports & adapters** (ADR-002): core = `shared-kernel`, the context modules `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`, plus `workflows` for cross-context processes (no JavaFX, HTTP, SQL, ONNX, file system; time via `Clock`). Adapters (`adapter-uex`, `-storage`, `-ocr`, `-vlm`, `-files`, `-platform`) are cut by technology and implement the ports of the context modules. `ui` talks only to the context modules' application APIs and `workflows`; `app` is a pure composition root. Dependencies only along the context map in `02-architecture.md` §2, acyclic, enforced by Gradle, JPMS and ArchUnit. `submission` never depends on `reporting`; feedback goes through `workflows`. `shared-kernel` holds only value objects/IDs used by at least two contexts.
 - Modules export only their `api` package; implementation lives in `internal`. No technology types (DTOs, `ResultSet`, `OrtSession`, JavaFX) across module boundaries.
 - Package-by-feature inside a module; no service locators, no static singletons, no global mutable state.
 - Thresholds live in typed settings records with documented defaults; no magic numbers; no boolean control parameters in public APIs.
@@ -144,9 +145,9 @@ Valid from M0 once the build exists:
 
 ## Tests
 
-**Way of working: TDD.** In the core (`domain`, `pipeline`, `application`) no production code is written without a previously failing test (red → green → refactor). New use cases start outside-in with an acceptance test at `application` level, tagged with the requirement ID (`@Tag("R-…")`). Port fakes from `java-test-fixtures` take precedence over Mockito. For OCR heuristics a spike in the eval harness is allowed; before merging, the behaviour is pinned down with failing golden and unit tests (11 §B1). Mutation testing (PIT) checks that the tests actually catch defects.
+**Way of working: TDD.** In the core modules no production code is written without a previously failing test (red → green → refactor). New use cases start outside-in with an acceptance test at the application-service level of the context module (or `workflows`), tagged with the requirement ID (`@Tag("R-…")`). Port fakes from `java-test-fixtures` take precedence over Mockito. For OCR heuristics a spike in the eval harness is allowed; before merging, the behaviour is pinned down with failing golden and unit tests (11 §B1). Mutation testing (PIT) checks that the tests actually catch defects.
 
-**Modelling: DDD.** Domain terms exactly as in 11 §A1. Contexts as packages; other aggregates only by ID; aggregates are immutable records, commands return an `Outcome` (new state + events, or a refusal reason). The invariants of `Report` (I1–I5) belong in the aggregate, not in the UI or services. UEX, game and Ollama formats are translated only in the adapters (anti-corruption layer).
+**Modelling: DDD.** Domain terms exactly as in 11 §A1. Contexts as modules; other aggregates only by ID; aggregates are immutable records, commands return an `Outcome` (new state + events, or a refusal reason). The invariants of `Report` (I1–I5) belong in the aggregate, not in the UI or services. UEX, game and Ollama formats are translated only in the adapters (anti-corruption layer).
 
 - **Unit:** parsers (price, SCU, status, cargo sizes) with jqwik property tests; fuzzy matcher; validation rules; stitching.
 - **API:** WireMock with recorded (anonymised) responses. A live test runs only manually, opt-in via `UEXDR_LIVE_TEST=1` and with `is_production=0`.
