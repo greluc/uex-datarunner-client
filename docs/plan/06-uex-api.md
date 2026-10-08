@@ -76,7 +76,7 @@ Doku-Slug: `post_data_submit`.
 5. Verhalten von `GET /user` nur mit Secret-Key
 6. Aktuelle Fehlercode-Liste und Einheiten von `price_variation`, `scu_variation` und `ttl`
 7. Nutzungsbedingungen (`https://uexcorp.space/about/legal`) für Drittclients, User-Agent-Konvention
-8. **Sell-Seite:** Bedeutet die „… SCU“-Zahl im Terminal `scu_sell` oder `scu_sell_stock`? (Annahme A10)
+8. **Sell-Seite:** Bedeutet die „… SCU“-Zahl im Terminal `scu_sell` oder `scu_sell_stock`? (Annahme A10) – **Indiz** aus den Pyro-Gateway-Screenshots: Die Zahl steht zusammen mit einem Lagerstatus (1,482 SCU, VERY LOW INVENTORY), spricht also eher für den Lagerbestand (`scu_sell_stock`).
 9. **`container_sizes`:** Im Spiel unterscheiden sich die Größen **pro Commodity** (Patch City: Omnapoxy 1–16, Human Food Bars 8–32). Gibt es das Feld nur pro Report, muss entschieden werden, ob es dann weggelassen wird (Vorschlag, statt Informationen zu vermischen) oder ob pro Commodity einzeln gesendet wird.
 10. **Screenshot:** Wird ein aus mehreren Scroll-Ausschnitten zusammengesetztes Bild akzeptiert? Werden manuelle Reports ohne Screenshot angenommen? (Annahme A11)
 11. **Duplikatsperre:** Gilt die 5-Minuten-Sperre pro (Terminal, Commodity) oder zusätzlich pro Seite? (Annahme A12)

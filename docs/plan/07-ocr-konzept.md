@@ -15,11 +15,26 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
 | Zahlen | Tausendertrenner Komma („6,000“, „¤36,000/SCU“), ganze aUEC | Strukturparser (F3/F4) |
 | Lange Namen | „Recycled Material Composite“ überlappt mit „0 SCU“ → zusammengeklebt „Compos0iSCU“ | Namensauflösung per Fuzzy-Präfix, SCU-Regex innerhalb des Tokens (F6) |
 | Scrollen | Am oberen und unteren Rand abgeschnittene Karten (z. B. nur „AVAILABLE CARGO SIZE“ ohne Namen; Karte ohne Cargo-Zeile) | Randkarten nur mit vollständigen Feldern übernehmen; Merge über Commodity-ID |
-| Ausblendung am Rand | Untere Karten sind abgedunkelt („SHOP QUANTITY“ kaum sichtbar) | Bei Duplikaten den Wert der weiter vom Rand entfernten Lesung bevorzugen (basetool-Erkenntnis) |
+| Abgedunkelte Karten | Fluorine (2 SCU, Kisten 8–32) und DynaFlex (13 SCU, Kisten 16–32) sind abgedunkelt. Zuerst als „Ausblendung am Viewport-Rand“ gedeutet; **korrigiert** nach den Pyro-Gateway-Screenshots (§1b): Dort ist IRON mitten in der Liste abgedunkelt (4 SCU < kleinste Kiste 8). | Hypothese A14: abgedunkelt = in keiner Kistengröße kaufbar. Kontrastnormalisierung pro Karte; die Abdunklung ist **kein** Randeffekt. Bei Duplikaten gilt trotzdem: die Lesung weiter vom Rand bevorzugen (abgeschnittene Randkarten). |
 | Hover-Hervorhebung | Eine Karte hat roten Hintergrund (Maus darüber) | Kontrastnormalisierung pro Karte, nicht global |
 | Schrift | Ziffern im HUD-Stil (z. B. „16“ ähnelt „lb“, „4“ ähnelt „Ч“) | Cargo-Größen über eine geschlossene Menge {1,2,4,8,16,24,32} und die Reihenfolge klassifizieren, nicht frei lesen |
 | Störungen | HUD-Elemente am Rand („94%“), Szene in der Mitte | Auf das Panel zuschneiden, bevor gelesen wird |
 | Perspektive | Leicht schräg bzw. perspektivisch | Homographie auf Normgröße |
+
+## 1b. Beobachtungen: Pyro Gateway (Stanton), blaues Theme
+
+Fünf weitere Screenshots (4× Buy gescrollt, 1× Sell) liegen als erster öffentlicher Korpus-Eintrag in `corpus/public/pyro-gateway-stanton-01/` (Kontostand geschwärzt, Transkription noch **nicht** von einem Menschen verifiziert).
+
+| Element | Beobachtung | Konsequenz |
+|---|---|---|
+| Theme und Schrift | Blau, **Großbuchstaben, Monospace-artige Schrift**, anders als Patch City (orange, gemischte Schreibweise, gerundete Schrift) | Mindestens zwei Schrift- und Layout-Profile; Matching case-insensitiv; der Korpus muss beide abdecken |
+| Location-Feld | „PYRO GATEWAY“ – **ohne** Systemzusatz, obwohl das Terminal „Pyro Gateway (Stanton)“ ist | Bestätigt F12: Der Location-Text allein ist nicht eindeutig. Disambiguierung über das Sortiment, den Sitzungskontext und schwach über das Theme (Hypothese A13: blau = Stanton-Seite); im Zweifel Pflichtauswahl. |
+| Scrollen **ohne Überlappung** | Die 4 Buy-Screenshots schließen genau seitenweise aneinander an; keine Karte erscheint doppelt | Stitching darf **nicht** auf Überlappung angewiesen sein. Reihenfolge und Lücken kommen aus dem **Scrollbalken** (Position und Länge des Schiebers rechts) und dem UEX-Sortiment. Mögliche Lücken zwischen zwei Bildern werden als Warnung angezeigt. |
+| Teilkarten | Am unteren Rand nur der Kartenkopf sichtbar (buy-1, buy-2); auf der Sell-Seite ist der Preis von HUMAN FOOD BARS halb abgeschnitten („¤490/SCU“) | Eine Karte zählt nur, wenn ihre Unterkante sichtbar ist. Ein halb lesbarer Preis darf **nicht** übernommen werden. |
+| Fast gleiche Namen | „SHIP AMMUNITION – SIZE 1“ … „SIZE 7“ unterscheiden sich nur durch eine Ziffer; Namen umbrechen auf zwei Zeilen | Fuzzy-Matching allein ist hier gefährlich (siehe §2.5, Regel für Nachbarnamen) |
+| Statusfarben | Buy: „VERY LOW INVENTORY“ **rot**; Sell: „VERY LOW INVENTORY“ **grün** | Die Farbe ist zwischen den Seiten invertiert (passt zu `commodities_status`). Der Zweitleser für den Status über die Farbe muss die Seite kennen. |
+| Sell-Seite | Mengenangabe ohne „SHOP QUANTITY“, aber mit Lagerstatus (1,482 SCU, VERY LOW INVENTORY) | Indiz, dass die Zahl den Lagerbestand des Terminals meint (A10: eher `scu_sell_stock` als `scu_sell` – mit UEX klären) |
+| Maximalwerte | Viele Waren 12,000 SCU, Argon 24,000 SCU bei „MAX INVENTORY“ | Plausibilitätszeuge: „MAX INVENTORY“ ⇒ SCU entspricht dem bekannten Maximum dieses Terminals bzw. dieser Ware (aus der UEX-Historie) |
 
 ## 2. Pipeline im Detail
 
@@ -80,6 +95,7 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
    - Zuerst wird gegen das **Sortiment des Terminals** gematcht, erst dann global.
    - Der Score kombiniert normalisiertes Levenshtein mit Präfix-Bonus.
    - Mindestabstand zum Zweitbesten; sonst `Ambiguous`.
+   - **Regel für Nachbarnamen:** Unterscheiden sich die besten Kandidaten nur in einem kurzen Token (z. B. „SIZE 1“ vs. „SIZE 7“, Ziffern, römische Zahlen), muss dieses Token **exakt** gelesen sein. Verwechselbare Ziffern (1/7, 6/8 …) führen zu `Ambiguous`. Zusätzlicher Zeuge: die Preis-Reihenfolge laut UEX-Prior (bei Ship Ammunition steigt der Preis mit der Größe).
 3. **Preis-Prior:**
    - Kandidaten (roh, ohne Präfixzeichen, Confusable-Varianten, K/M-Skalierung) werden gegen den letzten Wert bzw. `price_*_avg_week` dieses Terminals und dieser Commodity bewertet, Toleranz `price_variation` %.
    - Liegt **genau ein** Kandidat in der Toleranz, wird er vorgeschlagen.
@@ -90,6 +106,14 @@ Die fünf vom Projektinhaber gelieferten Screenshots (2000×1125, Buy- und Local
    - **Ohne Prior** (R-VAL-2a): Commodity-Durchschnitt mit doppelter Toleranz; sonst keine Reparatur.
 4. **Konsistenz:** „Out of Stock“ ⇒ SCU 0; Seite ↔ Abschnitt; `is_buyable`/`is_sellable`.
 5. **Glyph-Topologie** (Lochzählung für 0/6/8/9, Konzept aus basetool, neu implementiert) arbeitet nur als **Veto** gegen Reparaturen.
+
+### 2.5b Stitching ohne Überlappung
+
+1. Captures desselben Terminals, derselben Seite und desselben Zeitfensters werden nach der **Scrollbalken-Position** sortiert. Fallback ist die Aufnahmezeit.
+2. Karten werden über die aufgelöste `CommodityId` zusammengeführt. Überlappen sich Bilder, ist das ein Zusatzzeuge (doppelt gelesene Werte müssen übereinstimmen), aber keine Voraussetzung.
+3. **Lückenprüfung:**
+   - Decken die Scrollbalken-Abschnitte die Liste nicht lückenlos ab, oder fehlen Commodities, die laut UEX am Terminal geführt werden, zeigt der Report „möglicherweise unvollständig“ samt der fehlenden Namen.
+   - Gesendet werden darf trotzdem; gesendet wird dann nur, was gelesen wurde.
 
 ### 2.6 Konfidenz (regelbasiert)
 
