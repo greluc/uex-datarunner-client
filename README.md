@@ -20,6 +20,7 @@ Während des Spiels arbeitet eine schlanke, lokale OCR. Optional prüft ein loka
 | [08 – Review](docs/plan/08-review.md) | Prüfung des Plans: korrigierte Fehler, geschlossene Lücken, offene Punkte |
 | [09 – Engineering-Prinzipien](docs/plan/09-engineering-prinzipien.md) | Modularisierung, Clean Code, Tests, Definition of Done – mit Durchsetzung |
 | [10 – Supply-Chain-Sicherheit](docs/plan/10-supply-chain-security.md) | Bedrohungsmodell, Absicherung von Abhängigkeiten, Build, CI und Releases |
+| [11 – DDD und TDD](docs/plan/11-ddd-und-tdd.md) | Fachsprache, Bounded Contexts, Aggregate und Invarianten; testgetriebenes Vorgehen |
 
 ## Hinweis
 

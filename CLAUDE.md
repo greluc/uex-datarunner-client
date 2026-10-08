@@ -15,6 +15,7 @@ Desktop-Client (Windows + Linux) zum Erfassen von Star-Citizen-Rohstoff-Terminal
 | `docs/plan/06-uex-api.md` | API-Notizen; **ungesicherte Punkte sind markiert** |
 | `docs/plan/07-ocr-konzept.md` | OCR-Pipeline, Konfidenz und Sendeschwelle, KI-Fusion, Screenshot-Beobachtungen |
 | `docs/plan/08-review.md` | Review des Plans: gefundene Fehler und Lücken, was geändert wurde, was offen ist |
+| `docs/plan/11-ddd-und-tdd.md` | **Fachsprache** (Ubiquitous Language), Bounded Contexts, Aggregate/Invarianten, Events; TDD-Regeln und Ausnahmen |
 | `docs/plan/10-supply-chain-security.md` | Lieferkette: Bedrohungsmodell und Maßnahmen S-1…S-31 (Locking, Verification, gepinnte Actions, SBOM, Attestierung) |
 | `docs/plan/09-engineering-prinzipien.md` | **Verbindliche** Regeln zu Modularisierung, Clean Code, Tests, Definition of Done – inklusive Durchsetzung (ArchUnit, Error Prone, CI) |
 
@@ -46,6 +47,7 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 | Nullness | JSpecify + NullAway (über Error Prone) | 1.0.1 / 0.14.2 / 2.50.0 |
 | Format | Spotless mit google-java-format (Google Java Style, Standardstil, 2 Leerzeichen Einrückung, 100 Zeichen) | Spotless-Plugin 8.10.3 / google-java-format 1.37.0 |
 | Tests | JUnit Jupiter, AssertJ, Mockito, WireMock, jqwik, TestFX | 6.1.3 / 3.27.7 / 5.24.0 / 3.13.2 / 1.10.1 / 4.0.18 |
+| Mutation-Testing | PIT 1.30.0, Gradle-Plugin `info.solidsoft.pitest` 1.19.0, `pitest-junit5-plugin` 1.2.3 (Kompatibilität mit JUnit 6 und JDK 27 in M0 prüfen) | |
 | Architektur/Coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (JDK-27-Support in M0 prüfen) |
 | Lieferkette | CycloneDX-Gradle-Plugin `org.cyclonedx.bom`; OSV-Scanner; GitHub Actions `gradle/actions` (wrapper-validation, dependency-submission), `actions/attest-build-provenance`, `actions/setup-java`, `actions/checkout` | 3.5.0; v2.6.0; v6.4.0, v4.2.2, v6.0.1, v7.0.1 (per SHA pinnen) |
 | Gradle-Plugins | `net.ltgt.errorprone` 5.1.1, `org.beryx.jlink` 4.1.1, `com.github.ben-manes.versions` 0.65.0, `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | |
@@ -138,6 +140,10 @@ Vor jedem Commit muss `./gradlew check` grün sein (inkl. ArchUnit, JaCoCo-Gate)
   - CI startet kein Ollama; der Parser wird mit aufgezeichneten Antworten getestet, Live-Läufe sind opt-in über `UEXDR_VLM_HOST`.
 
 ## Tests
+
+**Arbeitsweise: TDD.** Im Kern (`domain`, `pipeline`, `application`) entsteht kein Produktionscode ohne einen vorher fehlschlagenden Test (Red → Green → Refactor). Neue Use-Cases beginnen outside-in mit einem Akzeptanztest auf `application`-Ebene, getaggt mit der Anforderungs-ID (`@Tag("R-…")`). Fakes der Ports aus `java-test-fixtures` haben Vorrang vor Mockito. Bei OCR-Heuristiken ist ein Spike im Eval-Harness erlaubt; vor dem Merge wird das Verhalten mit fehlschlagenden Golden- und Unit-Tests festgeschrieben (11 §B1). Mutation-Testing (PIT) prüft die Aussagekraft der Tests.
+
+**Modellierung: DDD.** Fachbegriffe exakt nach 11 §A1. Kontexte als Packages; fremde Aggregate nur per ID; Aggregate sind unveränderliche Records, Befehle liefern `Outcome` (neuer Zustand + Events oder Ablehnungsgrund). Invarianten des `Report` (I1–I5) gehören ins Aggregat, nicht in UI oder Services. UEX-, Spiel- und Ollama-Formate werden nur in den Adaptern (Anti-Corruption-Layer) übersetzt.
 
 - **Unit:** Parser (Preis, SCU, Status, Cargo-Größen) mit jqwik-Property-Tests; Fuzzy-Matcher; Validierungsregeln; Stitching.
 - **API:** WireMock mit aufgezeichneten (anonymisierten) Antworten. Ein Live-Test läuft nur manuell, opt-in über `UEXDR_LIVE_TEST=1` und mit `is_production=0`.

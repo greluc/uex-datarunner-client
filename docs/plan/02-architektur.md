@@ -142,19 +142,34 @@ public record ReferenceSnapshot(Instant fetchedAt, Map<CommodityId, Commodity> c
                                 DataParameters parameters, Map<TerminalId, List<PricePrior>> priors) {}
 
 /** Ein Feldwert samt Herkunft und Bewertung – Kern des "nichts still raten"-Prinzips. */
-public record Field<T>(@Nullable T value, Confidence confidence, List<Finding> findings, @Nullable Region source) {}
+@ValueObject
+public record Field<T>(@Nullable T value, FieldAssessment assessment, List<Finding> findings,
+                       @Nullable Region source, @Nullable Confirmation confirmation) {}
 
 public sealed interface Finding permits Finding.Ambiguous, Finding.OutOfTolerance,
         Finding.Repaired, Finding.Inconsistent, Finding.Unreadable, Finding.PartialCard { … }
 
-public record PriceRow(CommodityId commodity, TradeSide side,
-                       Field<BigDecimal> pricePerScu, Field<Integer> scu,
-                       Field<InventoryStatus> status, Field<Set<Integer>> containerSizes,
-                       int screenOrder) {}
+@ValueObject
+public record ReportRow(CommodityId commodity, Field<PricePerScu> price, Field<ScuQuantity> scu,
+                        Field<InventoryStatus> status, Field<ContainerSizes> containerSizes,
+                        int screenOrder) {}
 
-public record ReportDraft(Field<TerminalId> terminal, TradeSide side, GameEnvironment env,
-                          String gameVersion, List<PriceRow> rows, List<CaptureRef> captures) {}
+/** Aggregate Root (Kontext Meldung). Unveränderlich: Befehle liefern einen neuen Zustand plus Events. */
+@AggregateRoot
+public record Report(ReportId id, Field<TerminalId> terminal, TradeSide side, GameEnvironment env,
+                     GameVersion versionAtCapture, List<ReportRow> rows, List<CaptureId> captures,
+                     ReportState state) {
+    public Outcome<Report> confirm(CommodityId commodity, FieldKind field) { … }
+    public Outcome<Report> correct(CommodityId commodity, FieldKind field, Object newValue) { … } // hebt Bestätigung auf (I3)
+    public Outcome<Report> release(SubmissionGate gate) { … }                                  // prüft I1, I2, I5
+}
+
+public sealed interface ReportState permits Draft, Released, Queued, Submitted, Rejected, Withdrawn {}
+/** Ergebnis eines Befehls: neuer Zustand + Domain-Events, oder fachlicher Fehler (keine Exception). */
+public sealed interface Outcome<T> permits Outcome.Ok, Outcome.Refused {}
 ```
+
+Das fachliche Modell (Bounded Contexts, Aggregate, Invarianten I1–I5, Events, Ubiquitous Language) steht in [11-ddd-und-tdd.md](11-ddd-und-tdd.md). Dieser Abschnitt zeigt nur die Form im Code.
 
 - **Geld:** `BigDecimal`, nie `double`. Seit SC 4.7 zeigt das Spiel ganze aUEC; die API akzeptiert float.
 - **Pattern Matching:** Pipeline-Ergebnisse sind `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) und werden mit `switch` und Record-Patterns ausgewertet.
@@ -172,7 +187,7 @@ Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `ad
 | 3 Layout | TextBoxen → `List<Card>` + Header | Karten über Rahmen/Abstände und das Label „AVAILABLE CARGO SIZE“; Feldzuordnung relativ zur Karte; Tab-Erkennung über Farbintensität des Tab-Hintergrunds |
 | 4 Auflösung | Karten → Commodity-/Terminal-Kandidaten | Normalisierung (Groß-/Kleinschreibung, Leerzeichen, Ligaturen) plus gewichtetes Levenshtein/Jaro-Winkler gegen das Vokabular, Sortiment des Terminals bevorzugt |
 | 5 Validierung | Kandidaten → `Field<T>` mit Findings | Zahlparser, UEX-Prior, `data_parameters`-Toleranzen, Confusable-Reparatur, Glyph-Topologie-Veto, Status↔SCU-Konsistenz |
-| 6 Stitching | Scans → `ReportDraft` | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
+| 6 Stitching | Scans → `Report` (Zustand `Draft`) | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
 
 ## 4a. Bildeingang (`adapter-capture`, Steuerung in `application`)
 
