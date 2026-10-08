@@ -9,11 +9,12 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
 - [ ] Qualitäts-Gates nach [09-engineering-prinzipien.md](09-engineering-prinzipien.md): ArchUnit-Regeln (Schichten, Zyklen, verbotene Abhängigkeiten), JaCoCo-Schwellen, Dependabot, PR-Vorlage mit Checkliste – **vor** dem ersten Fachcode, damit die Regeln von Anfang an greifen
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
+- [ ] **Lieferkette absichern, bevor die erste Abhängigkeit eingecheckt wird** ([10](10-supply-chain-security.md)): Repository-Beschränkung, Locking, `verification-metadata.xml` (SHA-256 + PGP) mit Keyring, Wrapper-Validierung, Actions per SHA gepinnt, minimale `permissions`, Dependabot mit Abkühlzeit, OSV-Scan, CODEOWNERS, Branch-Protection, `SECURITY.md`
 - [ ] **API-Spike** (kleine CLI im Modul `adapter-uex`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
 - [ ] Mit UEX klären: App-Token für Open-Source-Clients, Nutzungsbedingungen, Annahmen A9–A12 (Umgebungs-Mapping, `scu_sell` vs. `scu_sell_stock`, zusammengesetzter Screenshot, Duplikatsperre)
 - [ ] Korpus ausbauen: erster Eintrag `corpus/public/pyro-gateway-stanton-01` vorhanden (Transkription **vom Menschen zu verifizieren**); Patch-City-Screenshots als Dateien nachreichen; möglichst **Original-Screenshots** (verlustfrei, Originalauflösung) statt Chat-Uploads
 
-**Abnahme:** `./gradlew check` ist auf beiden OS grün; ein Test-Report mit `is_production=0` wurde erfolgreich übermittelt und die Antwort dokumentiert.
+**Abnahme:** `./gradlew check` ist auf beiden OS grün; ein Test-Report mit `is_production=0` wurde erfolgreich übermittelt und die Antwort dokumentiert. **Negativtests der Lieferkette:** Ein manipuliertes Artefakt (geänderter Hash) und eine dynamische Version lassen den Build nachweislich scheitern.
 
 ## M1 – Referenzdaten, manuelle Erfassung, Senden (erstes nutzbares Release 0.1)
 
@@ -24,7 +25,7 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] `adapter-platform`: Secret-Store (FFM: Credential Manager / libsecret), Pfade, Truststore
 - [ ] `ui`: Onboarding (Key → `/user`-Check), Einstellungen, **manuelle Erfassung** (R-MAN-*) mit Abweichungsmarkierung (R-UI-10..12), Historie, Diagnose
 - [ ] `app`: Composition Root, Konfiguration
-- [ ] Packaging: MSI / `.deb` / Archive aus CI
+- [ ] Packaging: MSI / `.deb` / Archive aus CI, mit SHA256SUMS, SBOM und Build-Attestierung (R-SEC-6)
 
 **Abnahme:** Ein Nutzer erfasst ein Terminal manuell in < 1 min (Zielwert), sendet es und sieht die Report-IDs. Ein Cooldown überlebt den Neustart der App.
 
@@ -80,6 +81,7 @@ Setzt M3 voraus (gemeinsame Auflösung, Validierung und Stitching). Kann paralle
 | Spiel-Patch ändert das Terminal-Layout | Erkennung bricht | Datengetriebene Layout-Profile, Crop-Dumps, Korpus-Regressionstest; manueller Zuschnitt als Fallback |
 | Toolchain unterstützt JDK 27 nicht | Build blockiert | M0-Check; Fallback JDK 25 LTS |
 | Linux-Spezifika (Wine-Pfade, Spielerkennung, Secret Service, XWayland) weichen von den Annahmen ab | Linux-Funktionen eingeschränkt | Manuelle Konfiguration als Fallback überall; Tests auf echten Systemen in M4/M5 |
+| Kompromittierte Abhängigkeit, CI-Aktion oder kompromittiertes Build-Artefakt | Schadcode bei Nutzern, Diebstahl des Secret-Keys | Maßnahmen S-1…S-31 in [10](10-supply-chain-security.md); Restrisiko „bösartige, korrekt signierte neue Version“ bleibt mittel |
 | UEX-API ändert sich (Felder, Fehlercodes) | Senden schlägt fehl | Defensives Parsen, Kontrakt-Tests mit aufgezeichneten Antworten, verständliche Fehlermeldungen |
 
 ## Danach (1.x / später)

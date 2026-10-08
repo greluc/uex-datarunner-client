@@ -94,7 +94,7 @@ Weitere Testregeln:
 - Versionen nur im Version-Catalog; Convention-Plugins in `build-logic` statt Copy-Paste in `build.gradle.kts`.
 - **Dependabot** (GitHub-nativ) für Gradle und GitHub Actions; Updates nur auf stabile Versionen, jeweils mit grüner CI.
 - Neue Abhängigkeit nur mit Begründung im PR. Zu prüfen sind Lizenz, Wartungszustand (letztes Release, Maintainer) und Größe. Lieber 50 Zeilen eigener Code als eine schwere Bibliothek für eine Funktion.
-- Reproduzierbare Builds: Gradle-Wrapper mit Checksumme, Dependency-Locking.
+- Reproduzierbare und verifizierte Builds: Gradle-Wrapper mit Checksumme, Dependency-Locking, Dependency-Verification (SHA-256 + PGP), SHA-gepinnte Actions. Die Einzelheiten und das Bedrohungsmodell stehen in [10-supply-chain-security.md](10-supply-chain-security.md).
 
 ## 10. Dokumentation und Entscheidungen
 
@@ -112,6 +112,7 @@ Weitere Testregeln:
 - [ ] Nutzertexte in DE und EN
 - [ ] Betroffene Plan- oder ADR-Dokumente aktualisiert
 - [ ] Keine Secrets, privaten Screenshots oder großen Binärdateien im Diff
+- [ ] Bei geänderten Abhängigkeiten: Lockfile und `verification-metadata.xml` im selben PR aktualisiert; neue Signaturschlüssel geprüft und im PR dokumentiert
 
 **Review-Checkliste** (PR-Vorlage `.github/pull_request_template.md`):
 

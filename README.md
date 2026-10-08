@@ -19,6 +19,7 @@ Während des Spiels arbeitet eine schlanke, lokale OCR. Optional prüft ein loka
 | [07 – OCR-Konzept](docs/plan/07-ocr-konzept.md) | Pipeline, Screenshot-Beobachtungen, Lehren aus basetool-sc-extractor |
 | [08 – Review](docs/plan/08-review.md) | Prüfung des Plans: korrigierte Fehler, geschlossene Lücken, offene Punkte |
 | [09 – Engineering-Prinzipien](docs/plan/09-engineering-prinzipien.md) | Modularisierung, Clean Code, Tests, Definition of Done – mit Durchsetzung |
+| [10 – Supply-Chain-Sicherheit](docs/plan/10-supply-chain-security.md) | Bedrohungsmodell, Absicherung von Abhängigkeiten, Build, CI und Releases |
 
 ## Hinweis
 

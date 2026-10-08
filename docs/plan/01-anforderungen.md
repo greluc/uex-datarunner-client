@@ -179,6 +179,22 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 | R-NF-7 | Update-Hinweis über GitHub Releases, höchstens einmal täglich, abschaltbar | S |
 | R-NF-8 | Kein Eingriff ins Spiel: kein Zugriff auf Prozessspeicher, keine Input-Injektion, keine Overlays. Gelesen werden nur Dateien, die Zwischenablage und die **Prozessliste** (für Pfaderkennung und Spielerkennung, R-VLM-2). | M |
 
+## Lieferkette (SEC)
+
+Details, Bedrohungsmodell und Umsetzung: [10-supply-chain-security.md](10-supply-chain-security.md).
+
+| ID | Anforderung | Prio |
+|---|---|---|
+| R-SEC-1 | Nur Maven Central und (für Plugins) das Gradle Plugin Portal; feste Versionen; Dependency-Locking für alle Konfigurationen | M |
+| R-SEC-2 | Gradle-Dependency-Verification mit SHA-256 **und** PGP-Signaturen für alle Artefakte inkl. Plugins; Änderungen nur per reviewtem PR (CODEOWNERS) | M |
+| R-SEC-3 | Gradle-Wrapper-Validierung in CI und `distributionSha256Sum`; Release-JDK nicht per Toolchain-Auto-Download | M |
+| R-SEC-4 | GitHub Actions per Commit-SHA gepinnt, minimale `permissions`, Release nur aus geschützten Tags | M |
+| R-SEC-5 | Dependabot mit 7 Tagen Abkühlzeit für Versions-Updates (Sicherheits-Updates ausgenommen); OSV-Scan blockiert bekannte kritische/hohe Schwachstellen | M |
+| R-SEC-6 | Release mit SHA256SUMS, CycloneDX-SBOM und signierter Build-Provenienz (GitHub Artifact Attestations) | M |
+| R-SEC-7 | ONNX-Modelle mit fester Revision und SHA-256-Prüfung beim Build und beim Laden; keine Laufzeit-Downloads von Code; kein Auto-Update | M |
+| R-SEC-8 | Native Bibliotheken (sqlite-jdbc, ONNX Runtime) nicht in ein gemeinsames Temp-Verzeichnis entpacken | M |
+| R-SEC-9 | Code-Signing der Windows-Installer | K (Entscheidung Projektinhaber, Kosten) |
+
 ## Annahmen (zu verifizieren)
 
 | ID | Annahme |
