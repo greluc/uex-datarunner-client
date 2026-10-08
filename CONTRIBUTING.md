@@ -100,7 +100,7 @@ The binding rules are in [`09-engineering-principles.md`](docs/plan/09-engineeri
 - **Test first.** In the core modules no production code is written without a failing test (11 §B1). New use cases start with an acceptance test tagged with the requirement ID (`@Tag("R-…")`). A bug fix starts with a test that reproduces the bug. OCR heuristics may be explored in the evaluation harness, but before the merge their behaviour is pinned down by golden and unit tests that fail without the change.
 - **Gradle wrapper only.** Build and test with `./gradlew` (`gradlew.bat` on Windows), not with an IDE test runner. `./gradlew check` is green before every commit; `./gradlew spotlessApply` formats.
 - **No comments besides Javadoc.** This is binding: @greluc decided it for all his projects on 2026-09-26.
-  - It covers every source, test and configuration file: no `//` or `/* */` outside Javadoc, no `#` comments in YAML, TOML, `.properties`, `.gitignore`, `.gitattributes` or `.editorconfig`, no `<!-- -->` in FXML or XML, and no commented-out code or configuration.
+  - It covers every source, test and configuration file: no `//` or `/* */` outside Javadoc, no `#` comments in YAML, TOML, `.properties`, `.gitignore`, `.gitattributes`, `.editorconfig` or shell scripts, no `<!-- -->` in FXML or XML, and no commented-out code or configuration.
   - What stays: Javadoc (short, the contract only, no history), the licence header, shebangs, and tool directives without prose after them.
   - The reasoning goes into the commit message and the pull request; durable facts go into `docs/`. Open work is an issue, not a `TODO`. The reason for a suppression goes into the commit message and the pull request, never into a comment.
 - **UI texts** come only from ResourceBundles; colours only from CSS theme variables.
@@ -123,7 +123,7 @@ The licence policy has one canonical place: the "Stack rules" in [`CLAUDE.md`](C
 
 ### Code from other projects
 
-- Code from basetool and basetool-sc-extractor may be ported only under the porting conditions in [`CLAUDE.md`](CLAUDE.md). Note one consequence: basetool is `GPL-3.0-only`, so a file that contains basetool code stays `GPL-3.0-only` unless @greluc, as its copyright holder, relicenses it, and a release that contains it is effectively `GPL-3.0-only`.
+- Code from basetool and basetool-sc-extractor may be ported only under the porting conditions in [`CLAUDE.md`](CLAUDE.md). Note one consequence: basetool is `GPL-3.0-only`, so a file that contains basetool code stays `GPL-3.0-only` unless @greluc, as its copyright holder, relicenses it, and a release that contains it is effectively `GPL-3.0-only`. Porting basetool code without that relicensing statement therefore needs @greluc's approval first.
 - Other third-party code needs a licence that the Stack rules allow; the pull request names it, and `NOTICE` records the origin.
 - SC-Datarunner-UEX is closed source: never decompile it or copy from it.
 
@@ -131,7 +131,7 @@ The licence policy has one canonical place: the "Stack rules" in [`CLAUDE.md`](C
 
 ### Commit messages
 
-The repository follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) for every new commit. The earlier history keeps its plain style and is not rewritten.
+The repository follows [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) for every new commit. Earlier commit messages keep their plain style.
 
 ```text
 <type>(<scope>): <summary>
@@ -141,7 +141,7 @@ The repository follows [Conventional Commits 1.0.0](https://www.conventionalcomm
 <trailers>
 ```
 
-- **Type:** `feat`, `fix`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `style` or `chore`. Types map to the repository's labels: `feat` → `enhancement`, `fix` → `bug`, `docs` → `documentation`; the other types have no label of their own.
+- **Type:** `feat`, `fix`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `style` or `chore`. Types map to the repository's labels: `feat` → `enhancement`, `fix` → `bug`, `docs` → `documentation`; the other types have no label of their own. The CLA signature pull request and its commit use `cla: sign — <handle>` (see [Contributor Licence Agreement](#contributor-licence-agreement)); this is the only other type.
 - **Scope:** the module (`recognition`, `adapter-uex`), the document area (`plan`, `adr`, `corpus`) or `deps`.
 - **Summary:** imperative mood, lower-case start, no full stop at the end.
 - **Breaking change** (a MAJOR version under the release process): `!` after the type or scope, or a `BREAKING CHANGE:` footer.
@@ -171,7 +171,7 @@ git commit -s
 
 Forgot it? Before review starts, add it to the last commit with `git commit --amend --signoff --no-edit`, or to every commit since `main` with `git rebase --signoff main`, then update your branch with `git push --force-with-lease`.
 
-From M0 on, a CI check rejects a pull request with a commit whose sign-off is missing or does not match its author. Commits made before this policy are not rewritten.
+From M0 on, a CI check rejects a pull request with a commit whose sign-off is missing or does not match its author. The planning-phase commits already carry a sign-off.
 
 ### Contributor Licence Agreement
 
@@ -205,7 +205,7 @@ Good to know:
 
 - AI tools may be used. The human who submits the change is responsible for it and must understand it.
 - Disclose AI involvement with a `Co-Authored-By:` trailer that names the tool and the model that actually wrote the change.
-- The DCO sign-off is always given by a human, under their own identity, never in the name of an AI tool. When @greluc works with an AI agent in this repository, the agent commits under his identity with `git commit -s` and names the model in a `Co-Authored-By:` trailer; he authorised this explicitly. The planning-phase commits authored as "Claude" stay as they are.
+- The DCO sign-off is always given by a human, under their own identity, never in the name of an AI tool. When @greluc works with an AI agent in this repository, the agent commits under his identity with `git commit -s` and names the model in a `Co-Authored-By:` trailer; he authorised this explicitly. The planning-phase commits were re-authored under his identity with a sign-off on 2026-10-08; their `Co-Authored-By:` trailers name the model.
 - AI agents working in this repository follow [`CLAUDE.md`](CLAUDE.md).
 
 ## Corpus contributions

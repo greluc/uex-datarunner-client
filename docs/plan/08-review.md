@@ -1,5 +1,7 @@
 # Review of the plan (2026-10-08)
 
+> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-08.
+
 All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`. The criteria were completeness, factual errors, logic gaps and contradictions between the documents. The findings have been corrected directly in the documents. This list records **what** was wrong or incomplete, so that the changes remain traceable.
 
 ## A. Factual errors (corrected)
@@ -303,3 +305,17 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   One further question from the review (should an outdated reference weaken only the display marking, so that a `MAJOR` deviation still needs a confirmation?) is answered by the stale-reference rule above and is therefore not listed.
 
 **Still unverified** (marked in the documents): the new assumptions A17–A23 and 06 open points 21–26 (game-version lag and acceptance of older versions, `data_parameters` structure, prior and average semantics, partial acceptance, retry safety of `data_submit`, fields used by recognition checks), together with the earlier open points on per-row counting (16) and the observation time (18). All [3P] facts in 06 stay unverified until the M0 API spike.
+
+## L. Governance and licence decisions (2026-10-08)
+
+- The owner decided the open governance points; [ADR-0003](../adr/0003-licence-and-contributions.md) records them. Open points live only in [docs/adr/0000-open-points.md](../adr/0000-open-points.md).
+- §D "license" is answered: GPL-3.0-or-later (O-1, O-2). Porting from basetool-sc-extractor and basetool follows the porting rules in CLAUDE.md, and 03 §5 carries a status line.
+- Contributions: a DCO 1.1 sign-off on every commit plus the CLA with a public roster; Conventional Commits; no squash merges (O-4, O-5, O-29).
+- §K "Deferred", licence and brand review:
+  - The licence rule by category is the CLAUDE.md "Stack rules" (S-29, S-34, 09 §9).
+  - Notices, About view and source archives are R-UI-18, R-DOC-3 and R-DOC-4, S-34 and S-35.
+  - The Star Citizen Fan Kit unit is adopted (R-UI-19, O-17). The corpus screenshots are marked `LicenseRef-Game-Screenshots` (O-18, O-28).
+  - Naming criteria and UEX consent stay open (O-8).
+  - ONNX Runtime telemetry is R-NF-12 (O-13).
+- The other §D points are now O-8, O-9 and O-44 to O-46. The 32 owner questions of §K are O-47 to O-78.
+- The sections above stay as written. This section supersedes their statements that the licence is undecided and that the CLAUDE.md licence rule is unchanged.
