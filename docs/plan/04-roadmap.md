@@ -6,6 +6,8 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 
 - [ ] Projektinhaber entscheidet: Projekt- und Paketname, Lizenz (GPL-3.0 bei Code-Port aus basetool), JDK 27 vs. 25 LTS
 - [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
+- [ ] **Domänenmodell schärfen** ([11](11-ddd-und-tdd.md)): Ubiquitous Language, Bounded Contexts, Report-Invarianten I1–I5 gemeinsam mit dem Projektinhaber durchgehen (kurzer Event-Storming-Durchlauf); Marker-Annotationen und ArchUnit-DDD-Regeln anlegen
+- [ ] TDD-Infrastruktur: `java-test-fixtures` pro Modul (Fakes der Ports, Test-Data-Builder), jqwik, PIT (Kompatibilität mit JUnit 6 und JDK 27 prüfen), Tag-Report für Anforderungs-IDs
 - [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
 - [ ] Qualitäts-Gates nach [09-engineering-prinzipien.md](09-engineering-prinzipien.md): ArchUnit-Regeln (Schichten, Zyklen, verbotene Abhängigkeiten), JaCoCo-Schwellen, Dependabot, PR-Vorlage mit Checkliste – **vor** dem ersten Fachcode, damit die Regeln von Anfang an greifen
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
@@ -27,7 +29,7 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] `app`: Composition Root, Konfiguration
 - [ ] Packaging: MSI / `.deb` / Archive aus CI, mit SHA256SUMS, SBOM und Build-Attestierung (R-SEC-6)
 
-**Abnahme:** Ein Nutzer erfasst ein Terminal manuell in < 1 min (Zielwert), sendet es und sieht die Report-IDs. Ein Cooldown überlebt den Neustart der App.
+**Abnahme:** Ein Nutzer erfasst ein Terminal manuell in < 1 min (Zielwert), sendet es und sieht die Report-IDs. Ein Cooldown überlebt den Neustart der App. Alle M-Anforderungen dieses Meilensteins haben Akzeptanztests (`@Tag`), die **vor** der Implementierung geschrieben wurden; Mutation-Score des Kerns gemessen und als Untergrenze eingefroren.
 
 ## M2 – OCR-Kern und Eval
 

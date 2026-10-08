@@ -33,7 +33,7 @@ Regeln ohne Durchsetzung sind Wunschdenken. Deshalb gibt es bewusst wenige Regel
 | **Sprechende Namen** in der Fachsprache des Glossars (01 „Begriffe“): `Capture`, `Scan`, `Report`, `Prior`, `Finding` – überall gleich | Review; Glossar ist verbindlich |
 | **Eine Verantwortung** pro Klasse und Methode. Richtwerte: Methoden ≤ ~30 Zeilen, Klassen ≤ ~300 Zeilen. Überschreitungen brauchen einen Grund. | Review-Checkliste (Richtwert, kein Dogma) |
 | **Keine magischen Zahlen:** Schwellwerte (Sendeschwelle, Toleranzen, Ruhezeiten, Hysterese, Gruppierungsfenster) liegen in typisierten Settings-Records mit dokumentierten Defaults, nicht verstreut im Code. UEX-Werte kommen aus `ReferenceSnapshot`. | Review; Error Prone; Tests prüfen die Defaults an einer Stelle |
-| **Unveränderlich als Standard:** Records, `List.copyOf`, keine Setter in `domain`/`pipeline` | ArchUnit: Klassen in `domain` sind Records, Enums, sealed Interfaces oder Ports (Interfaces) |
+| **Unveränderlich als Standard:** Records, `List.copyOf`, keine Setter in `domain`/`pipeline`; auch Aggregate sind Records (Befehle liefern neuen Zustand + Events, 11 §A6) | ArchUnit: Klassen in `domain` sind Records, Enums, sealed Interfaces, Ports (Interfaces) oder Annotationen; DDD-Regeln aus 11 §A8 |
 | **Keine Booleschen Steuerparameter** in öffentlichen APIs (`process(x, true)`) → Enums oder eigene Methoden | Review |
 | **Null-frei:** JSpecify `@NullMarked`, NullAway auf Fehler-Level | Build bricht bei Verstößen |
 | **Fehler sind Werte:** Erwartbare Fehler als sealed `Result`/`Finding`-Typen, keine Exceptions für Kontrollfluss; nie Exceptions schlucken | Error Prone (`CatchAndPrintStackTrace`, ungenutzte Rückgabewerte über `@CheckReturnValue`), Review |
@@ -74,6 +74,9 @@ Regeln ohne Durchsetzung sind Wunschdenken. Deshalb gibt es bewusst wenige Regel
 
 ## 8. Tests (Testpyramide)
 
+Vorgehen: **Test-Driven Development** und Outside-in; Regeln, Ausnahmen und Werkzeuge (Fakes in `java-test-fixtures`, PIT-Mutation-Testing, Rückverfolgbarkeit über Anforderungs-Tags) in [11-ddd-und-tdd.md](11-ddd-und-tdd.md) Teil B.
+
+
 | Ebene | Was | Werkzeug |
 |---|---|---|
 | Unit (Basis, die meisten) | `domain`, `pipeline`, `application` mit Fakes der Ports | JUnit 6, AssertJ, jqwik (Parser, Fuzzy-Matcher, Fusion, Abweichungsbewertung) |
@@ -107,7 +110,8 @@ Weitere Testregeln:
 **Definition of Done** für jede Änderung:
 
 - [ ] `./gradlew check` grün auf Windows und Linux (CI-Matrix)
-- [ ] Tests für neues Verhalten; Bugfix mit reproduzierendem Test
+- [ ] Im Kern per TDD entstanden: Test zuerst (rot), dann Implementierung (grün), dann Refactoring; Bugfix mit reproduzierendem Test
+- [ ] Fachbegriffe entsprechen der Ubiquitous Language (11 §A1); Aggregat-Invarianten sind durch Tests abgedeckt
 - [ ] Keine neuen ArchUnit-, Error-Prone- oder NullAway-Verstöße; keine Unterdrückung ohne Kommentar mit Begründung
 - [ ] Nutzertexte in DE und EN
 - [ ] Betroffene Plan- oder ADR-Dokumente aktualisiert

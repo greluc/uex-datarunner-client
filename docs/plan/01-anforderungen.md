@@ -13,6 +13,8 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 
 ## Begriffe
 
+Die vollständige, verbindliche Fachsprache (Ubiquitous Language) steht in [11-ddd-und-tdd.md](11-ddd-und-tdd.md) §A1. Hier nur die Kurzfassung:
+
 | Begriff | Bedeutung |
 |---|---|
 | **Capture** | Ein Screenshot |
