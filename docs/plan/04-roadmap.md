@@ -5,7 +5,7 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 ## M0 – Fundament und Verifikation
 
 - [ ] Projektinhaber entscheidet: Projekt- und Paketname, Lizenz (GPL-3.0 bei Code-Port aus basetool), JDK 27 vs. 25 LTS
-- [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, palantir-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
+- [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, google-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
 - [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
 - [ ] Qualitäts-Gates nach [09-engineering-prinzipien.md](09-engineering-prinzipien.md): ArchUnit-Regeln (Schichten, Zyklen, verbotene Abhängigkeiten), JaCoCo-Schwellen, Dependabot, PR-Vorlage mit Checkliste – **vor** dem ersten Fachcode, damit die Regeln von Anfang an greifen
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`

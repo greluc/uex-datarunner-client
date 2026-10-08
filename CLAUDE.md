@@ -43,7 +43,7 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 | DB | `org.xerial:sqlite-jdbc` | 3.53.4.0 |
 | Logging | SLF4J API + Logback | 2.0.20 / 1.6.5 |
 | Nullness | JSpecify + NullAway (über Error Prone) | 1.0.1 / 0.14.2 / 2.50.0 |
-| Format | Spotless (palantir-java-format) | Plugin 8.10.3 |
+| Format | Spotless mit google-java-format (Google Java Style, Standardstil, 2 Leerzeichen Einrückung, 100 Zeichen) | Spotless-Plugin 8.10.3 / google-java-format 1.37.0 |
 | Tests | JUnit Jupiter, AssertJ, Mockito, WireMock, jqwik, TestFX | 6.1.3 / 3.27.7 / 5.24.0 / 3.13.2 / 1.10.1 / 4.0.18 |
 | Architektur/Coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (JDK-27-Support in M0 prüfen) |
 | Gradle-Plugins | `net.ltgt.errorprone` 5.1.1, `org.beryx.jlink` 4.1.1, `com.github.ben-manes.versions` 0.65.0, `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | |

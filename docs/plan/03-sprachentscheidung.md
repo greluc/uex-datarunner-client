@@ -94,7 +94,7 @@ Die genaue Punktzahl ist weniger wichtig als die zwei Kriterien mit dem höchste
   - Für Endnutzer ist das egal, weil `jpackage` die Runtime mitliefert.
   - **Alternative:** JDK 25 LTS, falls weniger Upgrade-Aufwand gewünscht ist.
 - **Keine Preview-Features** (z. B. Structured Concurrency, JEP 533 – in JDK 27 noch Preview). Produktivcode verwendet nur finale Features.
-- **Toolchain-Risiko JDK 27:** Error Prone, NullAway, palantir-java-format und das jlink-Plugin greifen tief in javac bzw. das JDK ein. Ob die aktuellen Versionen JDK 27 unterstützen, ist **nicht geprüft**; das passiert in M0. Unterstützt eines davon JDK 27 nicht, ist der Fallback JDK 25 LTS (die Entscheidung Java bleibt davon unberührt).
+- **Toolchain-Risiko JDK 27:** Error Prone, NullAway, google-java-format und das jlink-Plugin greifen tief in javac bzw. das JDK ein. Ob die aktuellen Versionen JDK 27 unterstützen, ist **nicht geprüft**; das passiert in M0. Unterstützt eines davon JDK 27 nicht, ist der Fallback JDK 25 LTS (die Entscheidung Java bleibt davon unberührt).
 
 **Wann Rust die bessere Wahl wäre:** wenn ein kleines Einzel-Binary und minimaler Speicherbedarf oberste Priorität hätten oder wenn das Team Rust deutlich besser beherrscht als Java. Die Architektur (siehe [02](02-architektur.md)) ist sprachneutral geschnitten, ein späterer Port des OCR-Kerns wäre also möglich.
 
