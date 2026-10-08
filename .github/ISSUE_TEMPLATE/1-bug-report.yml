@@ -1,0 +1,218 @@
+name: Bug report
+description: Something in the app does not work as described. For a value that was read wrongly, use the misread report.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for the report. Please fill in as much as you can.
+
+        **Never report a security problem here.** Use [private vulnerability reporting](https://github.com/greluc/uex-datarunner-client/security/advisories/new) instead.
+
+        **This issue is public.** Anyone can read it and open its attachments without logging in. Never include your UEX secret key, an app token or an unredacted screenshot (CURRENT BALANCE, player names, chat).
+
+        A value that the app read wrongly from a screenshot is a misread: please use the misread report. Wrong data on UEX itself belongs to [UEX Corp](https://uexcorp.space).
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What goes wrong, in one or two sentences?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      multiple: true
+      options:
+        - Image folders and import (CAP)
+        - Manual entry (MAN)
+        - Recognition, classic OCR (OCR)
+        - AI recognition with Ollama (VLM)
+        - Validation and deviation marking (VAL)
+        - Review screen (UI)
+        - Submission queue and history (SUB)
+        - UEX connection, key check, reference data (API)
+        - Game detection and game environment
+        - Onboarding and settings
+        - Logs and diagnostics export
+        - Installation, start, update notice
+        - User guide
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: As shown in the app or written in its log.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: distribution
+    attributes:
+      label: How did you install the app?
+      options:
+        - Windows installer (MSI)
+        - Windows ZIP archive
+        - Linux .deb package
+        - Linux tar.gz archive
+        - Built from source
+    validations:
+      required: true
+
+  - type: dropdown
+    id: portable
+    attributes:
+      label: Portable mode
+      description: Is there a file named portable.marker next to the launcher?
+      options:
+        - "No"
+        - "Yes"
+        - Don't know
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+      description: Name and version. On Linux, also the distribution, and whether you run X11 or Wayland.
+      placeholder: Windows 11 24H2, or Ubuntu 24.04 with Wayland
+    validations:
+      required: true
+
+  - type: dropdown
+    id: game-environment
+    attributes:
+      label: Star Citizen environment
+      options:
+        - LIVE
+        - PTU
+        - EPTU
+        - HOTFIX
+        - TECH-PREVIEW
+        - Not relevant
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Star Citizen version
+      description: If relevant and known. Leave it empty rather than guessing.
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include the exact error message shown by the app.
+    validations:
+      required: true
+
+  - type: upload
+    id: diagnostics
+    attributes:
+      label: Diagnostics export
+      description: >-
+        Attach the diagnostics export of the app (R-NF-6). It removes
+        secrets, your UEX user name and your operating-system user name,
+        and it contains no screenshots unless you added them. Before it
+        saves the export, the app lists every included file: review that
+        preview first, because attachments are public. If the app cannot
+        start or has no export yet, paste the relevant log lines below
+        instead.
+    validations:
+      required: false
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log excerpt
+      description: Only if no diagnostics export is attached. Check it for secrets and personal data first.
+      render: text
+
+  - type: markdown
+    attributes:
+      value: |
+        The next three fields matter for image import and recognition problems only. Leave them empty otherwise.
+
+  - type: dropdown
+    id: capture-method
+    attributes:
+      label: Capture tool
+      options:
+        - Star Citizen screenshot key
+        - Xbox Game Bar (PNG)
+        - Win+PrtScn
+        - Snipping Tool
+        - NVIDIA overlay
+        - Steam
+        - ShareX
+        - OBS
+        - KDE Spectacle
+        - gamescope
+        - Other
+        - Not relevant
+
+  - type: input
+    id: resolution
+    attributes:
+      label: Screenshot resolution
+      placeholder: 2560x1440
+
+  - type: dropdown
+    id: hdr
+    attributes:
+      label: HDR while capturing
+      options:
+        - Windows HDR off
+        - Windows HDR on, game HDR off
+        - Windows HDR on, game HDR on
+        - Linux
+        - Don't know
+        - Not relevant
+
+  - type: input
+    id: ollama
+    attributes:
+      label: Ollama version and model
+      description: Only if the AI recognition is involved.
+
+  - type: textarea
+    id: more
+    attributes:
+      label: Anything else
+      description: Workarounds, how often it happens, when it started.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Self-check
+      options:
+        - label: I searched open and closed issues for this problem.
+          required: true
+        - label: This report and its attachments contain no UEX secret key, no app token and no unredacted screenshot.
+          required: true
+        - label: This is not a security problem, or I reported it privately instead.
+          required: true

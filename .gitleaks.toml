@@ -1,0 +1,22 @@
+title = "UEX Datarunner Client"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "uex-secret-key"
+description = "UEX user secret key: a 40-character value assigned to a secret_key, secret-key or secretKey name in code, configuration, a header, or a WireMock request matcher in a JSON mapping or the Java DSL"
+regex = '''(?i)secret[_-]?key["']?[ \t]*(?::|=|=>|:=|,)[ \t]*(?:\{[ \t]*["']?(?:equalTo|contains|matches)["']?[ \t]*:[ \t]*|(?:equalTo|containing|matching)\([ \t]*)?["']?([a-z0-9_-]{40})(?:["'\s,;)}\]]|$)'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["secret_key", "secret-key", "secretkey"]
+tags = ["uex", "credential"]
+
+[[rules]]
+id = "http-authorization-bearer"
+description = "Bearer token in an Authorization header in code, configuration, a recorded request or a test (the UEX app token)"
+regex = '''(?i)authorization["']?[ \t]*(?::|=)[ \t]*["']?bearer[ \t]+([a-z0-9._~+/=-]{20,})'''
+secretGroup = 1
+entropy = 3.0
+keywords = ["bearer"]
+tags = ["uex", "credential"]

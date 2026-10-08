@@ -1,5 +1,7 @@
 # System architecture
 
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
 ## 1. Overview
 
 ```mermaid
@@ -490,8 +492,10 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   4. Manual capture
   5. History
   6. Settings (folders, environments and UEX mapping, key, game installation and localization file, test mode, AI, connection hosts, update check, retention, theme, text size; safety thresholds – send and digit threshold, staleness limit, deviation tolerances and `maxObservationAge` – are offered only in the stricter direction, with "Reset to defaults" (R-NF-5); catalogue in §2)
-  7. Onboarding wizard
+  7. Onboarding wizard; its start screen, shown before any setup step, carries the Star Citizen Fan Kit unit (R-UI-19)
   8. Diagnostics
+  9. About dialog (Help menu): legal notices, "Open-source licences" view, source-code link and the Fan Kit unit (R-UI-18, R-UI-19). Its licence list is a resource generated at build time from the licence-gate report and the reviewed list ([10](10-supply-chain-security.md) S-34); where it is packaged is decided in M1.
+- **Fan Kit unit** (R-UI-19): one component renders the logo and both notices. The notice texts come from fixed keys of the base ResourceBundle, the logo from the bundled file checked by SHA-256. Theme CSS may set the notices' colour and size within the R-UI-19 limits but applies no effect, tint or opacity to the logo.
 - **Theming:** own CSS (dark, light and high contrast, R-UI-17), independent of the OS (switching to high contrast automatically with the Windows setting only if the project owner decides so; that decision updates this line). The colors for recognition confidence and deviation are theme variables (palette suitable for color vision deficiency, replaceable in the theme).
 - **Rendering load** (R-NF-3): no continuous animations and no indeterminate progress controls; timer-driven labels update at most once per second through the injected UI executor and stop while the window is iconified.
 - **Field marking** (R-UI-4, R-UI-10..12):
@@ -511,8 +515,8 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 | Truststore | `Windows-ROOT` (SunMSCAPI, module `jdk.crypto.mscapi` – must be added to the jlink image explicitly) in addition to the bundled JDK truststore | Bundled JDK truststore **plus** the system bundle (`/etc/ssl/certs/ca-certificates.crt` or `/etc/pki/tls/certs/ca-bundle.crt`), because a jlink runtime does not use the system store |
 | Trust manager | One reviewed composite `X509ExtendedTrustManager` that forwards the `SSLEngine`/`Socket` overloads (so hostname verification stays active); test against a wrong-host certificate | same |
 | Proxy | `java.net.useSystemProxies=true` so `HttpClient` follows the OS proxy; exception: the `OllamaClient` uses `HttpClient.Builder.NO_PROXY` for loopback hosts (confirmed non-loopback Ollama hosts follow the system proxy like UEX) | same (environment variables / GNOME settings as far as the JDK supports them), with the same Ollama exception |
-| Native libraries | `--enable-native-access` (JEP 472) for every module that loads natives: our FFM adapter module, `javafx.graphics`, `org.xerial.sqlitejdbc` and ONNX Runtime (in the jlink image: the merged module, see below). **JavaFX:** modules only from the verified Maven Central platform JARs (`org.openjfx:javafx-*:27:<win\|linux>`, 10 S-4). `build-logic` copies their natives into the runtime image (`bin/javafx/` on Windows, `lib/` on Linux). That is where JavaFX's `NativeLibLoader` looks first for jlinked modules, so nothing is extracted at runtime. As defence in depth, the `app` bootstrap sets `javafx.cachedir` to an owner-only directory in the cache directory (storage rows below; portable marker honoured) before the toolkit starts; `Main` does not extend `Application`. **ONNX Runtime 1.30.0** has no module descriptor (only `Automatic-Module-Name`). jlink rejects automatic modules, so `org.beryx.jlink` merges ORT into the merged module and leaves `com.microsoft.onnxruntime` as a descriptor-only delegating module. The `app` build therefore sets `mergedModuleName` explicitly, and the launcher grants native access to that merged module. `com.microsoft.onnxruntime` applies only to `:app:run` on the module path. Fallback, only if merging causes other problems: a real descriptor via a module-info patching plugin (a new plugin, reviewed under S-4/S-8). ORT natives via `onnxruntime.native.path`. **sqlite-jdbc** via `org.sqlite.lib.path`/`org.sqlite.lib.name`. Nothing is extracted into the shared temp dir; the packaged-app smoke test ([04](04-roadmap.md) M1) checks this. | same |
-| Launcher JVM options | `-Xmx` and `-XX:MaxDirectMemorySize` set explicitly in the jpackage launcher (R-NF-3) | same |
+| Native libraries | `--enable-native-access` (JEP 472) for every module that loads natives: our FFM adapter module, `javafx.graphics`, `org.xerial.sqlitejdbc` and ONNX Runtime (in the jlink image: the merged module, see below). **JavaFX:** modules only from the verified Maven Central platform JARs (`org.openjfx:javafx-*:27:<win\|linux>`, 10 S-4). `build-logic` copies their natives into the runtime image (`bin/javafx/` on Windows, `lib/` on Linux). That is where JavaFX's `NativeLibLoader` looks first for jlinked modules, so nothing is extracted at runtime. As defence in depth, the `app` bootstrap sets `javafx.cachedir` to an owner-only directory in the app's cache directory, one of its per-user data directories (storage rows below; portable marker honoured; never the installation directory or the shared temp directory), before the toolkit starts; `Main` does not extend `Application`. Gluon's JavaFX jmods are not used (decided 2026-10-08, 10 S-24). The Maven Central JARs carry no licence or notice files, so `build-logic` adds the OpenJFX legal files of tag `27-ga` (`LICENSE`, `ADDITIONAL_LICENSE_INFO`, `ASSEMBLY_EXCEPTION` and `modules/javafx.graphics/src/main/legal/*.md`) to the app image's notices directory (R-DOC-3). **ONNX Runtime 1.30.0** has no module descriptor (only `Automatic-Module-Name`). jlink rejects automatic modules, so `org.beryx.jlink` merges ORT into the merged module and leaves `com.microsoft.onnxruntime` as a descriptor-only delegating module. The `app` build therefore sets `mergedModuleName` explicitly, and the launcher grants native access to that merged module. `com.microsoft.onnxruntime` applies only to `:app:run` on the module path. Fallback, only if merging causes other problems: a real descriptor via a module-info patching plugin (a new plugin, reviewed under S-4/S-8). ORT natives via `onnxruntime.native.path`; only the linux-x64 and win-x64 natives ship (whether `onnxruntime_providers_shared.dll` is needed is decided in M0). ORT telemetry is switched off per R-NF-12: `OrtEnvironment.setTelemetry(false)` before the first session, and on Linux `ORT_DISABLE_TELEMETRY=1` (launcher row). On Windows, `onnxruntime.dll` imports `MSVCP140_1.dll` and `VCRUNTIME140_1.dll`, and the OpenJDK runtime ships no `MSVCP140_1.dll`; an M0 test therefore loads ORT from the jlink image on a clean Windows machine without the Visual C++ redistributable (the copy in the JavaFX natives may be the only one; licence question O-12). **sqlite-jdbc** via `org.sqlite.lib.path`/`org.sqlite.lib.name`. Nothing is extracted into the shared temp dir; the packaged-app smoke test ([04](04-roadmap.md) M1) checks this. | same |
+| Launcher JVM options | `-Xmx` and `-XX:MaxDirectMemorySize` set explicitly in the jpackage launcher (R-NF-3) | same; plus `ORT_DISABLE_TELEMETRY=1` in the process environment before ONNX Runtime initialises (R-NF-12). jpackage launchers cannot set environment variables, so the mechanism is designed in the M0 spike |
 | Config file (`ConfigFile`, R-NF-5) | `%APPDATA%\<App>` | `$XDG_CONFIG_HOME/<app>` (default `~/.config`) |
 | Data: **one** SQLite database with all domain tables (queue, history, cooldown, processed-file register, outbox, AI queue) **and** the rebuildable `ref_*` tables; working copies (R-CAP-7); `backup/` (R-NF-11). Never in a cache directory. | `%LOCALAPPDATA%\<App>\data` | `$XDG_DATA_HOME/<app>` (default `~/.local/share`) |
 | Logs and diagnostics exports (R-NF-6) | `%LOCALAPPDATA%\<App>\logs` | `$XDG_STATE_HOME/<app>/logs` (default `~/.local/state`) |
@@ -520,15 +524,17 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 | Portable mode (R-NF-2) | all of the above under `<launcher dir>\data\{config,data,logs,cache}`; if it is not writable, the startup self-test fails visibly (R-NF-5) | same under `<launcher dir>/data/` |
 | Single instance (R-NF-10) | lock file in the data directory plus a per-user lock `%LOCALAPPDATA%\<App>\instance.lock`, taken in portable mode too; Unix-domain socket in `%LOCALAPPDATA%\<App>\run` | lock file in the data directory plus `$XDG_RUNTIME_DIR/<app>.lock` (fallback `$XDG_STATE_HOME/<app>`); Unix-domain socket in `$XDG_RUNTIME_DIR` (otherwise in an owner-only `run` directory next to the per-user lock file, i.e. `$XDG_STATE_HOME/<app>/run`; never in the cache directory, which moves in portable mode) |
 | SC detection | RSI Launcher log, process, drive default paths | Wine/Proton prefixes (configurable; default candidates see assumption A3); process via `/proc` |
-| Package | MSI (jpackage + WiX 3.14 from the runner image, 10 S-11), ZIP | `.deb` (jpackage), `tar.gz` (app image) |
+| Package | MSI (jpackage with one pinned WiX major version, chosen in M1, 10 S-11; no licence dialog that adds terms) and the plain app image as ZIP next to it; every package carries `LICENSE`, `NOTICE` and the notices directory (R-DOC-3) | `.deb` (jpackage; its `copyright` file replaced with a DEP-5 file via `--resource-dir`, R-DOC-3), `tar.gz` (app image) |
 
 The storage rows (config file to single instance) are the single source of truth for storage locations; R-NF-2, R-NF-5, R-NF-9 and R-NF-10 refer to them.
+
+The installed app writes nothing into its installation directory – no config, logs, database, caches, extracted native libraries or JavaFX cache – so that uninstalling leaves nothing behind and a read-only installation works. All state goes to the storage locations above. The only exception is portable mode (R-NF-2: the archive distributions with `portable.marker`). If the data directories fail the startup self-test (R-NF-5), the app reports it and never falls back to the installation directory.
 
 ## 9. Security and privacy
 
 - Secret key only in the OS keystore (Linux fallback file per R-NF-4); masking in logs via a Logback filter. A test ensures that the key never appears in a log line.
 - Crops: the upload screenshot contains only the shop crop(s) plus the location field. No stored or transmitted crop contains the terminal header with the balance; the exclusion is geometric and happens before the working copy is stored (R-SUB-7, R-CAP-7, F30).
-- No telemetry. Network targets are exclusively the UEX hosts allowed by R-API-3, GitHub Releases (update check, can be disabled) and – optionally – the configured Ollama host allowed by R-VLM-6 (a loopback host by default; any other host only after confirmation). A local Ollama can forward cloud models to ollama.com; such remote models are used only after consent (R-VLM-6).
+- No telemetry, analytics, crash reporting or remote logging (R-NF-12). The app sends and stores user data only as listed in the data-flow inventory at the end of this section (privacy gate, CLAUDE.md). A local Ollama can forward cloud models to ollama.com; such remote models are used only after consent (R-VLM-6).
 - No listening TCP or UDP sockets; the only local IPC is the single-instance Unix-domain socket, which accepts nothing but a fixed activation token (R-NF-10).
 - No access to the game process except reading the process list (path and game detection).
 - Only the redacted working copies are passed to the VLM, never the whole screenshot (R-VLM-9).
@@ -539,6 +545,37 @@ The storage rows (config file to single instance) are the single source of truth
   - Responses: `adapter-uex` and `adapter-vlm` cap response bodies at a size limit (setting), and the anti-corruption layer range-checks numeric values (R-API-5). `Retry-After` is clamped to a maximum backoff (§6).
   - Tests: decode fixtures in 07 §4 (item 7), and a test that a `decoding` row left over at startup becomes `failed` and is not decoded again.
 
+### Data-flow inventory
+
+The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to leave the machine, or to be stored, only as listed here. A new destination, a new kind of data sent to an existing one, or a dependency that opens network connections of its own needs the project owner's prior approval and updates this inventory in the same pull request. Links that the user clicks (About dialog, user guide, release page) open in the system browser; the app itself sends nothing with them.
+
+**Network**
+
+| # | Destination | Data sent | When | Control | Ref. |
+|---|---|---|---|---|---|
+| N1 | UEX API, base host (`https` only) | the secret key header (and the user's app token if UEX requires one, A2); reference-data requests; reports with the redacted upload crops; `data_info`, `data_remove`, `/user` | reference refresh, key check, send attempts, withdrawal | the user's key; test mode (R-SUB-8) | R-API-1…7, R-SUB-1…12 |
+| N2 | UEX mirror host from the built-in list | as N1 | only for failures that provably were not processed (R-SUB-9); the list stays empty until 06 open point 4 confirms the mirror | built-in list | R-API-3 |
+| N3 | custom UEX host (expert setting) | as N1, including the secret key | only after explicit confirmation | setting | R-API-3 |
+| N4 | GitHub Releases API | the request only (User-Agent with app name and version) | at most once a day | can be disabled | R-NF-7, 10 S-25 |
+| N5 | Ollama on a loopback host | redacted panel crops, prompt, model-management calls | AI jobs, model management | AI mode, Off by default | R-VLM-1, R-VLM-6, R-VLM-9 |
+| N6 | Ollama registry, contacted by Ollama, not by the app | Ollama's pull request | only when the user starts a pull | user action | R-VLM-7 |
+| N7 | non-loopback Ollama host, remote (cloud) models | redacted panel crops (unencrypted over `http`) | only after the R-VLM-6 confirmation | consent per host and model | R-VLM-6, R-VLM-9 |
+| N8 | fixed URLs of optional OCR model downloads (later) | the request only | user-initiated download | fixed URL and SHA-256 | R-L10N-3, 10 S-23 |
+| X1 | **Known exception until mitigated:** telemetry of ONNX Runtime's official natives | Linux: trace events over HTTPS from the 1DS SDK, with a persistent device identifier (the endpoint `mobile.events.data.microsoft.com` is in the 1.30.0 native); Windows: ETW TraceLogging events, which Windows may forward to Microsoft depending on the user's diagnostic-data consent | on by default in the official builds (`Privacy.md` in the jar) | R-NF-12: `ORT_DISABLE_TELEMETRY=1` before ORT initialises (Linux) and `OrtEnvironment.setTelemetry(false)` before the first session (both), verified by the M0 network spike; if anything remains, an ORT build with `--no_telemetry` (O-13). The row becomes "mitigated" only when the spike and the smoke-test network check pass; no release bundles ONNX Runtime before that. | R-NF-12 |
+
+**Local storage** (locations: §8 storage rows)
+
+| # | Store | Content | Retention | Ref. |
+|---|---|---|---|---|
+| L1 | OS keystore (Linux fallback file per R-NF-4) | secret key, user-provided app token | until changed or "delete all local data" | R-NF-4, R-NF-9 |
+| L2 | config file | folders, settings, hosts, consents | until changed or deleted | R-NF-5, R-NF-9 |
+| L3 | SQLite database | queue, history with `ids_reports`, cooldowns, processed-file register, outbox, AI queue, version and channel history, reference-data cache | history metadata 1 year; register entries per R-CAP-1d; reference data per TTL | R-CAP-1d, R-CAP-7, R-API-1 |
+| L4 | working copies (redacted panel crops) and the inbox for images without a source file (§4a) | redacted crops; inbox copies | R-CAP-7; inbox per R-OCR-16 | R-CAP-7, R-OCR-16 |
+| L5 | database backups (`backup/`) | database copies and the config file | the last 3 backups | R-NF-11, [release process](../release-process.md) |
+| L6 | logs | rotating log files, secrets masked | rotation limits set in M1 | R-NF-6 |
+| L7 | diagnostics export | allowlisted files, saved where the user chooses | the user's file | R-NF-6 |
+| L8 | cache directory | regenerable files only (JavaFX cache, natives per 10 S-24) | can be deleted at any time | §8 |
+
 ## 10. Build and CI
 
 - Gradle 9.8.1 (Kotlin DSL, version catalog `gradle/libs.versions.toml`, convention plugins in `build-logic`), Java toolchain 27 via Foojay resolver.
@@ -547,5 +584,6 @@ The storage rows (config file to single instance) are the single source of truth
   - OCR eval on the public (redacted) corpus
   - on tags: read-only build jobs (`jpackage` per OS, archives, SBOM) with the packaged-app smoke test ([04](04-roadmap.md) M1)
 - Separate jobs outside `check`: PIT (changed classes in the PR, full run nightly, 11 §B3); OSV scan (in the PR, daily on `main` and on the latest release tag, 10 S-19); dependency submission (S-20); the weekly live-API drift job (04 M1).
-- Releases: a publish job without Gradle downloads the build outputs, computes SHA-256 checksums, attests them and publishes them with the CycloneDX SBOM (10 S-14, S-16).
+- **Repository and licence gates** from M0 ([10](10-supply-chain-security.md) S-32…S-37, ADR-0003): the licence gate (`app.cash.licensee`, part of `check`), `reuse lint` and the `LICENSE`/`LICENSES` comparison, the DCO check, the English check, gitleaks, actionlint and zizmor, CodeQL for GitHub Actions, dependency review. Every `gradle/actions` step sets `cache-provider: basic` (S-37); CI tools outside Gradle are pinned per S-36.
+- Releases: a publish job without Gradle downloads the build outputs, computes SHA-256 checksums, attests them and publishes them with the CycloneDX SBOM (10 S-14, S-16), the plain app-image ZIP next to the MSI (R-DOC-3) and the source archives of R-DOC-4. A read-only build job fetches those archives from pinned URLs and checks them against committed SHA-256 values, like the OCR assets (10 S-22).
 - **Supply chain:** dependency locking, dependency verification (SHA-256 for every artifact, plus PGP where signed), wrapper validation, SHA-pinned actions – see [10-supply-chain-security.md](10-supply-chain-security.md).

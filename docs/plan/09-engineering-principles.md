@@ -1,5 +1,7 @@
 # Engineering Principles: Modularization, Maintainability, Clean Code
 
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
 This document makes "best practices" **verifiable**: every rule states *how* it is enforced. Where possible this happens automatically (compiler, JPMS, ArchUnit, Error Prone, CI), otherwise via the review checklist and the Definition of Done.
 
 Rules without enforcement are wishful thinking. That is why there are deliberately few rules, and they are binding.
@@ -39,10 +41,20 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 | **No boolean control parameters** in public APIs (`process(x, true)`) → enums or separate methods | Review |
 | **Null-free:** JSpecify `@NullMarked`, NullAway at error level | The build fails on violations |
 | **Errors are values:** expected errors as sealed `Result`/`Finding` types, no exceptions for control flow; never swallow exceptions | Error Prone (`CatchAndPrintStackTrace`, unused return values via `@CheckReturnValue`), review |
-| **Comments explain the why**, not the what. Public ports and modules have Javadoc. | Javadoc lint for exported packages (`-Xdoclint` on `api` packages) |
-| **No dead code, no commented-out blocks**; `TODO` only with an issue number | Error Prone (`UnusedVariable`, `UnusedMethod`); a CI step checks for `TODO` without `#<Issue>` |
+| **No comments besides Javadoc** ([CLAUDE.md](../../CLAUDE.md) "Code comments", the project owner's rule for all his projects): no `//` or `/* */` outside Javadoc, no `<!-- -->` in FXML or XML, no `#` comments in `.properties`, TOML, YAML, `.gitignore`, `.gitattributes`, `.editorconfig` or shell scripts, no commented-out code or configuration. What stays: Javadoc, the licence header, shebangs and tool directives without prose. **Javadoc** is mandatory on every public or protected type, constructor and method in `main` source sets, on every `package-info.java` and `module-info.java`, and on record components via `@param`; it states the contract (behaviour, parameters, return value, failure outcomes, exceptions, invariants) in one summary sentence plus the tags, without history. The reasoning behind a change goes into the commit message and the pull request; durable facts go into `docs/`. | `javac -Xdoclint:all/protected` with `-Werror` on all `main` source sets; Error Prone's Javadoc checks at ERROR (which check fails on misplaced or orphaned Javadoc is verified in M0); review and the PR template |
+| **No dead code, no commented-out blocks, no `TODO` or `FIXME` comments**: open work is a GitHub issue | Error Prone (`UnusedVariable`, `UnusedMethod`); a CI step fails on `TODO`, `FIXME` and `XXX` in tracked source and configuration files |
 | **Uniform formatting** | Spotless with google-java-format (Google Java Style) in `check`; formatting is never discussed by hand |
+| **English only, British spelling with -ise** in prose, comments and UI texts ([CLAUDE.md](../../CLAUDE.md) "Language"); technical identifiers keep the spelling of their technology; verbatim third-party text (licence texts, the Code of Conduct, the DCO, the Fan Kit notices) is never edited | `scripts/check-english.sh` in CI (UTF-8 locale) fails on German text in tracked files; the word list lives in the script, exceptions with their reason in `scripts/english-allowlist.tsv`; spelling by review |
 | **Small, testable pure functions** in `recognition`; side effects only in adapters | Module split plus ArchUnit (see §2) |
+
+## 3a. Suppression register
+
+A suppression (`@SuppressWarnings`, a disabled lint key, an `osv-scanner.toml` exception) is allowed only where the rule is genuinely wrong at that site. Its reason goes into the commit message, the pull request and a row here, never into a code comment. OSV exceptions ([10](10-supply-chain-security.md) S-19) are rows whose "Revisit when" is their `ignoreUntil` date. A row is removed together with its suppression.
+
+| Location | Rule | Reason | Date | Revisit when |
+|---|---|---|---|---|
+
+No suppression exists yet.
 
 ## 4. Error handling, logging, observability
 
@@ -51,7 +63,7 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
   - technically expected (network down, file locked) → retry or notice
   - programming errors → exception, log at ERROR, diagnostics export
 - **User texts** only via keys in ResourceBundles, with English texts; error codes are mapped to keys centrally (one table, covered by tests: every known UEX code has a text).
-- **Logging:** SLF4J; ONNX Runtime logs via `java.util.logging`, bridged with `jul-to-slf4j`.
+- **Logging:** SLF4J only; ONNX Runtime logs via `java.util.logging`, bridged with `jul-to-slf4j`. No `System.out`, `System.err` or `printStackTrace` in `main` source sets and no `java.util.logging` outside the bridge set-up in `app` (ArchUnit `GeneralCodingRules.NO_CLASSES_SHOULD_ACCESS_STANDARD_STREAMS` and `NO_CLASSES_SHOULD_USE_JAVA_UTIL_LOGGING`); the CLI tools under `tools/` may write to the console.
   - **Context** via MDC (`captureId`, `reportId`) – the one accepted `ThreadLocal`. The core binds the log context as one `ScopedValue<LogContext>` (`LogContext`: `@Nullable CaptureId`, `@Nullable ReportId`; record and key in `shared-kernel`). Neither the MDC nor `ScopedValue` bindings cross executor boundaries (`ScopedValue` inheritance needs `StructuredTaskScope`, which is preview in JDK 27 and banned), so `app` wraps **every** injected executor (virtual-thread I/O, bounded OCR, bounded JNI/SQLite, UI executor, the `HttpClient` executor) in one `ContextPropagatingExecutor`. At submit time it captures `KEY.isBound() ? KEY.get() : null`; in the task it re-binds with `ScopedValue.where(KEY, ctx).call(…)`/`.run(…)`, sets the MDC and clears it in `finally`; without a context the task runs unbound with an empty MDC. One parameterized test (platform pool, virtual-thread executor, direct executor) proves that the context is visible inside the task and the MDC is empty afterwards.
   - **Content:** secrets, image data (the `/data_submit` `screenshot` field, Ollama `images`, raster bytes) and complete request or response bodies are never logged, at any level. At DEBUG, payloads are summarised (row count, byte sizes, SHA-256). `GameProcessMonitor` logs only matched/not matched plus the matched executable path, never other processes' command lines. Tests prove that the masking filter takes effect and that a DEBUG-level submit and VLM call log no Base64 image data.
 
@@ -88,10 +100,10 @@ Approach: **Test-Driven Development** and outside-in; rules, exceptions and tool
 | Unit (base, the majority) | core modules (context modules, `shared-kernel`, `workflows`) with fakes of the ports | JUnit 6, AssertJ, jqwik (parser, fuzzy matcher, fusion, deviation assessment) |
 | Architecture | Rules from §2/§3/§5/§6/§7 | ArchUnit |
 | Adapter integration | SQLite (real file DB in the temp folder), UEX client against WireMock, folder watcher against a real temp directory | JUnit, WireMock |
-| Contract | UEX responses (recorded, anonymized) against our DTOs | JUnit |
+| Contract | UEX responses against our DTOs: written against the documented schema; recorded responses only anonymised and only once UEX's terms allow it ([06](06-uex-api.md) open point 7) | JUnit |
 | Live API drift (opt-in) | field names and error codes against the recorded contracts, always `is_production=0` | weekly scheduled CI job (04 M1, 10 S-14) or locally via `UEXDR_LIVE_TEST=1`; skipped otherwise |
 | Golden/corpus | OCR and pipeline result against expected values, metric "silently wrong" | `tools/ocr-eval`, opt-in via `UEXDR_CORPUS_DIR` |
-| UI (few) | Onboarding, submission lock, deviation confirmation, no dialog or focus change on background events (§7) | TestFX |
+| UI (few) | Onboarding, submission lock, deviation confirmation, no dialog or focus change on background events (§7), the Fan Kit unit in both placements (R-UI-19) | TestFX |
 
 Further test rules:
 
@@ -103,12 +115,13 @@ Further test rules:
 
 - Versions only in the version catalog; convention plugins in `build-logic` instead of copy-paste in `build.gradle.kts`.
 - **Dependabot** (GitHub-native) for Gradle and GitHub Actions; updates only to stable versions, each with green CI.
-- A new dependency only with a justification in the PR. License, maintenance status (last release, maintainers) and size must be checked. Better 50 lines of our own code than a heavy library for one function.
-- Reproducible and verified builds: Gradle wrapper with checksum, dependency locking, dependency verification (SHA-256 for every artifact, plus PGP where signed), SHA-pinned actions. The details and the threat model are in [10-supply-chain-security.md](10-supply-chain-security.md).
+- A new dependency only with a justification in the PR: purpose, SPDX licence ID and its source (POM URL or upstream licence file), maintenance status (last release, maintainers) and size. Better 50 lines of our own code than a heavy library for one function.
+- **Licence policy:** its one canonical place is the "Stack rules" in [CLAUDE.md](../../CLAUDE.md) ([ADR-0003](../adr/0003-licence-and-contributions.md)); everything shipped must be compatible with GPL-3.0-or-later. It is not repeated here. The licence gate enforces it on the runtime classpath, and `reuse lint` checks the licence of every file (R-SEC-10, 10 S-34, S-35). A shipped component gets its `NOTICE` entry in the same pull request; a bundled file (OCR model, font, icon, logo) also its `REUSE.toml` annotation, its licence text under `LICENSES/` and its SHA-256.
+- Reproducible and verified builds: Gradle wrapper with checksum, dependency locking, dependency verification (SHA-256 for every artifact, plus PGP where signed), SHA-pinned actions without version comments (their tags are recorded in `docs/dependency-pins.md`). The details and the threat model are in [10-supply-chain-security.md](10-supply-chain-security.md).
 
 ## 10. Documentation and decisions
 
-- **ADRs** for architecture decisions under `docs/adr/NNNN-title.md`. ADR-001 is the language decision (historically located at [03](03-language-decision.md)); ADR-002 is [modules by bounded context](../adr/0002-modules-by-bounded-context.md); more will follow, e.g. for the deviation model and the license.
+- **ADRs** for architecture decisions under `docs/adr/NNNN-kebab-title.md`, labelled with four digits (older mentions of ADR-001 and ADR-002 mean ADR-0001 and ADR-0002). ADR-0001 is the language decision (historically located at [03](03-language-decision.md)); ADR-0002 is [modules by bounded context](../adr/0002-modules-by-bounded-context.md); ADR-0003 is [licence and contributions](../adr/0003-licence-and-contributions.md); more will follow, e.g. for the deviation model. An accepted ADR is never rewritten: a new ADR supersedes it, and the old one gets a status line. Open owner decisions and verifications are tracked in [docs/adr/0000-open-points.md](../adr/0000-open-points.md).
 - `docs/plan/` remains the domain source of truth. Code that deviates from it changes the document in the same PR.
 - `CHANGELOG.md` following "Keep a Changelog"; versioning following **SemVer**. Persisted data (DB, config) counts as a public interface: if the format breaks, there is a migration.
 
@@ -119,13 +132,18 @@ Further test rules:
 - [ ] `./gradlew check` green on Windows and Linux (CI matrix)
 - [ ] Developed via TDD in the core: test first (red), then implementation (green), then refactoring; bugfix with a reproducing test
 - [ ] Domain terms match the Ubiquitous Language (11 §A1); aggregate invariants are covered by tests
-- [ ] No new ArchUnit, Error Prone or NullAway violations; no suppression without a comment giving the reason
+- [ ] No new ArchUnit, Error Prone or NullAway violations; a suppression only with its row in the suppression register (§3a) and the reason in the commit message and the pull request, never in a code comment
+- [ ] No comments besides Javadoc, also none in configuration files (§3)
 - [ ] UI texts in English, via ResourceBundles (no hard-coded strings)
-- [ ] Affected plan or ADR documents updated
+- [ ] Affected plan or ADR documents updated in the same commit; a user-visible change also updates `README.md`, the user guide (`docs/user/`) and `CHANGELOG.md`
 - [ ] No secrets, private screenshots or large binary files in the diff
-- [ ] For changed dependencies: lockfile and `verification-metadata.xml` updated in the same PR; new signing keys checked and documented in the PR
+- [ ] For changed dependencies: lockfile and `verification-metadata.xml` updated in the same PR as a separate commit (10 S-5); new signing keys checked and documented in the PR; a moved action pin or CI tool pin updates its row in `docs/dependency-pins.md`
+- [ ] A shipped component or bundled asset: its licence is allowed by the licence policy (§9); `NOTICE` entry, `REUSE.toml` annotation, licence text under `LICENSES/` and SHA-256 for bundled files; licence gate and `reuse lint` green
+- [ ] The Star Citizen Fan Kit unit is unchanged (logo file and both notices byte for byte, rendered together, pinning tests unchanged), unless the project owner approved the change (R-UI-19)
+- [ ] A new network destination, a new kind of data sent or a new local store: the data-flow inventory (02 §9) is updated, with the project owner's approval
+- [ ] Every commit has a Conventional Commits message and a DCO sign-off made with `git commit -s` that matches its author; the author is on the CLA roster (`docs/cla-signatures.md`); AI involvement is named in a `Co-Authored-By:` trailer
 
-**Review checklist** (PR template `.github/pull_request_template.md`):
+**Review checklist** (PR template `.github/PULL_REQUEST_TEMPLATE.md`):
 
 - Is the code in the right module and package? Is a new module edge needed – and allowed?
 - Is the domain logic free of technology?

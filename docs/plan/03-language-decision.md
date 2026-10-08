@@ -1,6 +1,8 @@
 # ADR-001: Implementation language – Java vs. Rust
 
-- **Status:** Accepted (2026-10-08)
+> **Doc type:** Decision record (ADR-0001) — Accepted 2026-10-08; §5 answered by ADR-0003 (2026-10-08). Last reviewed: 2026-10-08.
+
+- **Status:** Accepted (2026-10-08); §5 answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08)
 - **Decision:** **Java 27 + JavaFX 27**, build with Gradle 9.8.1 (Kotlin DSL)
 - **Context:** Desktop client for Windows and Linux that reads Star Citizen terminal screenshots via OCR or allows manual input, validates against UEX reference data and submits to the UEX API.
 
@@ -101,6 +103,8 @@ The exact score is less important than the two criteria with the highest weight:
 **Addendum (optional AI recognition):** The local VLM is connected via the Ollama HTTP API (`java.net.http` + Jackson). This is equally easy in both languages and does not change the rating. Game detection uses the JDK (`ProcessHandle`, `/proc`) plus a small FFM call on Windows (Toolhelp snapshot, R-VLM-2); in Rust it would need a crate such as `sysinfo`.
 
 ## 5. License notice (consequence for reuse)
+
+> **Status: answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08).** The project owner decided the project licence: **GPL-3.0-or-later**. Code from basetool-sc-extractor (GPL-3.0-or-later) and from basetool (GPL-3.0-only) may now be ported under the porting rules in [CLAUDE.md](../../CLAUDE.md); a file with basetool code stays GPL-3.0-only unless its copyright holders relicense it. The "only by concept" rule below and the licence remark in K7 (§3) are therefore superseded; this section is kept unchanged as the decision context.
 
 basetool-sc-extractor is licensed under **GPL-3.0-or-later**.
 
