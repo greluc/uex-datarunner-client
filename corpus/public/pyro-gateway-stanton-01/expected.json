@@ -1,0 +1,384 @@
+{
+  "schemaVersion": 1,
+  "id": "pyro-gateway-stanton-01",
+  "verified": false,
+  "transcription": "Transcribed by Claude from the uploaded screenshots on 2026-10-08; must be independently checked by a human before it counts as golden data.",
+  "source": {
+    "uploadedBy": "project owner",
+    "resolution": "2000x1125",
+    "format": "JPEG, likely downscaled/recompressed by the chat upload (assumption A6) - not suitable for fine-tuning thresholds",
+    "redaction": "CURRENT BALANCE value blacked out"
+  },
+  "location": {
+    "displayedText": "PYRO GATEWAY",
+    "expectedTerminal": "Pyro Gateway (Stanton) - commodity terminal (exact UEX name/id to be resolved, assumption: Stanton side)"
+  },
+  "theme": "blue, all-caps monospace font (Stanton style)",
+  "gameVersion": null,
+  "captures": {
+    "buy-1.jpg": {
+      "side": "BUY",
+      "section": "IN STOCK",
+      "cards": [
+        {
+          "screenOrder": 1,
+          "name": "HEPHAESTANITE",
+          "status": "VERY HIGH INVENTORY",
+          "scu": 789,
+          "pricePerScu": 4167,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        },
+        {
+          "screenOrder": 2,
+          "name": "IRON",
+          "status": "VERY LOW INVENTORY",
+          "scu": 4,
+          "pricePerScu": 2850,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ],
+          "dimmed": true
+        },
+        {
+          "screenOrder": 3,
+          "name": "ALUMINUM",
+          "status": "VERY HIGH INVENTORY",
+          "scu": 969,
+          "pricePerScu": 3128,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 4,
+          "name": "ARGON",
+          "status": "MAX INVENTORY",
+          "scu": 24000,
+          "pricePerScu": 316,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 5,
+          "partial": true,
+          "note": "only top edge visible; must not produce a row"
+        }
+      ]
+    },
+    "buy-2.jpg": {
+      "side": "BUY",
+      "section": null,
+      "cards": [
+        {
+          "screenOrder": 1,
+          "name": "SHIP AMMUNITION - SIZE 1",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 6868,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 2,
+          "name": "SHIP AMMUNITION - SIZE 2",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 7126,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 3,
+          "name": "SHIP AMMUNITION - SIZE 3",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 7384,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 4,
+          "name": "SHIP AMMUNITION - SIZE 4",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 7641,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 5,
+          "partial": true,
+          "note": "only top edge visible"
+        }
+      ]
+    },
+    "buy-3.jpg": {
+      "side": "BUY",
+      "section": null,
+      "cards": [
+        {
+          "screenOrder": 1,
+          "name": "SHIP AMMUNITION - SIZE 5",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 7985,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 2,
+          "name": "SHIP AMMUNITION - SIZE 6",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 8328,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 3,
+          "name": "SHIP AMMUNITION - SIZE 7",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 8671,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 4,
+          "name": "SHIP DECOY COUNTERMEASURES",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 4293,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      ]
+    },
+    "buy-4.jpg": {
+      "side": "BUY",
+      "section": null,
+      "cards": [
+        {
+          "screenOrder": 1,
+          "name": "SHIP NOISE COUNTERMEASURES",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 8585,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 2,
+          "name": "HYDROGEN FUEL",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 782,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 3,
+          "name": "QUANTUM FUEL",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 1760,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 4,
+          "name": "RECYCLED MATERIAL COMPOSITE",
+          "status": "MAX INVENTORY",
+          "scu": 12000,
+          "pricePerScu": 7587,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        }
+      ]
+    },
+    "sell-1.jpg": {
+      "side": "SELL",
+      "section": "IN DEMAND",
+      "cards": [
+        {
+          "screenOrder": 1,
+          "name": "AGRICULTURAL SUPPLIES",
+          "status": "VERY LOW INVENTORY",
+          "scu": 1482,
+          "pricePerScu": 1500,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 2,
+          "name": "ASTATINE",
+          "status": "LOW INVENTORY",
+          "scu": 746,
+          "pricePerScu": 3600,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 3,
+          "name": "CHLORINE",
+          "status": "OUT OF STOCK",
+          "scu": 0,
+          "pricePerScu": 1400,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 4,
+          "name": "DISTILLED SPIRITS",
+          "status": "OUT OF STOCK",
+          "scu": 0,
+          "pricePerScu": 2000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ]
+        },
+        {
+          "screenOrder": 5,
+          "partial": true,
+          "name": "HUMAN FOOD BARS",
+          "note": "price line cut at bottom edge (looks like 490/SCU); card bottom not visible -> must be treated as partial, not sent"
+        }
+      ]
+    }
+  },
+  "observations": [
+    "Consecutive buy screenshots do NOT overlap (scrolled by exactly one page): stitching cannot rely on overlapping rows.",
+    "Scrollbar thumb on the right shows the viewport position (top / middle / lower / bottom) and can order captures and reveal gaps.",
+    "Names wrap to two lines; 'SHIP AMMUNITION - SIZE 1..7' differ only by the size digit.",
+    "IRON card is dimmed although not at the viewport edge; 4 SCU available < smallest container size 8 (hypothesis: dimmed = not buyable in any container size).",
+    "Sell side: green 'VERY LOW INVENTORY' bar/text, buy side: red 'VERY LOW INVENTORY' - status colours are inverted between sides.",
+    "Sell side shows SCU together with an inventory status (e.g. 1,482 SCU, VERY LOW INVENTORY) - indication that the number is the terminal stock (see assumption A10)."
+  ]
+}

@@ -11,7 +11,7 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
 - [ ] **API-Spike** (kleine CLI im Modul `adapter-uex`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
 - [ ] Mit UEX klären: App-Token für Open-Source-Clients, Nutzungsbedingungen, Annahmen A9–A12 (Umgebungs-Mapping, `scu_sell` vs. `scu_sell_stock`, zusammengesetzter Screenshot, Duplikatsperre)
-- [ ] Korpus anlegen: Patch-City-Screenshots plus weitere Terminals/Themes; Erwartungswerte transkribieren
+- [ ] Korpus ausbauen: erster Eintrag `corpus/public/pyro-gateway-stanton-01` vorhanden (Transkription **vom Menschen zu verifizieren**); Patch-City-Screenshots als Dateien nachreichen; möglichst **Original-Screenshots** (verlustfrei, Originalauflösung) statt Chat-Uploads
 
 **Abnahme:** `./gradlew check` ist auf beiden OS grün; ein Test-Report mit `is_production=0` wurde erfolgreich übermittelt und die Antwort dokumentiert.
 

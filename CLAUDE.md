@@ -8,7 +8,7 @@ Desktop-Client (Windows + Linux) zum Erfassen von Star-Citizen-Rohstoff-Terminal
 
 | Datei | Inhalt |
 |---|---|
-| `docs/plan/01-anforderungen.md` | Anforderungen mit IDs (`R-…`) und **Annahmen A1–A12** (unverifiziert!) |
+| `docs/plan/01-anforderungen.md` | Anforderungen mit IDs (`R-…`) und **Annahmen A1–A14** (unverifiziert!) |
 | `docs/plan/02-architektur.md` | Module, Abhängigkeitsrichtung, Domänenmodell, Threading |
 | `docs/plan/03-sprachentscheidung.md` | ADR Java vs. Rust, inklusive Lizenzhinweis zu basetool (GPL-3.0) |
 | `docs/plan/05-datarunner-fehleranalyse.md` | Bekannte Fehler des Vorbilds (F1–F30) und unsere Fixes |
@@ -26,7 +26,7 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 - **basetool-sc-extractor ist GPL-3.0.** Code nicht kopieren oder übersetzen, solange die Projektlizenz nicht geklärt ist; nur Konzepte nachimplementieren. Die PP-OCR-Modelle sind Apache-2.0 und dürfen gebündelt werden (mit `NOTICE` und SHA-256).
 - SC-Datarunner-UEX ist closed source: **nicht dekompilieren**.
 - Keine Secrets (UEX-Secret-Key, App-Token) in Code, Tests, Logs, Fixtures oder Commits.
-- Screenshots für den Korpus: Kontostand („CURRENT BALANCE“) schwärzen, bevor sie ins Repo kommen.
+- Screenshots für den Korpus: Kontostand („CURRENT BALANCE“) schwärzen, bevor sie ins Repo kommen. Öffentlicher Korpus unter `corpus/public/` (Regeln in `corpus/README.md`); Einträge mit `"verified": false` nicht als Golden-Metrik werten.
 
 ## Tech-Stack (Stand 2026-10-08, geprüft)
 

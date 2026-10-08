@@ -72,8 +72,10 @@ Aktuelle UEX-Daten (Terminals, Commodities, letzte Preise, Statusstufen, Spielve
 | R-OCR-8 | Terminal- und Location-Erkennung primär aus dem Location-Feld unter „YOUR INVENTORIES“, abgeglichen mit dem Sortiment | M |
 | R-OCR-9 | „AVAILABLE CARGO SIZE (SCU)“ → `container_sizes` | S |
 | R-OCR-10 | Zweitleser für den Status: Farbe und Füllhöhe des vertikalen Lagerbalkens bzw. die Farbe des Statustexts, abgeglichen mit dem OCR-Statustext | S |
-| R-OCR-11 | Stitching mehrerer gescrollter Screenshots eines Terminals bzw. einer Seite. Abgeschnittene Karten am Rand werden nur übernommen, wenn die Felder vollständig sind. Bei Konflikten wird der Wert bevorzugt, der weiter vom Viewport-Rand entfernt gelesen wurde. | M |
+| R-OCR-11 | Stitching mehrerer gescrollter Screenshots eines Terminals bzw. einer Seite – **auch ohne Überlappung** (Reihenfolge über den Scrollbalken, Zusammenführen über die Commodity-ID). Abgeschnittene Karten am Rand werden nur übernommen, wenn die Karte vollständig sichtbar ist (Unterkante erkannt). Bei Konflikten wird der Wert bevorzugt, der weiter vom Viewport-Rand entfernt gelesen wurde. Mögliche Lücken (Scrollbalken, UEX-Sortiment) werden angezeigt. | M |
 | R-OCR-12 | Verarbeitung im Hintergrund (begrenzte Parallelität), die UI blockiert nie. Ziel: < 3 s pro Screenshot auf einer Mittelklasse-CPU (**Zielwert, wird gemessen**). | M |
+| R-OCR-14 | **Nachbarnamen** (nur durch ein kurzes Token wie „SIZE 1“/„SIZE 7“ unterschieden) werden nur bei exakt gelesenem Unterscheidungs-Token automatisch zugeordnet, sonst `Ambiguous` (07 §2.5). | M |
+| R-OCR-15 | Abgedunkelte Karten (Hypothese A14: nicht kaufbar) werden mit eigener Kontrastnormalisierung gelesen und nicht als Teilkarte verworfen. | S |
 | R-OCR-13 | **Report-Gruppierung:** Scans gehören zu einem Report, wenn Terminal, Seite und Umgebung gleich sind und der zeitliche Abstand zum vorherigen Scan der Gruppe ≤ 10 min beträgt (einstellbar). Der Nutzer kann Reports im UI teilen und zusammenführen. Ein Scan mit unklarem Terminal bildet eine eigene Gruppe, bis das Terminal geklärt ist. | M |
 
 ## Optionale KI-Erkennung (VLM)
@@ -160,7 +162,7 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 | ID | Anforderung | Prio |
 |---|---|---|
 | R-QA-1 | Golden-Korpus: echte Screenshots plus von Hand transkribierte Erwartungswerte (JSON). **Speicherort außerhalb des öffentlichen Repos**, falls die Bilder private Daten enthalten (Kontostand!). Gegebenenfalls nur geschwärzte Versionen einchecken. | M |
-| R-QA-2 | Korpus deckt mindestens ab: Buy- und Sell-Tab, Scrollen, rote/orange Themes (Patch City), blaues Standard-Theme, Pyro, Nyx, Gateway, lange Namen, 4K/1440p/1080p/Ultrawide | M |
+| R-QA-2 | Korpus deckt mindestens ab: Buy- und Sell-Tab, Scrollen mit und ohne Überlappung, rote/orange Themes (Patch City), blaues Theme mit Großbuchstaben-Schrift (Pyro Gateway Stanton – erster Eintrag vorhanden), Pyro, Nyx, Gateway, lange und fast gleiche Namen, abgedunkelte Karten, 4K/1440p/1080p/Ultrawide | M |
 | R-QA-3 | Eval-CLI: Feldgenauigkeit pro Feldtyp, Anteil „still falsch“ (falsch und als sicher markiert) – **Ziel ≈ 0**, Anteil „markiert“, Laufzeit. Der Wert läuft in CI als Regressionstest (Schwellwerte, die nur steigen dürfen). | M |
 | R-QA-4 | OCR-Digest-Test: Hash aller OCR-Rohausgaben über den Korpus, damit Modell- oder Runtime-Updates bewusst passieren | S |
 
@@ -193,3 +195,5 @@ Die klassische OCR (oben) ist der **Standardweg** und läuft immer, auch währen
 | A10 | Auf der **Sell-Seite** entspricht die angezeigte „… SCU“-Zahl dem UEX-Feld `scu_sell`. UEX kennt zusätzlich `scu_sell_stock`; welches Feld die Zahl im Terminal meint, ist unklar. Auf der Buy-Seite entspricht „SHOP QUANTITY“ vermutlich `scu_buy`. |
 | A11 | Ein aus mehreren Scroll-Ausschnitten zusammengesetzter Screenshot wird von UEX akzeptiert; manuelle Reports ohne Screenshot werden für etablierte DataRunner angenommen. |
 | A12 | Die 5-Minuten-Duplikatsperre von UEX gilt pro (Terminal, Commodity) – ob die Seite (Buy/Sell) unterschieden wird, ist offen. |
+| A13 | Das Terminal-Theme (blau vs. orange) korreliert mit dem Sternsystem (z. B. Gateway-Station auf der Stanton- vs. Pyro-Seite). Wird höchstens als schwacher Hinweis genutzt. |
+| A14 | Eine Karte ist abgedunkelt, wenn der verfügbare Bestand kleiner ist als die kleinste angebotene Kistengröße (IRON 4 SCU < 8; Fluorine 2 < 8; DynaFlex 13 < 16). Am Korpus zu bestätigen. |
