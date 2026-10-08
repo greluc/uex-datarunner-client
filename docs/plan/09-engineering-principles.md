@@ -17,7 +17,7 @@ Rules without enforcement are wishful thinking. That is why there are deliberate
 
 | Rule | Enforcement |
 |---|---|
-| Ports & Adapters: the core modules (`shared-kernel`, the context modules, `workflows`) know no technology | JPMS: core modules `requires` only other core modules (along the context map) and JSpecify. **ArchUnit:** no classes from `javafx..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..`, `java.nio.file..` in the core. |
+| Ports & Adapters: the core modules (`shared-kernel`, the context modules, `workflows`) know no technology | JPMS: core modules `requires` only other core modules (along the context map) and JSpecify. **ArchUnit:** no classes from `javafx..`, `java.awt..`, `javax.imageio..`, `java.net.http..`, `java.sql..`, `ai.onnxruntime..`, `tools.jackson..`, `java.nio.file..` in the core (images as `ImageRaster`, locations as `FolderLocation`). |
 | Modules cut by bounded context ([ADR-002](../adr/0002-modules-by-bounded-context.md)); dependency direction as in the context map in [02 §2](02-architecture.md), free of cycles | Gradle project dependencies plus JPMS (cycles do not compile); ArchUnit `slices().should().beFreeOfCycles()` also for packages **within** a module |
 | Every module has a narrow public API | `module-info.java` exports only `…<module>.api` (or deliberately chosen packages); the implementation lives in `…<module>.internal`; ArchUnit: no access to other modules' `internal` packages |
 | Adapters do not depend on each other; they are leaves | Gradle dependencies allowed centrally in `build-logic`; ArchUnit rule per adapter |

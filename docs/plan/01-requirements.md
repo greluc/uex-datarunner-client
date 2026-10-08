@@ -6,7 +6,7 @@ Priorities: **M** = Must (1.0), **S** = Should (1.x), **C** = Could (later).
 
 Players (UEX DataRunners) use the client to capture commodity terminal data from Star Citizen and provide it to UEX. There are two ways to do this:
 
-- **manually:** fast, keyboard-driven input, prefilled with current UEX data
+- **manually:** fast, keyboard-driven input, with current UEX values shown as reference (not prefilled, R-MAN-2)
 - **via screenshot:** OCR, validation, review, submission
 
 Current UEX data (terminals, commodities, latest prices, status levels, game version, tolerances) serve as **default values and constraints** for recognition and selection.
@@ -21,7 +21,7 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 | **Scan** | A capture after OCR analysis |
 | **Report** | The aggregation of all scans of one terminal and one side (buy = "Buy", sell = "Local Market Value") within a time window (grouping rule R-OCR-13). The report is the unit sent to `POST /data_submit`. |
 | **Send threshold** | Minimum confidence above which a field may be sent without confirmation (initial value 0.80, see [07](07-ocr-concept.md) §2.6). Fields below it must be confirmed or corrected. |
-| **Prior** | The UEX reference value (latest or average price, SCU, status) for the combination of terminal and commodity |
+| **Prior** | The UEX reference value (latest or average price, SCU, status) for the combination of terminal, commodity and side |
 
 ## Scope
 
@@ -44,11 +44,11 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 | R-CAP-2 | Further input paths: drag & drop, Ctrl+V, file dialog (multiple selection), optional clipboard monitoring with fingerprint deduplication | M |
 | R-CAP-3 | The environment is derived from the folder path (or set fixed per folder), the game version from UEX (`game_versions`). If the environment is unknown, the app asks; there is no hard-coded fallback. | M |
 | R-CAP-3a | **Environment mapping to UEX:** UEX only knows `live` and `ptu`. Default mapping: LIVE and HOTFIX → `live`, PTU/EPTU/TECH-PREVIEW → `ptu`. Configurable; the mapping must be verified against UEX (assumption A9). If no reports are accepted for the target (`is_accepting_*`), submission is blocked. | M |
-| R-CAP-3b | **Game version at capture time:** On import, the version valid at capture time is recorded (cached state of `game_versions`). If the version changed between capture and submission (patch day), the app warns and requires a confirmation or discards the report. | M |
-| R-CAP-7 | **Working copies:** Per capture, the app stores the perspective-corrected panel crops (not the full-screen screenshot) in its data directory. Upload, AI re-check and review therefore also work if the original was moved or deleted. Retention: up to 7 days after successful submission (configurable). | M |
+| R-CAP-3b | **Game version at capture time:** On import, the version valid at capture time is recorded (cached state of `game_versions`). If the version changed between capture and submission (patch day), the app warns and requires a confirmation or discards the report. The app keeps a local history of observed version changes (timestamp of first observation). If a capture is older than the last observed change and the app was not running in between (e.g. catch-up import after a patch), the version is marked **uncertain** and the user must confirm it. | M |
 | R-CAP-4 | Automatic detection of the SC installation: RSI Launcher log `Launching Star Citizen … from (…)`, running process `Bin64/StarCitizen.exe`, default paths. On Linux additionally Wine/Proton prefixes (see assumption A3). | S |
-| R-CAP-5 | Capture time from the file name (regex), fallback to `lastModified`. The app detects duplicates via content hash. | M |
+| R-CAP-5 | Capture time from the file name (regex, interpreted in the system time zone), fallback to `lastModified`. The app detects duplicates via content hash. | M |
 | R-CAP-6 | Optional cleanup function: delete or archive originals after successful submission. Default is **off**. | S |
+| R-CAP-7 | **Working copies:** Per capture, the app stores the perspective-corrected panel crops (not the full-screen screenshot) in its data directory. Upload, AI re-check and review therefore also work if the original was moved or deleted. Retention: up to 7 days after successful submission (configurable). | M |
 
 ## Manual capture (MAN)
 
@@ -56,9 +56,10 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 |---|---|---|
 | R-MAN-1 | Terminal selection via search field (fuzzy over name, nickname, location, system), filter by star system, "recently used" | M |
 | R-MAN-2 | After choosing the terminal, the list of the terminal's known commodities appears (from `commodities_prices`). The current UEX values are shown **as a reference next to the input field** (including the age of the value), **not as a prefilled value**. Only rows that were actively entered or explicitly taken over by keystroke are sent. This way no outdated values end up unchecked at UEX as a "fresh" report. | M |
-| R-MAN-5 | Manual reports can attach a screenshot. If a screenshot is mandatory for the user (evaluation phase of new DataRunners, `screenshot_required`), this is shown in advance and submission without an image is blocked (assumption A11). | M |
 | R-MAN-3 | Full keyboard operation: Tab/Enter, number shortcuts for status levels 1–7 | M |
 | R-MAN-4 | Manual reports go through the same validation (VAL) as OCR reports | M |
+| R-MAN-5 | Manual reports can attach a screenshot. If a screenshot is mandatory for the user (evaluation phase of new DataRunners, `screenshot_required`), this is shown in advance and submission without an image is blocked (assumption A11). | M |
+| R-MAN-6 | Manual reports have an environment (default LIVE, selectable) and use the current UEX game version of that environment | M |
 
 ## Recognition (OCR)
 
@@ -76,9 +77,10 @@ The complete, binding domain language (Ubiquitous Language) is in [11-ddd-and-td
 | R-OCR-10 | Second reader for the status: color and fill level of the vertical stock bar or the color of the status text, matched against the OCR status text | S |
 | R-OCR-11 | Stitching of multiple scrolled screenshots of one terminal or side – **even without overlap** (order via the scrollbar, merging via the commodity ID). Cut-off cards at the edge are only taken over if the card is fully visible (bottom edge detected). On conflicts, the value read further away from the viewport edge is preferred. Possible gaps (scrollbar, UEX assortment) are shown. | M |
 | R-OCR-12 | Processing in the background (bounded parallelism), the UI never blocks. Goal: < 3 s per screenshot on a mid-range CPU (**target value, will be measured**). | M |
+| R-OCR-13 | **Report grouping:** Scans belong to one report if terminal, side and environment are the same and the time gap to the previous scan of the group is ≤ 10 min (configurable). The user can split and merge reports in the UI. A scan with an unclear terminal forms its own group until the terminal is resolved. | M |
 | R-OCR-14 | **Neighbor names** (distinguished only by a short token such as "SIZE 1"/"SIZE 7") are only assigned automatically if the distinguishing token was read exactly, otherwise `Ambiguous` (07 §2.5). | M |
 | R-OCR-15 | Dimmed cards (hypothesis A14: not buyable) are read with their own contrast normalization and not discarded as a partial card. | S |
-| R-OCR-13 | **Report grouping:** Scans belong to one report if terminal, side and environment are the same and the time gap to the previous scan of the group is ≤ 10 min (configurable). The user can split and merge reports in the UI. A scan with an unclear terminal forms its own group until the terminal is resolved. | M |
+| R-OCR-16 | **Not a terminal screenshot:** images that do not show a commodity terminal (other UI, wrong tab, "YOUR INVENTORIES" selection elsewhere) are recognized as such and set aside with a notice and a "process anyway / crop manually" action – never a generic "failed to process" error (fix for F7). | M |
 
 ## Optional AI recognition (VLM)
 
@@ -89,7 +91,7 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | R-VLM-1 | Setting "AI recognition" with three values: **Off** (default), **Automatic – only when the game is closed**, **Always** (expert, with a warning about VRAM and FPS losses) | S |
 | R-VLM-2 | Game detection: the process `StarCitizen.exe` is checked periodically (default every 5 s). Windows: path ends in `Bin64\StarCitizen.exe`. Linux: command line or arguments of the Wine/Proton process contain `StarCitizen.exe` (assumption A7). The RSI Launcher alone does not count as "game running". "Closed" only applies after a hysteresis (default 30 s), so that a restart of the game does not start the AI. | S |
 | R-VLM-3 | Game start during an AI run: the running job is aborted immediately and the model unloaded (`keep_alive: 0`). Affected scans return to the state "AI pending"; no data is lost. | S |
-| R-VLM-4 | Re-check after the game ends: the app offers (or runs automatically, configurable) to re-read all **not yet sent** reports with the VLM. Selectable are "only reports with warnings" (default) or "all". Progress and cancellation are possible at any time. | S |
+| R-VLM-4 | Re-check after the game ends: the app offers (or runs automatically, configurable) to re-read all **not yet sent** reports with the VLM. Selectable are "only reports with warnings" (default) or "all". Only reports in state **Draft** are re-read; released, queued or submitted reports are never changed by the AI. Progress and cancellation are possible at any time. | S |
 | R-VLM-5 | Fusion: VLM and classic OCR are **independent readers**. Agreement increases the confidence ("double confirmed"); contradiction creates a finding `Ambiguous` with both candidates. VLM values go through the **same** vocabulary resolution and validation (prior, tolerances, consistency). No reader alone enforces a value that contradicts the validation. | S |
 | R-VLM-6 | Strictly local: default host `http://localhost:11434`, configurable. Cloud models (Ollama Cloud, suffix `:cloud`) and non-localhost hosts only after explicit confirmation with a privacy notice. Otherwise images never leave the computer. | S |
 | R-VLM-7 | Model management: check Ollama reachability and version (`/api/version`), show installed models (`/api/tags`), pull the recommended model on request (`/api/pull` with progress). Ollama itself is **not** shipped; the app shows installation instructions. | S |
@@ -104,7 +106,7 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | ID | Requirement | Prio |
 |---|---|---|
 | R-VAL-1 | Rule-based confidence per field; the model's confidence values are not used directly. Every warning has a reason code that is shown in the UI. | M |
-| R-VAL-2 | Plausibility against the UEX prior: a deviation > `price_variation` % or > `scu_variation` (from `data_parameters`) leads to a warning, not to blocking | M |
+| R-VAL-2 | Plausibility against the UEX prior: a deviation > `price_variation` % or > `scu_variation` (from `data_parameters`; units per assumption A15) is never rejected automatically – it is marked as a **major deviation** and must be confirmed by the user before submission (R-UI-10). Genuine price changes are therefore possible, but never unchecked. | M |
 | R-VAL-2a | **No prior available** (new commodity at the terminal, no history): as a substitute, the commodity-wide average (`commodities.price_buy`/`price_sell`) is used with double tolerance. If that is missing too, no prior-based repair takes place; the field carries the finding "no reference value" and lies below the send threshold if it contains a confusable digit. | M |
 | R-VAL-2b | **Repairs only automatic with an independent witness:** A repair that relies only on the prior lies below the send threshold (confirmation by keystroke). It is only taken over automatically if an independent witness agrees (glyph topology, second reader/VLM). Rationale: the prior is a possibly outdated value; otherwise genuine price changes would be silently "repaired back" to old values. | M |
 | R-VAL-3 | Consistency rules: status ↔ SCU (e.g. "Out of Stock" ⇒ 0 SCU), side ↔ section, commodity is buyable or sellable at this terminal (`is_buyable`/`is_sellable`) | M |
@@ -133,13 +135,13 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | ID | Requirement | Prio |
 |---|---|---|
 | R-SUB-1 | `POST /data_submit` with `id_terminal`, `type`, `is_production`, `game_version`, `prices[]` (separate buy and sell rows), optionally `container_sizes`, `screenshot`, `details` | M |
-| R-SUB-2 | Submission queue: rate-limit compliant (120 req/min global, max. 500 rows per report), bounded parallelism, retry with backoff only on 429/5xx/network errors. The queue is **persistent** (SQLite): reports queued offline or before a crash are not lost and, after a restart, are only sent after renewed release. | M |
+| R-SUB-2 | Submission queue: rate-limit compliant (120 req/min global, max. 500 rows per report, at most 1000 report rows per 30 min – UEX counts each price row as a report), bounded parallelism, retry with backoff only on 429/5xx/network errors. The queue is **persistent** (SQLite): reports queued offline or before a crash are not lost and, after a restart, are only sent after renewed release. | M |
 | R-SUB-3 | Submission block on unresolved fields or an unclear terminal | M |
 | R-SUB-4 | Persistent history (SQLite): report IDs (`ids_reports`), time, payload hash, 5-minute cooldown per terminal/commodity/environment (conservatively **without** side until the UEX rule is clarified – assumption A12); withdrawal via `data_remove`. Optionally the history shows the processing status at UEX (`data_info`). | M |
 | R-SUB-5 | Before submission: check `data_parameters` (`is_accepting_reports` or `is_accepting_ptu_reports`, `commodity.is_accepted`). For this, a state at most 15 min old is used (not the daily cache), because these flags change on patch day. | M |
 | R-SUB-6 | Mapping of all known UEX error codes to clear user messages (ResourceBundle keys) with a recommended action | M |
 | R-SUB-7 | Upload screenshot: perspective-corrected crop "SHOP INVENTORY" plus location field, **balance always redacted**, JPEG or PNG < 10 MB (target ~1–2 MP). If a report consists of multiple scrolled captures but the API has only **one** `screenshot` field, the shop crops are composed vertically into one image (assumption A11: accepted by UEX). | M |
-| R-SUB-8 | Test mode (`is_production=0`), switchable in the settings and active by default for development and CI | M |
+| R-SUB-8 | Test mode (`is_production=0`), switchable in the settings. Default: **on** in development builds and CI; **off** in release builds after onboarding (the onboarding offers a test submission first). The active mode is always visible in the UI. | M |
 
 ## UEX integration (API)
 
@@ -175,10 +177,11 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | R-NF-1 | Windows 10/11 x64 and Linux x64 (glibc distros, X11; under Wayland via XWayland – native Wayland support of JavaFX is not proven, XWayland operation must be tested in M4) | M |
 | R-NF-2 | Distribution: Windows MSI and portable ZIP; Linux `.deb` and portable `tar.gz` (app image from jpackage); each with bundled runtime | M |
 | R-NF-3 | Resources: heap limited (initial value `-Xmx512m`, to be determined by measurement), ONNX session is released after inactivity | S |
-| R-NF-4 | Secret key only in the OS keystore (Windows Credential Manager, Linux Secret Service). Fallback is a file with permissions 0600 after an explicit warning. Never in logs. | M |
+| R-NF-4 | Secret key (and, if required, a user-provided UEX app token, A2) only in the OS keystore (Windows Credential Manager, Linux Secret Service). Fallback is a file with permissions 0600 after an explicit warning. Never in logs. | M |
 | R-NF-5 | Configuration: atomic writes, schema versioning, visible errors. Storage locations: Windows `%APPDATA%`, Linux `$XDG_CONFIG_HOME`/`$XDG_DATA_HOME`/`$XDG_CACHE_HOME`. | M |
 | R-NF-6 | Logging: rotating log file, secrets masked, diagnostics export (logs plus system info, without secrets) | M |
 | R-NF-7 | Update notice via GitHub Releases, at most once a day, can be disabled | S |
+| R-NF-9 | "Delete all local data" action (cache, history, working copies, logs, stored secrets); the uninstaller documentation names the data directories. | S |
 | R-NF-8 | No interference with the game: no access to process memory, no input injection, no overlays. Only files, the clipboard and the **process list** (for path detection and game detection, R-VLM-2) are read. | M |
 
 ## Supply chain (SEC)
@@ -215,3 +218,4 @@ Details, threat model and implementation: [10-supply-chain-security.md](10-suppl
 | A12 | The UEX 5-minute duplicate lock applies per (terminal, commodity) – whether the side (Buy/Sell) is distinguished is open. |
 | A13 | The terminal theme (blue vs. orange) correlates with the star system (e.g. Gateway station on the Stanton vs. Pyro side). Used at most as a weak hint. |
 | A14 | A card is dimmed if the available stock is smaller than the smallest offered container size (IRON 4 SCU < 8; Fluorine 2 < 8; DynaFlex 13 < 16). To be confirmed on the corpus. |
+| A15 | `data_parameters.commodity.price_variation` is a percentage and `scu_variation` an absolute SCU amount. Units are unconfirmed (06 open point 6); until verified, the thresholds are configurable and default to conservative values. |

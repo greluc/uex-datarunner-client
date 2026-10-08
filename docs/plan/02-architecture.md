@@ -4,7 +4,7 @@
 
 ```mermaid
 flowchart LR
-    subgraph Eingang["Input"]
+    subgraph Input["Input"]
         W["User folders<br/>#quot;Import#quot; click or<br/>auto-watch"] --> Q
         D[Drag & drop / Ctrl+V / file] --> Q
         M[Manual capture]
@@ -56,7 +56,8 @@ The cut combines **DDD bounded contexts** with **ports & adapters** (decision an
 
 - **Core** = one module per bounded context ([11 §A2](11-ddd-and-tdd.md)), plus `shared-kernel` and `workflows`.
   - Each context module contains its domain model **and** its application services (use cases).
-  - The core knows no technology: no JavaFX, no HTTP, no SQL, no ONNX, no file system, no clock except via `java.time.Clock`.
+  - The core knows no technology: no JavaFX, no AWT/ImageIO, no HTTP, no SQL, no ONNX, no file system (`java.nio.file`), no clock except via `java.time.Clock`.
+  - Images enter the core as an own immutable raster type (`ImageRaster`: width, height, ARGB `int[]`), file locations as a value object (`FolderLocation`). Decoding (ImageIO), encoding (JPEG/PNG for the upload) and file-system access happen only in adapters.
 - **Adapters** are cut by **technology** and implement the **ports** of the context modules. Inside an adapter there is one package per context.
 - **`ui`** uses only the public application API of the context modules and `workflows`.
 - **`app`** is exclusively composition root and packaging.
@@ -122,6 +123,9 @@ tools/ocr-eval → recognition, adapter-ocr, adapter-vlm, adapter-storage, refer
 | `CaptureSource` | capture | captures from folders, drag & drop, clipboard | adapter-files |
 | `CaptureRepository` / `ReportRepository` / `SubmissionJobRepository`, `CooldownRepository` | capture / reporting / submission | persistence (one repository per aggregate) | adapter-storage |
 | `GameLocalizationSource` | game | localized names from `global.ini` | adapter-files |
+| `CaptureSettingsStore`, `RecognitionSettingsStore`, `ReportingSettingsStore` | capture / workflows / reporting | user settings (folders, AI mode, thresholds, hosts) in the versioned config file (R-NF-5) | adapter-files |
+| `ImageEncoder` | reporting | encode the composed, redacted upload screenshot | adapter-files |
+| `UpdateCheck` | workflows | "new version available" (R-NF-7, notify only) | adapter-platform |
 | `SecretStore` | submission | store/read secret key | adapter-platform |
 | `GameStateProbe` | game | is Star Citizen running? | adapter-platform |
 | `java.time.Clock` | all | time (cooldown, hysteresis, grouping) | JDK, fixed in tests |
@@ -173,9 +177,9 @@ public record ReportRow(CommodityId commodity, Field<PricePerScu> price, Field<S
 
 /** Aggregate root (context Reporting). Immutable: commands return a new state plus events. */
 @AggregateRoot
-public record Report(ReportId id, Field<TerminalId> terminal, TradeSide side, GameEnvironment env,
+public record Report(ReportId id, long version, Field<TerminalId> terminal, TradeSide side, GameEnvironment env,
                      GameVersion versionAtCapture, List<ReportRow> rows, List<CaptureId> captures,
-                     ReportState state) {
+                     ReportState state) {   // version: optimistic concurrency (user edit vs. AI re-read)
     public Outcome<Report> confirm(CommodityId commodity, FieldKind field) { … }
     public Outcome<Report> correct(CommodityId commodity, FieldKind field, Object newValue) { … } // revokes confirmation (I3)
     public Outcome<Report> release(SubmissionGate gate) { … }                                  // checks I1, I2, I5
@@ -199,7 +203,7 @@ Locate needs a coarse OCR for the text anchors. So that `recognition` does not d
 
 | Stage | Input → output | Key techniques |
 |---|---|---|
-| 1 Locate | `BufferedImage` → panel quad(s) | Box-filter downscale; color and luminance anchors (theme-agnostic); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); homography to normalized size; manual fallback |
+| 1 Locate | `ImageRaster` → panel quad(s) | Box-filter downscale; color and luminance anchors (theme-agnostic); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); homography to normalized size; manual fallback |
 | 2 OCR | Normalized image → `List<TextBox>` (polygon, text, score) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime 1.30.0, full dictionary |
 | 3 Layout | TextBoxes → `List<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; field assignment relative to the card; tab recognition via color intensity of the tab background |
 | 4 Resolution | Cards → commodity/terminal candidates | Normalization (upper/lower case, whitespace, ligatures) plus weighted Levenshtein/Jaro-Winkler against the vocabulary, terminal's assortment preferred |
@@ -209,14 +213,15 @@ Locate needs a coarse OCR for the text anchors. So that `recognition` does not d
 ## 4a. Image input (`capture`, technology in `adapter-files`)
 
 ```java
-public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean recursive,
+public record WatchedFolder(FolderLocation location, boolean enabled, ImportMode mode, boolean recursive,
                             Set<String> extensions, EnvironmentChoice environment,
                             @Nullable Instant onlyNewerThan) {}
 public enum ImportMode { MANUAL, AUTOMATIC }
 ```
 
 - **Working copies** (R-CAP-7): After locate, the normalized panel crops are stored in the app data directory; all later steps (review, VLM, upload) work on them.
-- **`FolderScanner`** (pure except for the file system listing): It lists the candidates (`Files.walk` or `Files.list`, extension filter), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files. It is used by the "Import" button and the catch-up scan.
+- The types above live in `capture`; **`FolderScanner`, `FolderWatcher` and `StableFileGate` live in `adapter-files`** (they touch the file system) and deliver new files through the `CaptureSource` port.
+- **`FolderScanner`**: It lists the candidates (`Files.walk` or `Files.list`, extension filter), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files. It is used by the "Import" button and the catch-up scan.
 - **`FolderWatcher`** per folder in mode `AUTOMATIC`:
   - `WatchService` on a virtual thread; on `OVERFLOW` a full scan follows.
   - If registration fails or the file system is known to be unreliable (Wine/FUSE/SMB paths, can be forced via setting), polling is used instead (`FolderScanner` every 2 s).
@@ -229,7 +234,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
   ```java
   public enum ReaderKind { OCR, VLM }
-  /** Deliberately NOT sealed: implementations live in other JPMS modules (ocr, vlm),
+  /** Deliberately NOT sealed: implementations live in other JPMS modules (adapter-ocr, adapter-vlm),
    *  and sealed types in named modules only allow subtypes in the same module. */
   public interface Reader { ReaderResult read(NormalizedPanel panel) throws ReaderException; }
   public record ReaderResult(ReaderKind kind, List<RawCard> cards, @Nullable RawHeader header, Duration took) {}
@@ -242,11 +247,11 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   3. Validation, repair and confidence (stage 5) run **once** on the fused result.
   4. Finally, stitching (stage 6) follows.
 
-  The VLM reads per capture; after an AI run, the affected report is re-stitched.
+  The VLM reads per capture; after an AI run, the affected report is re-stitched. Only reports in state `Draft` are touched (R-VLM-4); the write uses the report's `version` (optimistic concurrency), so a concurrent user edit wins and the AI result is re-applied on top of the edited state (never on confirmed fields).
 
 - **`GameProcessMonitor`** (`adapter-platform`, implements `GameStateProbe`):
   - Periodically checks `ProcessHandle.allProcesses()` on a virtual thread (Windows: path `…\Bin64\StarCitizen.exe`; Linux: Wine/Proton command line, assumption A7).
-  - Publishes the states `RUNNING` and `CLOSED` with hysteresis as a JavaFX property or listener.
+  - Publishes the states `RUNNING` and `CLOSED` with hysteresis through the `GameStateProbe` port (listener callback → `GameStateChanged` event). The `ui` maps the event to a JavaFX property; no JavaFX types outside `ui`.
   - Has no further permissions and no process access.
 
 - **`RecognitionPolicy`** (`workflows`) decides, based on the setting (Off / Automatic / Always) and the game state, whether the AI queue may work:
@@ -281,9 +286,9 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
 - **Responsibilities:**
   - `reporting`: submission gate, grouping (a report is released only if the gate passes).
-  - `submission` (`SubmissionService`): queue states, cooldown, retry policy.
+  - `submission` (`SubmissionService`): queue states, cooldown, **retry policy** (when and how often to retry), rate budgets (120 requests/min, 1000 report rows/30 min).
   - `workflows`: hands released reports to `submission` and applies the results back to `reporting`.
-  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, rate limiter, retry, error code mapping to `submission` error types.
+  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, **one attempt per call** (no own retries), surfaces `Retry-After`, error code mapping to `submission` error types.
   - `adapter-storage`: persistence.
 - **Payload building** (in `adapter-uex`): one list `prices[]` per report. Buy rows contain `price_buy`/`scu_buy`/`status_buy`, sell rows the `_sell` fields. In addition there are `container_sizes` and `screenshot` (Base64 without `data:` prefix), `game_version` and `is_production`.
 - **Queue:**
@@ -291,9 +296,9 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - virtual threads
   - `Semaphore` (default 2)
   - token bucket 120/min
-  - retry with exponential backoff on 429/5xx/IO, respecting `Retry-After`
+  - retry with exponential backoff on 429/5xx/IO, respecting `Retry-After` (decided in `submission`, executed by calling the gateway again)
 - **Cooldown:** the key is (terminal, commodity, environment) – conservatively without side until assumption A12 is clarified; persistent; the UI shows the remaining time. If `duplicated_report` arrives anyway, it is treated as a cooldown, not as an error.
-- **Screenshot per report:** multiple captures are composed into one image (R-SUB-7).
+- **Screenshot per report:** `recognition` provides the normalized shop-panel rasters; `reporting` composes them vertically and redacts the balance region (pure raster operations, tested); `ImageEncoder` (adapter-files) encodes JPEG/PNG < 10 MB (R-SUB-7).
 - **History:** `ids_reports`, timestamp, payload hash, response status; link `https://uexcorp.space/data/info/id/<id>`.
 
 ## 7. UI (`ui`, JavaFX 27)

@@ -63,7 +63,7 @@ Documentation slug: `post_data_submit`.
 | `GET /commodities_prices_all` | Compact complete snapshot (fallback/offline) | 30 min |
 | `GET /commodities_status` | Status levels 1–7 per side (`buy[]`/`sell[]`) with names, abbreviations, percentage band, colors | 1 day |
 | `GET /game_versions` | `{"live":"…","ptu":"…"}` | 1 day |
-| `GET /data_parameters` | `is_accepting_reports`, `is_accepting_ptu_reports`, `commodity.price_variation`, `commodity.scu_variation`, `evaluation_period_days` (**units unconfirmed**) | 1 day |
+| `GET /data_parameters` | `is_accepting_reports`, `is_accepting_ptu_reports`, `commodity.price_variation`, `commodity.scu_variation`, `evaluation_period_days` (**units unconfirmed**, A15) | 1 day for tolerances; **≤ 15 min before submitting** for the `is_accepting_*` flags (R-SUB-5) |
 | `GET /star_systems`, `/planets`, `/moons`, `/orbits`, `/space_stations`, `/cities`, `/outposts` | Location names for the "YOUR INVENTORIES" field and disambiguation | 1 day |
 | `GET /user` | `is_datarunner`, `is_datarunner_banned`, `username` – key check (behavior with only `secret_key` **uncertain**) | – |
 
@@ -83,3 +83,5 @@ Documentation slug: `post_data_submit`.
 12. **`is_missing`:** Which fields are required or allowed with `is_missing = 1`?
 13. **Environments:** How does UEX map HOTFIX/EPTU/TECH-PREVIEW? (assumption A9)
 14. **Mixing in one payload:** According to examples, a payload can contain buy and sell rows. We nevertheless send **one report per side**, because each report has its own screenshot of the respective side.
+15. **`data_remove` / `data_info`:** exact parameters (report ID list? per row?) and whether `data_remove` is allowed for every own report or only within a time window – needed for withdrawal (I4) and the history status.
+16. **Rate budgets:** is the 1000-reports-per-30-min limit counted per price row (as `ids_reports` suggests) and per user or per app token?

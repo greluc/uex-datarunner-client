@@ -24,7 +24,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] `adapter-uex`: client, DTO mapping, envelope, error codes, rate limiter, host fallback; contract tests with recorded responses
 - [ ] `adapter-storage`: SQLite, migrations, repositories (reports, queue, cooldown, history), reference-data cache with TTL refresh
 - [ ] `adapter-platform`: secret store (FFM: Credential Manager / libsecret), paths, truststore
-- [ ] `ui`: onboarding (key → `/user` check), settings, **manual capture** (R-MAN-*) with deviation marking (R-UI-10..12), history, diagnostics
+- [ ] `ui`: onboarding (key → `/user` check, test submission), settings, **manual capture** (R-MAN-*) with deviation marking (R-UI-10..12), history, diagnostics
+- [ ] Screenshot attachment for manual reports (R-MAN-5): the user **selects the shop-panel region** (no automatic locate before M3); only that region is uploaded, so the balance is never included; test with the corpus images
 - [ ] `app`: composition root, configuration
 - [ ] Packaging: MSI / `.deb` / archives from CI, with SHA256SUMS, SBOM and build attestation (R-SEC-6)
 
@@ -32,7 +33,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 ## M2 – OCR core and eval
 
-- [ ] `adapter-ocr`: ORT sessions, DB postprocessing, CTC decode, image operations, homography
+- [ ] `adapter-ocr`: ORT sessions, DB postprocessing, CTC decode
+- [ ] `recognition` (first slice, needed for measuring): `ImageRaster` operations, locate, homography, layout, field parsers – without resolution, fusion, repair and stitching
 - [ ] `tools/ocr-eval`: corpus runner, metrics, crop dumps, digest
 - [ ] Baseline measurement on the corpus: raw accuracy per field type, runtime, RAM
 
@@ -40,8 +42,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 
 ## M3 – Pipeline and review UI (release 0.5)
 
-- [ ] `recognition`: locate, layout, field parser, resolution, validation, repair, stitching, confidence
-- [ ] `capture` + `adapter-files` + `workflows` (capture → recognition → reporting): user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
+- [ ] `recognition` (second slice): resolution against the vocabulary, validation, repair, stitching without overlap, confidence, not-a-terminal detection (R-OCR-16)
+- [ ] `capture` + `adapter-files` + `workflows` (capture → recognition → reporting): report grouping (R-OCR-13), game version at capture time (R-CAP-3b), working copies (R-CAP-7), user-defined folders, button "Import" (manual, default), auto-watch opt-in per folder (WatchService plus polling fallback, catch-up scan), stable-file gate, processed-file register, drag & drop, Ctrl+V, capture time
 - [ ] `ui`: queue view, report editor with image crops and source highlight, deviation marking against UEX (R-UI-10..12), submission block, "Accept all confident"
 - [ ] Upload screenshot: cropping, redact balance (test!)
 
@@ -52,7 +54,8 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] Further themes/layouts (blue standard, Nyx, gateways, red scrapyard terminals), ultrawide/1080p/4K
 - [ ] Game localization (`global.ini`) and SC installation detection including Wine/Proton (assumptions A3/A4 verified)
 - [ ] Second reader for status (bar/color) and cargo sizes
-- [ ] HiDPI, accessibility (keyboard, contrast), UI texts in English via ResourceBundles
+- [ ] HiDPI, accessibility (keyboard, contrast)
+- [ ] Update notice (R-NF-7), "delete all local data" (R-NF-9)
 - [ ] Resource measurement next to the running game; set heap and thread limits
 
 ## M5 – Optional AI recognition with the game closed (release 1.1, can be brought forward)
@@ -71,6 +74,20 @@ Requires M3 (shared resolution, validation and stitching). Can run in parallel t
 - Game start aborts an AI run within ≤ 5 s (2 s interval during a run plus abort) and unloads the model (test with simulated process).
 - Without Ollama there is no error message.
 - The fusion measurably lowers "silently wrong" and "flagged" on the corpus compared with "OCR only". **If that is not the case, the feature is not shipped** (assumption A8).
+
+## Requirement coverage
+
+Every requirement group from [01-requirements.md](01-requirements.md) is assigned to the milestone that implements it. The traceability report (11 §B4) uses this table: M requirements of completed milestones without a tagged test fail the build.
+
+| Milestone | Requirements |
+|---|---|
+| M0 | R-SEC-1…5, R-QA-1 (corpus structure) |
+| M1 | R-MAN-*, R-VAL-1…4 (manual path), R-UI-2, R-UI-4, R-UI-7, R-UI-8, R-UI-10…12 (manual path), R-SUB-*, R-API-*, R-CAP-3/3a (manual environment), R-L10N-1, R-NF-2, R-NF-4…6, R-NF-8, R-SEC-6…8 |
+| M2 | R-OCR-1, R-OCR-2 (locate), R-OCR-5, R-QA-3 (eval CLI), R-QA-4 |
+| M3 | R-CAP-1…1e, R-CAP-2, R-CAP-3b, R-CAP-5, R-CAP-7, R-OCR-3, R-OCR-4, R-OCR-6…8, R-OCR-11…14, R-OCR-16, R-VAL-1…5 (OCR path), R-UI-1, R-UI-3, R-UI-5, R-UI-6, R-UI-10…12 (OCR path), R-QA-2 |
+| M4 | R-CAP-4, R-CAP-6, R-OCR-9, R-OCR-10, R-OCR-15, R-L10N-2, R-NF-1 (Linux/XWayland tests), R-NF-3, R-NF-7, R-NF-9 |
+| M5 | R-VLM-* |
+| later | R-UI-9, R-L10N-3, R-SCOPE-2 (UI), R-SEC-9 |
 
 ## Risks
 

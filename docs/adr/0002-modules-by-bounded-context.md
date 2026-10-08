@@ -99,5 +99,6 @@ app            → everything (composition root, no logic)
   - fetching moves into `adapter-uex`, caching into `adapter-storage`;
   - the `global.ini` parser moves into `adapter-files`.
 - `adapter-capture` is renamed `adapter-files`. It handles folder watching, the stable-file gate and reading game files (`global.ini`, `user.cfg`, RSI launcher log).
+- The core does not use AWT/ImageIO or `java.nio.file` (added in the 2026-10-08 review): images are passed as an own `ImageRaster`, folders as `FolderLocation`, so that `recognition`, `capture` and `reporting` stay free of I/O and do not need the `java.desktop` module.
 - Each context module exports only its `api` package (application services, commands, read models, events, ports); `internal` stays hidden.
 - **Revisit** after M3: if two contexts consistently change together, merge them; if `shared-kernel` grows beyond value objects, split or push types back into contexts.

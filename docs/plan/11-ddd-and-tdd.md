@@ -43,12 +43,12 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 | **Reporting** | Build, check, confirm and release Reports – **core of the domain rules** | Aggregate `Report` | uses Recognition and Reference Data; delivers `ReportReleased` |
 | **Submission** | Sending, queue, cooldown, history, withdrawal | Aggregates `SubmissionJob`, `Cooldown` | Customer of the UEX API via an **Anti-Corruption-Layer** |
 | **Reference Data** | UEX master data and prices as a read model | `ReferenceSnapshot` and value objects | **Conformist** to UEX (we adopt their model), shielded by the ACL in `adapter-uex` |
-| **Game Environment** | Environment, version, "game running", game localization | `GameEnvironment`, `GameVersion`, `GameState` | Shared Kernel with all |
+| **Game Environment** | Environment, version, "game running", game localization | `GameEnvironment`, `GameVersion`, `GameState` | Upstream of Capture, Recognition, Reporting and Submission (published language: `GameEnvironment`, `GameVersion`) |
 
 **Implementation in code:**
 
 - Each context is its **own Gradle/JPMS module** (`capture`, `recognition`, `reporting`, `submission`, `reference-data`, `game`) containing its domain model and application services; cross-context processes live in `workflows`. Decision and trade-offs: [ADR-002](../adr/0002-modules-by-bounded-context.md); context map: [02 §2](02-architecture.md).
-- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `GameEnvironment`) live in the **Shared Kernel** module `shared-kernel`. It is kept small; changes there require particular care.
+- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `Outcome`, event base, marker annotations) live in the **Shared Kernel** module `shared-kernel`. `GameEnvironment` and `GameVersion` belong to the `game` context and are used by others as its published language. It is kept small; changes there require particular care.
 - **Rule:** Contexts reference other aggregates only by ID and communicate via domain events or application services, never via direct object references. This is enforced by JPMS (only `api` packages are exported) and ArchUnit.
 
 ### A3. Aggregates and invariants
@@ -62,6 +62,8 @@ The domain terms are binding: the same terms in docs, UI and code (all English).
 | I3 | A confirmation applies to exactly one value. `correct(field, newValue)` revokes the confirmation. |
 | I4 | A submitted Report is immutable; only `withdraw()` is possible (leads to `data_remove`). |
 | I5 | The game version is the one valid at capture time; a version change marks the Report as "to be checked". |
+
+The `Report` carries a `version` number for optimistic concurrency: every command is applied to a specific version, and the repository rejects writes based on a stale version (e.g. user edit and AI re-read at the same time).
 
 States as sealed types: `Draft → Released → Queued → Submitted | Rejected`, `Submitted → Withdrawn`. Invalid transitions return `Outcome.Refused` with a reason code; there are no status strings.
 
@@ -114,7 +116,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
   - `@AggregateRoot` classes are loaded and stored only via their repository.
   - Aggregates reference other aggregates only via `*Id` types.
   - Domain types have no public setters.
-  - Context packages do not access the internals of other contexts.
+  - Context modules do not access the `internal` packages of other contexts (also enforced by JPMS exports).
 
 ## Part B – Test-Driven Development
 
@@ -167,4 +169,4 @@ void majorPriceDeviationBlocksReleaseUntilConfirmed() {
 ### B4. Traceability
 
 - Every M requirement from 01 has at least one acceptance test with `@Tag("<R-ID>")`.
-- A small report in the build lists R-IDs without a test (Gradle task over JUnit tags). In M0 this is a warning, from M3 on an error for M requirements.
+- A small report in the build lists R-IDs without a test (Gradle task over JUnit tags). Each requirement group is assigned to a milestone in [04-roadmap.md](04-roadmap.md) ("Requirement coverage"). Missing tests are a warning for open milestones and a **build error** for M requirements of milestones that are already completed.
