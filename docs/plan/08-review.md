@@ -319,3 +319,24 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   - ONNX Runtime telemetry is R-NF-12 (O-13).
 - The other §D points are now O-8, O-9 and O-44 to O-46. The 32 owner questions of §K are O-47 to O-78.
 - The sections above stay as written. This section supersedes their statements that the licence is undecided and that the CLAUDE.md licence rule is unchanged.
+
+## M. Design-system prompt rewritten for Claude Design (2026-10-08)
+
+- The prompt that §K "Deferred" left open is replaced. @greluc asked for a brief for Claude Design instead of a Claude Code prompt, written within Claude Design's limits. `docs/prompts/` now holds the brief (`design-system.md`), the stage messages, the owner checklist and the JavaFX handoff for Claude Code. The previous Claude Code prompt stays in the history (commit `07f7356`).
+- The §K prompt notes are applied:
+  - The state inventory follows 02 §3, §4b and §7 and 11 §A3: report states with `Discarded`, job phases without "failed", the Capture and AI job states, the `BlockReason` set and the `ReportFinding` list.
+  - The stale-reference rule of 07 §2.6 is applied: a major deviation is never lowered.
+  - R-UI-16 and R-UI-17 are applied.
+  - The download rule of 10 §2.3 is in the handoff.
+- The governance decisions are applied:
+  - The Fan Kit unit (R-UI-19) replaces the earlier disclaimer and the neutral trademark line. Both notices are verbatim; Claude Design draws the logo only as a placeholder.
+  - The About dialog follows R-UI-18.
+  - The design-system ADR takes the next free number (ADR-0004 as of 2026-10-08).
+- An independent review compared the brief with the plan before the commit. Its corrections are in, among them:
+  - Observation age unconfirmed vs. too old.
+  - Set-aside files are not Captures.
+  - The second Superseded variant.
+  - The game version "to be checked" after a patch.
+  - The settings that are not user-editable.
+- One §K note was checked against 01 and corrected rather than applied as written: after `invalid_game_version` the report stays `Rejected` without "duplicate as new draft" (R-SUB-11); "discard" applies to Drafts only (11 §A3).
+- The design decisions are open points O-83 (Claude Design checkpoints) and O-84 (D10 of the handoff).
