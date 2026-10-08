@@ -137,7 +137,7 @@ The classic OCR (above) is the **default path** and always runs, even while play
 | R-SUB-3 | Submission block on unresolved fields or an unclear terminal | M |
 | R-SUB-4 | Persistent history (SQLite): report IDs (`ids_reports`), time, payload hash, 5-minute cooldown per terminal/commodity/environment (conservatively **without** side until the UEX rule is clarified – assumption A12); withdrawal via `data_remove`. Optionally the history shows the processing status at UEX (`data_info`). | M |
 | R-SUB-5 | Before submission: check `data_parameters` (`is_accepting_reports` or `is_accepting_ptu_reports`, `commodity.is_accepted`). For this, a state at most 15 min old is used (not the daily cache), because these flags change on patch day. | M |
-| R-SUB-6 | Mapping of all known UEX error codes to localized messages with a recommended action | M |
+| R-SUB-6 | Mapping of all known UEX error codes to clear user messages (ResourceBundle keys) with a recommended action | M |
 | R-SUB-7 | Upload screenshot: perspective-corrected crop "SHOP INVENTORY" plus location field, **balance always redacted**, JPEG or PNG < 10 MB (target ~1–2 MP). If a report consists of multiple scrolled captures but the API has only **one** `screenshot` field, the shop crops are composed vertically into one image (assumption A11: accepted by UEX). | M |
 | R-SUB-8 | Test mode (`is_production=0`), switchable in the settings and active by default for development and CI | M |
 

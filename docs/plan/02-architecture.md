@@ -1,147 +1,147 @@
-# Systemarchitektur
+# System architecture
 
-## 1. Überblick
+## 1. Overview
 
 ```mermaid
 flowchart LR
-    subgraph Eingang
-        W[Nutzer-Ordner<br/>„Einlesen“-Klick oder<br/>Auto-Watch] --> Q
-        D[Drag & Drop / Strg+V / Datei] --> Q
-        M[Manuelle Erfassung]
+    subgraph Eingang["Input"]
+        W["User folders<br/>#quot;Import#quot; click or<br/>auto-watch"] --> Q
+        D[Drag & drop / Ctrl+V / file] --> Q
+        M[Manual capture]
     end
-    Q[(Capture-Queue)] --> P
+    Q[(Capture queue)] --> P
 
-    subgraph Pipeline["Erkennungs-Pipeline (Hintergrund)"]
-        P[1 Vorverarbeitung<br/>Locate + Perspektive] --> O[2 OCR<br/>PP-OCR det+rec via ORT]
-        O --> L[3 Layout<br/>Karten, Felder, Tab/Abschnitt]
-        L --> R[4 Auflösung<br/>Terminal, Commodities gegen Vokabular]
-        R --> FU[4b Fusion<br/>nur wenn 2. Leser vorhanden]
-        FU --> V[5 Validierung/Reparatur<br/>Prior, Confusables, Konsistenz]
-        V --> S[6 Stitching<br/>→ Report-Entwurf]
+    subgraph Pipeline["Recognition pipeline (background)"]
+        P[1 Preprocessing<br/>locate + perspective] --> O[2 OCR<br/>PP-OCR det+rec via ORT]
+        O --> L[3 Layout<br/>cards, fields, tab/section]
+        L --> R[4 Resolution<br/>terminal, commodities against vocabulary]
+        R --> FU[4b Fusion<br/>only if 2nd reader present]
+        FU --> V[5 Validation/repair<br/>prior, confusables, consistency]
+        V --> S[6 Stitching<br/>→ report draft]
     end
 
-    subgraph KI["Optional: KI-Zweitleser"]
-        GM[Spiel-Monitor<br/>StarCitizen.exe?] -->|Spiel geschlossen| VQ[(KI-Queue)]
-        VQ --> VL[VLM via Ollama<br/>localhost<br/>liest pro Capture]
+    subgraph AI["Optional: AI second reader"]
+        GM[Game monitor<br/>StarCitizen.exe?] -->|game closed| VQ[(AI queue)]
+        VQ --> VL[VLM via Ollama<br/>localhost<br/>reads per capture]
     end
-    S -. Captures vorgemerkter Reports .-> VQ
-    VL -- Parser + Auflösung --> FU
+    S -. captures of flagged reports .-> VQ
+    VL -- parser + resolution --> FU
 
-    subgraph Ref["Referenzdaten"]
-        API[UEX API 2.0] <--> C[(SQLite-Cache)]
-        G[global.ini<br/>Spiel-Lokalisierung]
+    subgraph Ref["Reference data"]
+        API[UEX API 2.0] <--> C[(SQLite cache)]
+        G[global.ini<br/>game localization]
     end
-    C -. Vokabular/Prior .-> R
-    C -. Prior/Toleranzen .-> V
-    G -. lokalisierte Namen .-> R
+    C -. vocabulary/prior .-> R
+    C -. prior/tolerances .-> V
+    G -. localized names .-> R
 
-    S --> UI[Review-UI]
+    S --> UI[Review UI]
     M --> UI
-    M -. dieselbe Validierung .-> V
-    UI --> SUBQ[Sende-Queue<br/>Rate-Limit, Cooldown]
+    M -. same validation .-> V
+    UI --> SUBQ[Submission queue<br/>rate limit, cooldown]
     SUBQ --> API
-    SUBQ --> H[(Historie SQLite)]
+    SUBQ --> H[(History SQLite)]
 ```
 
-Leitprinzipien:
+Guiding principles:
 
-1. **UEX-Daten sind Constraint, nicht Dekoration.** Jede Erkennung wird gegen das geschlossene Vokabular (Terminals, Commodities, Statusstufen, Container-Größen) aufgelöst. Freie OCR-Strings erreichen nie die API.
-2. **Nichts still raten.** Jede Unsicherheit wird als Warnung mit Grund-Code sichtbar. Das Sende-Gate blockiert Ungeklärtes.
-3. **Reine Domänenlogik und I/O sind getrennt.** Pipeline-Stufen sind reine Funktionen auf unveränderlichen Records. Dadurch sind sie mit Golden-Daten testbar, ohne UI und ohne Netzwerk.
-4. **Sprachneutraler Schnitt.** Die Modulgrenzen erlauben, einzelne Teile (z. B. den OCR-Kern) später auszutauschen.
+1. **UEX data is a constraint, not decoration.** Every recognition is resolved against the closed vocabulary (terminals, commodities, status levels, container sizes). Free OCR strings never reach the API.
+2. **Guess nothing silently.** Every uncertainty becomes visible as a warning with a reason code. The submission gate blocks anything unresolved.
+3. **Pure domain logic and I/O are separated.** Pipeline stages are pure functions on immutable records. This makes them testable with golden data, without UI and without network.
+4. **Language-neutral cut.** The module boundaries allow individual parts (e.g. the OCR core) to be replaced later.
 
-## 2. Module (Gradle-Multiprojekt, JPMS-Module) – Ports & Adapters
+## 2. Modules (Gradle multi-project, JPMS modules) – Ports & Adapters
 
-Der Schnitt folgt **Ports & Adapters** (hexagonale Architektur):
+The cut follows **Ports & Adapters** (hexagonal architecture):
 
-- **Kern** (`domain`, `pipeline`, `application`): enthält die Fachlogik und kennt keine Technik (kein JavaFX, kein HTTP, kein SQL, kein Dateisystem, keine Uhr außer über `java.time.Clock`).
-- **Adapter** implementieren die **Ports** (Interfaces in `domain`).
-- **`ui`** nutzt nur die Use-Cases aus `application`.
-- **`app`** ist ausschließlich Composition Root und Packaging.
+- **Core** (`domain`, `pipeline`, `application`): contains the domain logic and knows no technology (no JavaFX, no HTTP, no SQL, no file system, no clock except via `java.time.Clock`).
+- **Adapters** implement the **ports** (interfaces in `domain`).
+- **`ui`** uses only the use cases from `application`.
+- **`app`** is exclusively composition root and packaging.
 
-Detaillierte Regeln und ihre Durchsetzung stehen in [09-engineering-prinzipien.md](09-engineering-prinzipien.md).
+Detailed rules and their enforcement are in [09-engineering-principles.md](09-engineering-principles.md).
 
 ```
 uex-datarunner-client/
-├── build-logic/            Convention-Plugins (Toolchain, Error Prone/NullAway, Spotless, Tests, JaCoCo, ArchUnit)
+├── build-logic/            Convention plugins (toolchain, Error Prone/NullAway, Spotless, tests, JaCoCo, ArchUnit)
 │
-│   ── Kern ──
-├── domain/                 Entities/Value Objects (Records, sealed Types), Ports (Interfaces), Fehlertypen; nur JSpecify
-├── pipeline/               Erkennungslogik als reine Funktionen: Locate, Layout, Parser, Auflösung, Fusion, Validierung, Stitching, Konfidenz
-├── application/            Use-Cases und Workflows: Einlesen, Verarbeiten, Gruppieren, Review, Senden (Queue, Cooldown, Sendeschwelle), KI-Queue + RecognitionPolicy, Einstellungen
+│   ── Core ──
+├── domain/                 Entities/value objects (records, sealed types), ports (interfaces), error types; only JSpecify
+├── pipeline/               Recognition logic as pure functions: locate, layout, parser, resolution, fusion, validation, stitching, confidence
+├── application/            Use cases and workflows: import, process, group, review, submit (queue, cooldown, send threshold), AI queue + RecognitionPolicy, settings
 │
-│   ── Adapter (implementieren Ports) ──
-├── adapter-uex/            UEX-HTTP-Client, DTOs + Mapping auf domain, Envelope, Fehlercodes, Rate-Limiter, Host-Fallback
-├── adapter-refdata/        Referenzdaten-Cache, Refresh, Vokabular-Indizes, Fuzzy-Matcher, global.ini-Parser → `ReferenceSnapshot`
-├── adapter-ocr/            ONNX Runtime, DB-Detektion, CTC-Erkennung → implementiert `Reader`, `TextDetector`
-├── adapter-vlm/            Optional: Ollama-Client, Prompt-Ressourcen, Antwort-Parser → implementiert `Reader`
-├── adapter-capture/        Ordner-Register, Einlese-Scan, Auto-Watcher, Stable-File-Gate, Clipboard → implementiert `CaptureSource`
-├── adapter-storage/        SQLite: Verbindung, Migrationen, Repositories (Captures, Reports, Queue, Historie, Cache)
-├── adapter-platform/       OS-Integration: Secret-Store (FFM), Spiel-Prozess-Monitor, SC-Installationserkennung, Pfade, Truststore
+│   ── Adapters (implement ports) ──
+├── adapter-uex/            UEX HTTP client, DTOs + mapping to domain, envelope, error codes, rate limiter, host fallback
+├── adapter-refdata/        Reference data cache, refresh, vocabulary indexes, fuzzy matcher, global.ini parser → `ReferenceSnapshot`
+├── adapter-ocr/            ONNX Runtime, DB detection, CTC recognition → implements `Reader`, `TextDetector`
+├── adapter-vlm/            Optional: Ollama client, prompt resources, answer parser → implements `Reader`
+├── adapter-capture/        Folder register, import scan, auto-watcher, stable-file gate, clipboard → implements `CaptureSource`
+├── adapter-storage/        SQLite: connection, migrations, repositories (captures, reports, queue, history, cache)
+├── adapter-platform/       OS integration: secret store (FFM), game process monitor, SC installation detection, paths, truststore
 │
-│   ── Präsentation & Start ──
-├── ui/                     JavaFX (MVVM): Views, ViewModels, Ressourcen/CSS/i18n – spricht nur mit application
-├── app/                    main(), Composition Root (Verdrahtung), Konfiguration laden, jlink/jpackage
-└── tools/ocr-eval/         CLI: Golden-Korpus-Auswertung, Crop-Dumps, Digest
+│   ── Presentation & startup ──
+├── ui/                     JavaFX (MVVM): views, ViewModels, resources/CSS/i18n – talks only to application
+├── app/                    main(), composition root (wiring), load configuration, jlink/jpackage
+└── tools/ocr-eval/         CLI: golden corpus evaluation, crop dumps, digest
 ```
 
-Abhängigkeiten (nur in Pfeilrichtung, **zyklenfrei**):
+Dependencies (only in arrow direction, **cycle-free**):
 
 ```
 pipeline      → domain
 application   → pipeline, domain
 ui            → application, domain
-adapter-*     → domain                (implementieren Ports)
-adapter-refdata → adapter-uex, adapter-storage   (einzige erlaubte Adapter→Adapter-Kanten)
-adapter-capture, adapter-vlm → adapter-storage    (nur wenn eigene Tabellen nötig; sonst über Ports)
-app           → alle                  (verdrahtet; enthält keine Logik)
+adapter-*     → domain                (implement ports)
+adapter-refdata → adapter-uex, adapter-storage   (only allowed adapter→adapter edges)
+adapter-capture, adapter-vlm → adapter-storage    (only if own tables are needed; otherwise via ports)
+app           → all                   (wires; contains no logic)
 tools/ocr-eval → pipeline, adapter-ocr, adapter-vlm, adapter-refdata
 ```
 
-**Ports** (Auszug, in `domain`):
+**Ports** (excerpt, in `domain`):
 
-| Port | Zweck | Implementiert in |
+| Port | Purpose | Implemented in |
 |---|---|---|
-| `Reader` | Panel lesen → `ReaderResult` | adapter-ocr, adapter-vlm |
-| `TextDetector` | Grob-OCR für Locate-Anker | adapter-ocr |
-| `ReferenceDataSource` | aktuellen `ReferenceSnapshot` liefern, Refresh anstoßen | adapter-refdata |
-| `SubmissionGateway` | Report an UEX senden, zurückziehen, Status abfragen | adapter-uex |
-| `CaptureSource` | Captures aus Ordnern, Drag & Drop, Zwischenablage | adapter-capture |
-| `CaptureRepository`, `ReportRepository`, `SubmissionQueueRepository`, `HistoryRepository` | Persistenz | adapter-storage |
-| `SecretStore` | Secret-Key ablegen/lesen | adapter-platform |
-| `GameStateProbe` | läuft Star Citizen? | adapter-platform |
-| `java.time.Clock` | Zeit (Cooldown, Hysterese, Gruppierung) | JDK, in Tests fest |
+| `Reader` | read panel → `ReaderResult` | adapter-ocr, adapter-vlm |
+| `TextDetector` | coarse OCR for locate anchors | adapter-ocr |
+| `ReferenceDataSource` | provide current `ReferenceSnapshot`, trigger refresh | adapter-refdata |
+| `SubmissionGateway` | send report to UEX, withdraw, query status | adapter-uex |
+| `CaptureSource` | captures from folders, drag & drop, clipboard | adapter-capture |
+| `CaptureRepository`, `ReportRepository`, `SubmissionQueueRepository`, `HistoryRepository` | persistence | adapter-storage |
+| `SecretStore` | store/read secret key | adapter-platform |
+| `GameStateProbe` | is Star Citizen running? | adapter-platform |
+| `java.time.Clock` | time (cooldown, hysteresis, grouping) | JDK, fixed in tests |
 
-**Warum diese Aufteilung?** (Gegenüber der ersten Fassung, in der `app` UI, Secret-Store und KI-Steuerung vereinte und `submission`/`capture` Fachlogik mit Technik mischten.)
+**Why this split?** (Compared with the first version, in which `app` combined UI, secret store and AI control, and `submission`/`capture` mixed domain logic with technology.)
 
-- Use-Cases (`application`) sind **ohne JavaFX, Netz und Datenbank testbar** – mit Fakes der Ports.
-- Technikwechsel (z. B. anderes OCR-Modell, anderer Secret-Store, später ein anderes UI) betrifft genau ein Modul.
-- Jedes Modul hat eine Aufgabe; `app` bleibt klein und frei von Logik.
+- Use cases (`application`) are **testable without JavaFX, network and database** – with fakes of the ports.
+- A technology change (e.g. a different OCR model, a different secret store, later a different UI) affects exactly one module.
+- Each module has one task; `app` stays small and free of logic.
 
-Package-Root: `space.uexdatarunner.<modul>` (Platzhalter – Projektname und Reverse-Domain sind vom Projektinhaber festzulegen).
+Package root: `space.uexdatarunner.<module>` (placeholder – project name and reverse domain are to be determined by the project owner).
 
-## 3. Domänenmodell (Auszug, `domain`)
+## 3. Domain model (excerpt, `domain`)
 
 ```java
 public enum GameEnvironment { LIVE, PTU, EPTU, HOTFIX, TECH_PREVIEW }
 
-public enum TradeSide { BUY, SELL }                 // Buy-Tab / "Local Market Value"-Tab
+public enum TradeSide { BUY, SELL }                 // Buy tab / "Local Market Value" tab
 
 public record TerminalId(int value) {}
 public record CommodityId(int value) {}
 
-/** UEX-Statusstufe; gültige Codes und Namen kommen aus commodities_status (ReferenceSnapshot), nicht aus Konstanten. */
+/** UEX status level; valid codes and names come from commodities_status (ReferenceSnapshot), not from constants. */
 public record InventoryStatus(int code) {
     public InventoryStatus { if (code < 1) throw new IllegalArgumentException("status " + code); }
 }
-// Prüfung gegen die geladenen Stufen: ReferenceSnapshot.statusLevels(side).contains(code)
+// Check against the loaded levels: ReferenceSnapshot.statusLevels(side).contains(code)
 
-/** Unveränderlicher Stand der UEX-Referenzdaten für einen Pipeline-Lauf. */
+/** Immutable state of the UEX reference data for one pipeline run. */
 public record ReferenceSnapshot(Instant fetchedAt, Map<CommodityId, Commodity> commodities,
                                 Map<TerminalId, Terminal> terminals, StatusLevels statusLevels,
                                 DataParameters parameters, Map<TerminalId, List<PricePrior>> priors) {}
 
-/** Ein Feldwert samt Herkunft und Bewertung – Kern des "nichts still raten"-Prinzips. */
+/** A field value with its origin and assessment – core of the "guess nothing silently" principle. */
 @ValueObject
 public record Field<T>(@Nullable T value, FieldAssessment assessment, List<Finding> findings,
                        @Nullable Region source, @Nullable Confirmation confirmation) {}
@@ -154,42 +154,42 @@ public record ReportRow(CommodityId commodity, Field<PricePerScu> price, Field<S
                         Field<InventoryStatus> status, Field<ContainerSizes> containerSizes,
                         int screenOrder) {}
 
-/** Aggregate Root (Kontext Meldung). Unveränderlich: Befehle liefern einen neuen Zustand plus Events. */
+/** Aggregate root (context Reporting). Immutable: commands return a new state plus events. */
 @AggregateRoot
 public record Report(ReportId id, Field<TerminalId> terminal, TradeSide side, GameEnvironment env,
                      GameVersion versionAtCapture, List<ReportRow> rows, List<CaptureId> captures,
                      ReportState state) {
     public Outcome<Report> confirm(CommodityId commodity, FieldKind field) { … }
-    public Outcome<Report> correct(CommodityId commodity, FieldKind field, Object newValue) { … } // hebt Bestätigung auf (I3)
-    public Outcome<Report> release(SubmissionGate gate) { … }                                  // prüft I1, I2, I5
+    public Outcome<Report> correct(CommodityId commodity, FieldKind field, Object newValue) { … } // revokes confirmation (I3)
+    public Outcome<Report> release(SubmissionGate gate) { … }                                  // checks I1, I2, I5
 }
 
 public sealed interface ReportState permits Draft, Released, Queued, Submitted, Rejected, Withdrawn {}
-/** Ergebnis eines Befehls: neuer Zustand + Domain-Events, oder fachlicher Fehler (keine Exception). */
+/** Result of a command: new state + domain events, or domain error (no exception). */
 public sealed interface Outcome<T> permits Outcome.Ok, Outcome.Refused {}
 ```
 
-Das fachliche Modell (Bounded Contexts, Aggregate, Invarianten I1–I5, Events, Ubiquitous Language) steht in [11-ddd-und-tdd.md](11-ddd-und-tdd.md). Dieser Abschnitt zeigt nur die Form im Code.
+The domain model (Bounded Contexts, aggregates, invariants I1–I5, events, Ubiquitous Language) is in [11-ddd-and-tdd.md](11-ddd-and-tdd.md). This section only shows its form in code.
 
-- **Geld:** `BigDecimal`, nie `double`. Seit SC 4.7 zeigt das Spiel ganze aUEC; die API akzeptiert float.
-- **Pattern Matching:** Pipeline-Ergebnisse sind `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) und werden mit `switch` und Record-Patterns ausgewertet.
+- **Money:** `BigDecimal`, never `double`. Since SC 4.7 the game shows whole aUEC; the API accepts float.
+- **Pattern matching:** Pipeline results are `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) and are evaluated with `switch` and record patterns.
 
-## 4. Erkennungs-Pipeline (`pipeline`, Leser in `adapter-ocr`)
+## 4. Recognition pipeline (`pipeline`, readers in `adapter-ocr`)
 
-Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfassung:
+Details and derivation are in [07-ocr-concept.md](07-ocr-concept.md). Short version:
 
-Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `adapter-ocr` abhängt, bekommt sie dafür den Port `TextDetector` (in `domain`) injiziert.
+Locate needs a coarse OCR for the text anchors. So that `pipeline` does not depend on `adapter-ocr`, the port `TextDetector` (in `domain`) is injected into it for this purpose.
 
-| Stufe | Eingabe → Ausgabe | Wichtigste Techniken |
+| Stage | Input → output | Key techniques |
 |---|---|---|
-| 1 Locate | `BufferedImage` → Panel-Quad(s) | Box-Filter-Downscale; Farb- und Luminanzanker (theme-agnostisch); Text-Anker aus einem Grob-OCR-Pass („SHOP INVENTORY“, „YOUR INVENTORIES“); Homographie auf Normgröße; manueller Fallback |
-| 2 OCR | Normbild → `List<TextBox>` (Polygon, Text, Score) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime 1.30.0, volles Wörterbuch |
-| 3 Layout | TextBoxen → `List<Card>` + Header | Karten über Rahmen/Abstände und das Label „AVAILABLE CARGO SIZE“; Feldzuordnung relativ zur Karte; Tab-Erkennung über Farbintensität des Tab-Hintergrunds |
-| 4 Auflösung | Karten → Commodity-/Terminal-Kandidaten | Normalisierung (Groß-/Kleinschreibung, Leerzeichen, Ligaturen) plus gewichtetes Levenshtein/Jaro-Winkler gegen das Vokabular, Sortiment des Terminals bevorzugt |
-| 5 Validierung | Kandidaten → `Field<T>` mit Findings | Zahlparser, UEX-Prior, `data_parameters`-Toleranzen, Confusable-Reparatur, Glyph-Topologie-Veto, Status↔SCU-Konsistenz |
-| 6 Stitching | Scans → `Report` (Zustand `Draft`) | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
+| 1 Locate | `BufferedImage` → panel quad(s) | Box-filter downscale; color and luminance anchors (theme-agnostic); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); homography to normalized size; manual fallback |
+| 2 OCR | Normalized image → `List<TextBox>` (polygon, text, score) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime 1.30.0, full dictionary |
+| 3 Layout | TextBoxes → `List<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; field assignment relative to the card; tab recognition via color intensity of the tab background |
+| 4 Resolution | Cards → commodity/terminal candidates | Normalization (upper/lower case, whitespace, ligatures) plus weighted Levenshtein/Jaro-Winkler against the vocabulary, terminal's assortment preferred |
+| 5 Validation | Candidates → `Field<T>` with findings | Number parser, UEX prior, `data_parameters` tolerances, confusable repair, glyph topology veto, status↔SCU consistency |
+| 6 Stitching | Scans → `Report` (state `Draft`) | Grouping by terminal, side and time window; merge via `CommodityId` (simpler than in basetool thanks to resolution); edge card rule; conflict ⇒ `Ambiguous` |
 
-## 4a. Bildeingang (`adapter-capture`, Steuerung in `application`)
+## 4a. Image input (`adapter-capture`, control in `application`)
 
 ```java
 public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean recursive,
@@ -198,127 +198,127 @@ public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean
 public enum ImportMode { MANUAL, AUTOMATIC }
 ```
 
-- **Arbeitskopien** (R-CAP-7): Nach dem Locate werden die normalisierten Panel-Ausschnitte im App-Datenverzeichnis abgelegt; alle späteren Schritte (Review, VLM, Upload) arbeiten darauf.
-- **`FolderScanner`** (rein bis auf das Dateisystem-Listing): Er listet die Kandidaten (`Files.walk` bzw. `Files.list`, Endungsfilter), gleicht sie gegen das **Verarbeitet-Register** ab (Pfad, Größe und mtime als schneller Schlüssel, Inhalts-Hash als Identität) und liefert die neuen Dateien. Ihn nutzen der Button „Einlesen“ und der Nachhol-Scan.
-- **`FolderWatcher`** pro Ordner im Modus `AUTOMATIC`:
-  - `WatchService` auf einem Virtual Thread; bei `OVERFLOW` folgt ein Voll-Scan.
-  - Scheitert die Registrierung oder ist das Dateisystem bekannt unzuverlässig (Wine-/FUSE-/SMB-Pfade, per Einstellung erzwingbar), wird stattdessen gepollt (`FolderScanner` alle 2 s).
-- **`StableFileGate`**: wartet, bis Größe und mtime eine Ruhezeit lang stabil sind und `ImageIO` die Datei dekodiert; danach Übergabe an die Capture-Queue.
-- Einstellungen werden live übernommen: Wechselt ein Ordner zwischen MANUAL und AUTOMATIC, startet bzw. stoppt der Watcher ohne Neustart der App.
+- **Working copies** (R-CAP-7): After locate, the normalized panel crops are stored in the app data directory; all later steps (review, VLM, upload) work on them.
+- **`FolderScanner`** (pure except for the file system listing): It lists the candidates (`Files.walk` or `Files.list`, extension filter), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files. It is used by the "Import" button and the catch-up scan.
+- **`FolderWatcher`** per folder in mode `AUTOMATIC`:
+  - `WatchService` on a virtual thread; on `OVERFLOW` a full scan follows.
+  - If registration fails or the file system is known to be unreliable (Wine/FUSE/SMB paths, can be forced via setting), polling is used instead (`FolderScanner` every 2 s).
+- **`StableFileGate`**: waits until size and mtime are stable for a quiet period and `ImageIO` decodes the file; then hands it over to the capture queue.
+- Settings are applied live: if a folder switches between MANUAL and AUTOMATIC, the watcher starts or stops without restarting the app.
 
-## 4b. Optionale KI-Erkennung (`adapter-vlm`, `adapter-platform`, Steuerung in `application`)
+## 4b. Optional AI recognition (`adapter-vlm`, `adapter-platform`, control in `application`)
 
-- **Leser-Abstraktion** (in `domain`):
+- **Reader abstraction** (in `domain`):
 
   ```java
   public enum ReaderKind { OCR, VLM }
-  /** Bewusst NICHT sealed: Implementierungen liegen in anderen JPMS-Modulen (ocr, vlm),
-   *  und sealed-Typen in benannten Modulen erlauben nur Subtypen im selben Modul. */
+  /** Deliberately NOT sealed: implementations live in other JPMS modules (ocr, vlm),
+   *  and sealed types in named modules only allow subtypes in the same module. */
   public interface Reader { ReaderResult read(NormalizedPanel panel) throws ReaderException; }
   public record ReaderResult(ReaderKind kind, List<RawCard> cards, @Nullable RawHeader header, Duration took) {}
   ```
 
-  Die klassische OCR und das VLM liefern dieselbe Rohstruktur. **Reihenfolge:**
+  The classic OCR and the VLM deliver the same raw structure. **Order:**
 
-  1. Parsen und Auflösen (Stufe 4) läuft **pro Leser**.
-  2. Danach folgt die **Fusion** pro Feld zu Kandidaten (Regeln in [07](07-ocr-konzept.md) §2.7).
-  3. Validierung, Reparatur und Konfidenz (Stufe 5) laufen **einmal** auf dem fusionierten Ergebnis.
-  4. Zum Schluss folgt das Stitching (Stufe 6).
+  1. Parsing and resolution (stage 4) run **per reader**.
+  2. Then follows the **fusion** per field into candidates (rules in [07](07-ocr-concept.md) §2.7).
+  3. Validation, repair and confidence (stage 5) run **once** on the fused result.
+  4. Finally, stitching (stage 6) follows.
 
-  Das VLM liest pro Capture; nach einem KI-Lauf wird der betroffene Report neu gestitcht.
+  The VLM reads per capture; after an AI run, the affected report is re-stitched.
 
-- **`GameProcessMonitor`** (`adapter-platform`, implementiert `GameStateProbe`):
-  - Prüft periodisch auf einem Virtual Thread `ProcessHandle.allProcesses()` (Windows: Pfad `…\Bin64\StarCitizen.exe`; Linux: Wine-/Proton-Kommandozeile, Annahme A7).
-  - Veröffentlicht die Zustände `RUNNING` und `CLOSED` mit Hysterese als JavaFX-Property bzw. Listener.
-  - Hat keine weiteren Rechte und keinen Prozesszugriff.
+- **`GameProcessMonitor`** (`adapter-platform`, implements `GameStateProbe`):
+  - Periodically checks `ProcessHandle.allProcesses()` on a virtual thread (Windows: path `…\Bin64\StarCitizen.exe`; Linux: Wine/Proton command line, assumption A7).
+  - Publishes the states `RUNNING` and `CLOSED` with hysteresis as a JavaFX property or listener.
+  - Has no further permissions and no process access.
 
-- **`RecognitionPolicy`** (`application`) entscheidet anhand der Einstellung (Aus / Automatisch / Immer) und des Spielzustands, ob die KI-Queue arbeiten darf:
+- **`RecognitionPolicy`** (`application`) decides, based on the setting (Off / Automatic / Always) and the game state, whether the AI queue may work:
 
-  | Einstellung | Spiel läuft | Spiel geschlossen |
+  | Setting | Game running | Game closed |
   |---|---|---|
-  | Aus | nur OCR | nur OCR |
-  | Automatisch | nur OCR; Reports werden für die KI vorgemerkt | KI-Queue läuft (nur Reports mit Warnungen oder alle) |
-  | Immer | OCR + KI (Warnung) | OCR + KI |
+  | Off | OCR only | OCR only |
+  | Automatic | OCR only; reports are flagged for the AI | AI queue runs (only reports with warnings or all) |
+  | Always | OCR + AI (warning) | OCR + AI |
 
-- **KI-Queue** (`application`, Persistenz über `adapter-storage`):
-  - Ein Job pro Capture, einer nach dem anderen (das VLM nutzt die GPU exklusiv), persistiert in SQLite als „KI ausstehend“.
-  - Während ein Job läuft, prüft der Spiel-Monitor im 2-s-Takt statt im 5-s-Takt.
-  - Beim Wechsel auf `RUNNING`: laufenden Request abbrechen (`HttpClient`-Future `cancel`), Modell entladen (`keep_alive: 0`), Jobs zurück in die Queue.
-  - Wenn die Queue leer ist: Modell nach kurzer Zeit entladen (Standard `keep_alive` 5 min).
+- **AI queue** (`application`, persistence via `adapter-storage`):
+  - One job per capture, one after the other (the VLM uses the GPU exclusively), persisted in SQLite as "AI pending".
+  - While a job is running, the game monitor checks at a 2 s interval instead of a 5 s interval.
+  - On switching to `RUNNING`: abort the running request (`HttpClient` future `cancel`), unload the model (`keep_alive: 0`), jobs back into the queue.
+  - When the queue is empty: unload the model after a short time (default `keep_alive` 5 min).
 
-- **`OllamaClient`** (`adapter-vlm`): `java.net.http` und Jackson; Endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (Streaming-Fortschritt) und `/api/chat` (`stream: false`, `images` als Base64, `options.temperature = 0`). Host-Allowlist: localhost; andere Hosts nur nach Bestätigung (R-VLM-6).
+- **`OllamaClient`** (`adapter-vlm`): `java.net.http` and Jackson; endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (streaming progress) and `/api/chat` (`stream: false`, `images` as Base64, `options.temperature = 0`). Host allowlist: localhost; other hosts only after confirmation (R-VLM-6).
 
-## 5. Referenzdaten (`adapter-refdata`)
+## 5. Reference data (`adapter-refdata`)
 
-- Die Endpoints und TTLs stehen in [06-uex-api.md](06-uex-api.md). Beim Start wird gecacht geladen (sofort nutzbar), dann im Hintergrund aktualisiert.
-- **Indizes im Speicher:**
-  - Commodity-Namen (EN, lokalisiert, Code)
-  - Terminal-Namen, Nicknames und Display-Namen
-  - Location-Namen
-  - Sortiment pro Terminal
-  - Statusstufen pro Seite
-- Der **Preis-Prior** wird beim Öffnen bzw. Erkennen eines Terminals nachgeladen (`commodities_prices?id_terminal=`) und gecacht (30 min).
-- **Persistenz:** SQLite (`sqlite-jdbc`), Tabellen `ref_*` mit Roh-JSON und extrahierten Indexspalten; Schema-Migrationen versioniert (einfaches eigenes Migrationsskript, kein ORM).
+- The endpoints and TTLs are in [06-uex-api.md](06-uex-api.md). At startup, data is loaded from the cache (immediately usable), then refreshed in the background.
+- **In-memory indexes:**
+  - Commodity names (EN, localized, code)
+  - Terminal names, nicknames and display names
+  - Location names
+  - Assortment per terminal
+  - Status levels per side
+- The **price prior** is loaded on demand when a terminal is opened or recognized (`commodities_prices?id_terminal=`) and cached (30 min).
+- **Persistence:** SQLite (`sqlite-jdbc`), tables `ref_*` with raw JSON and extracted index columns; schema migrations versioned (simple custom migration script, no ORM).
 
-## 6. Übermittlung (Logik in `application`, HTTP in `adapter-uex`, Persistenz in `adapter-storage`)
+## 6. Submission (logic in `application`, HTTP in `adapter-uex`, persistence in `adapter-storage`)
 
-- **Zuständigkeiten:**
-  - `application` (`SubmissionService`): Sende-Gate, Queue-Zustände, Cooldown, Gruppierung.
-  - `adapter-uex` (`UexSubmissionGateway`): JSON-Payload, HTTP, Rate-Limiter, Retry, Fehlercode-Mapping auf `domain`-Fehlertypen.
-  - `adapter-storage`: Persistenz.
-- **Payload-Bau** (in `adapter-uex`): pro Report eine Liste `prices[]`. Buy-Zeilen enthalten `price_buy`/`scu_buy`/`status_buy`, Sell-Zeilen die `_sell`-Felder. Dazu kommen `container_sizes` und `screenshot` (Base64 ohne `data:`-Präfix), `game_version` und `is_production`.
+- **Responsibilities:**
+  - `application` (`SubmissionService`): submission gate, queue states, cooldown, grouping.
+  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, rate limiter, retry, error code mapping to `domain` error types.
+  - `adapter-storage`: persistence.
+- **Payload building** (in `adapter-uex`): one list `prices[]` per report. Buy rows contain `price_buy`/`scu_buy`/`status_buy`, sell rows the `_sell` fields. In addition there are `container_sizes` and `screenshot` (Base64 without `data:` prefix), `game_version` and `is_production`.
 - **Queue:**
-  - persistent in SQLite (Zustände: eingereiht → gesendet / fehlgeschlagen / verworfen); nach einem Neustart erst nach Freigabe durch den Nutzer
-  - Virtual Threads
-  - `Semaphore` (Standard 2)
-  - Token-Bucket 120/min
-  - Retry mit exponentiellem Backoff bei 429/5xx/IO, unter Beachtung von `Retry-After`
-- **Cooldown:** Schlüssel ist (Terminal, Commodity, Umgebung) – konservativ ohne Seite, bis Annahme A12 geklärt ist; persistent; die UI zeigt die Restzeit. Kommt trotzdem `duplicated_report`, wird das als Cooldown behandelt, nicht als Fehler.
-- **Screenshot pro Report:** Mehrere Captures werden zu einem Bild zusammengesetzt (R-SUB-7).
-- **Historie:** `ids_reports`, Zeitstempel, Payload-Hash, Antwort-Status; Link `https://uexcorp.space/data/info/id/<id>`.
+  - persistent in SQLite (states: queued → sent / failed / discarded); after a restart only after release by the user
+  - virtual threads
+  - `Semaphore` (default 2)
+  - token bucket 120/min
+  - retry with exponential backoff on 429/5xx/IO, respecting `Retry-After`
+- **Cooldown:** the key is (terminal, commodity, environment) – conservatively without side until assumption A12 is clarified; persistent; the UI shows the remaining time. If `duplicated_report` arrives anyway, it is treated as a cooldown, not as an error.
+- **Screenshot per report:** multiple captures are composed into one image (R-SUB-7).
+- **History:** `ids_reports`, timestamp, payload hash, response status; link `https://uexcorp.space/data/info/id/<id>`.
 
 ## 7. UI (`ui`, JavaFX 27)
 
-- **MVVM:** Views in Java-Code oder FXML (passiv, keine Logik); ViewModels mit JavaFX-Properties rufen nur Use-Cases aus `application` auf; Abhängigkeiten per Konstruktor (kein DI-Framework). ViewModels sind ohne gestartetes Fenster unit-testbar.
-- **Threading:** Pipeline und Netzwerk laufen in einem `ExecutorService` auf Virtual Threads. UI-Updates passieren ausschließlich über `Platform.runLater`. CPU-lastige OCR läuft in einem **begrenzten** Plattform-Thread-Pool (Standard: `max(1, min(2, cores / 2))`), damit das Spiel nicht ausgebremst wird.
-- **Ansichten:**
-  1. Eingang/Queue
-  2. Report-Editor (Tabelle plus Screenshot-Pane mit Highlight der Quellregion)
-  3. Manuelle Erfassung
-  4. Historie
-  5. Einstellungen (Ordner, Umgebungen, Key, Sprache, Testmodus, Schwellwerte)
-  6. Onboarding-Assistent
-  7. Diagnose
-- **Theming:** eigenes CSS (dunkel/hell), unabhängig vom OS. Die Farben für Erkennungssicherheit und Abweichung sind Theme-Variablen (farbsehschwäche-taugliche Palette, im Theme austauschbar).
-- **Abweichungsmarkierung** (R-UI-10..12):
-  - `application` berechnet pro Feld ein `FieldAssessment(confidence, deviation, reference, referenceAge, delta)`. Die Funktion ist rein und property-getestet.
-  - Das ViewModel bildet das nur auf CSS-Pseudoklassen ab (`:deviation-minor`, `:deviation-major`, `:no-reference`, `:needs-confirmation`).
-  - Die View enthält keine Vergleichslogik; so ist dieselbe Bewertung in OCR- und manueller Erfassung garantiert.
+- **MVVM:** views in Java code or FXML (passive, no logic); ViewModels with JavaFX properties call only use cases from `application`; dependencies via constructor (no DI framework). ViewModels are unit-testable without a started window.
+- **Threading:** pipeline and network run in an `ExecutorService` on virtual threads. UI updates happen exclusively via `Platform.runLater`. CPU-heavy OCR runs in a **bounded** platform thread pool (default: `max(1, min(2, cores / 2))`), so that the game is not slowed down.
+- **Views:**
+  1. Input/queue
+  2. Report editor (table plus screenshot pane with highlight of the source region)
+  3. Manual capture
+  4. History
+  5. Settings (folders, environments, key, game localization file, test mode, thresholds)
+  6. Onboarding wizard
+  7. Diagnostics
+- **Theming:** own CSS (dark/light), independent of the OS. The colors for recognition confidence and deviation are theme variables (palette suitable for color vision deficiency, replaceable in the theme).
+- **Deviation marking** (R-UI-10..12):
+  - `application` computes a `FieldAssessment(confidence, deviation, reference, referenceAge, delta)` per field. The function is pure and property-tested.
+  - The ViewModel only maps this to CSS pseudo-classes (`:deviation-minor`, `:deviation-major`, `:no-reference`, `:needs-confirmation`).
+  - The view contains no comparison logic; this guarantees the same assessment in OCR and manual capture.
 
-## 8. Plattform-Integration
+## 8. Platform integration
 
-| Thema | Windows | Linux |
+| Topic | Windows | Linux |
 |---|---|---|
-| Secret-Store | Credential Manager (`CredWriteW`/`CredReadW`) via **FFM-API** | Secret Service (libsecret) via FFM; Fallback-Datei 0600 nach Warnung |
-| Truststore | `Windows-ROOT` (SunMSCAPI) zusätzlich zum JDK-Truststore | System-CA über JDK-Standard |
-| Pfade | `%APPDATA%\<App>` (Config), `%LOCALAPPDATA%\<App>` (Cache/DB/Logs) | XDG-Verzeichnisse |
-| SC-Erkennung | RSI-Launcher-Log, Prozess, Laufwerks-Standardpfade | Wine-/Proton-Prefixe (konfigurierbar; Standardkandidaten siehe Annahme A3) |
-| Paket | MSI (jpackage + WiX), ZIP | `.deb` (jpackage), `tar.gz` (App-Image) |
+| Secret store | Credential Manager (`CredWriteW`/`CredReadW`) via **FFM API** | Secret Service (libsecret) via FFM; fallback file 0600 after warning |
+| Truststore | `Windows-ROOT` (SunMSCAPI) in addition to the JDK truststore | System CA via JDK default |
+| Paths | `%APPDATA%\<App>` (config), `%LOCALAPPDATA%\<App>` (cache/DB/logs) | XDG directories |
+| SC detection | RSI Launcher log, process, drive default paths | Wine/Proton prefixes (configurable; default candidates see assumption A3) |
+| Package | MSI (jpackage + WiX), ZIP | `.deb` (jpackage), `tar.gz` (app image) |
 
-## 9. Sicherheit und Datenschutz
+## 9. Security and privacy
 
-- Secret-Key nur im OS-Keystore; Maskierung in Logs über einen Logback-Filter. Ein Test stellt sicher, dass der Key nie in einer Log-Zeile auftaucht.
-- Upload-Screenshot: nur der Shop-Ausschnitt, Kontostand geschwärzt (siehe F30).
-- Keine Telemetrie. Netzwerkziele sind ausschließlich UEX, GitHub Releases (Update-Check, abschaltbar) und – optional – die lokale Ollama-Instanz.
-- Kein Zugriff auf den Spielprozess außer dem Lesen der Prozessliste (Pfad- und Spielerkennung).
-- Dem VLM werden nur Panel-Ausschnitte übergeben, nie der ganze Screenshot (Kontostand).
+- Secret key only in the OS keystore; masking in logs via a Logback filter. A test ensures that the key never appears in a log line.
+- Upload screenshot: only the shop crop, balance redacted (see F30).
+- No telemetry. Network targets are exclusively UEX, GitHub Releases (update check, can be disabled) and – optionally – the local Ollama instance.
+- No access to the game process except reading the process list (path and game detection).
+- Only panel crops are passed to the VLM, never the whole screenshot (balance).
 
-## 10. Build und CI
+## 10. Build and CI
 
-- Gradle 9.8.1 (Kotlin DSL, Version-Catalog `gradle/libs.versions.toml`, Convention-Plugins in `build-logic`), Java-Toolchain 27 via Foojay-Resolver.
-- GitHub Actions, Matrix `windows-latest` und `ubuntu-latest`:
-  - `./gradlew check` (Spotless, Error Prone/NullAway, Tests)
-  - OCR-Eval auf dem öffentlichen (geschwärzten) Korpus
-  - `jpackage` pro OS bei Tags
-- Releases: Artefakte plus SHA-256-Prüfsummen, CycloneDX-SBOM und signierte Build-Provenienz.
-- **Lieferkette:** Dependency-Locking, Dependency-Verification (SHA-256 + PGP), Wrapper-Validierung, SHA-gepinnte Actions – siehe [10-supply-chain-security.md](10-supply-chain-security.md).
+- Gradle 9.8.1 (Kotlin DSL, version catalog `gradle/libs.versions.toml`, convention plugins in `build-logic`), Java toolchain 27 via Foojay resolver.
+- GitHub Actions, matrix `windows-latest` and `ubuntu-latest`:
+  - `./gradlew check` (Spotless, Error Prone/NullAway, tests)
+  - OCR eval on the public (redacted) corpus
+  - `jpackage` per OS on tags
+- Releases: artifacts plus SHA-256 checksums, CycloneDX SBOM and signed build provenance.
+- **Supply chain:** dependency locking, dependency verification (SHA-256 + PGP), wrapper validation, SHA-pinned actions – see [10-supply-chain-security.md](10-supply-chain-security.md).
