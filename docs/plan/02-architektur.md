@@ -50,36 +50,73 @@ Leitprinzipien:
 3. **Reine Domänenlogik und I/O sind getrennt.** Pipeline-Stufen sind reine Funktionen auf unveränderlichen Records. Dadurch sind sie mit Golden-Daten testbar, ohne UI und ohne Netzwerk.
 4. **Sprachneutraler Schnitt.** Die Modulgrenzen erlauben, einzelne Teile (z. B. den OCR-Kern) später auszutauschen.
 
-## 2. Module (Gradle-Multiprojekt, JPMS-Module)
+## 2. Module (Gradle-Multiprojekt, JPMS-Module) – Ports & Adapters
+
+Der Schnitt folgt **Ports & Adapters** (hexagonale Architektur):
+
+- **Kern** (`domain`, `pipeline`, `application`): enthält die Fachlogik und kennt keine Technik (kein JavaFX, kein HTTP, kein SQL, kein Dateisystem, keine Uhr außer über `java.time.Clock`).
+- **Adapter** implementieren die **Ports** (Interfaces in `domain`).
+- **`ui`** nutzt nur die Use-Cases aus `application`.
+- **`app`** ist ausschließlich Composition Root und Packaging.
+
+Detaillierte Regeln und ihre Durchsetzung stehen in [09-engineering-prinzipien.md](09-engineering-prinzipien.md).
 
 ```
 uex-datarunner-client/
-├── build-logic/            Convention-Plugins (Java-Toolchain, Error Prone/NullAway, Spotless, Tests)
-├── domain/                 Records/Sealed-Types, keine Abhängigkeiten außer JSpecify
-├── uex-api/                HTTP-Client, DTOs, Envelope, Fehlercodes, Rate-Limiter
-├── refdata/                SQLite-Cache, Refresh-Scheduler, Vokabular-Indizes, Fuzzy-Matcher, global.ini-Parser
-├── vlm/                    Optional: Ollama-Client, Prompt-Ressourcen, Antwort-Parser, KI-Queue, Modellverwaltung
-├── ocr/                    ONNX-Runtime-Sessions, DB-Detektion, CTC-Erkennung, Bildoperationen, Homographie
-├── pipeline/               Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-├── capture/                Ordner-Register, Einlese-Scan, Auto-Watcher, SC-Installationserkennung (Win/Linux/Wine), Spiel-Prozess-Monitor, Clipboard, Dedupe
-├── submission/             Report→Payload, Sende-Queue, Cooldown, Historie, data_remove
-├── app/                    JavaFX-UI (MVVM), Einstellungen, Secret-Store (FFM), Onboarding, Packaging
+├── build-logic/            Convention-Plugins (Toolchain, Error Prone/NullAway, Spotless, Tests, JaCoCo, ArchUnit)
+│
+│   ── Kern ──
+├── domain/                 Entities/Value Objects (Records, sealed Types), Ports (Interfaces), Fehlertypen; nur JSpecify
+├── pipeline/               Erkennungslogik als reine Funktionen: Locate, Layout, Parser, Auflösung, Fusion, Validierung, Stitching, Konfidenz
+├── application/            Use-Cases und Workflows: Einlesen, Verarbeiten, Gruppieren, Review, Senden (Queue, Cooldown, Sendeschwelle), KI-Queue + RecognitionPolicy, Einstellungen
+│
+│   ── Adapter (implementieren Ports) ──
+├── adapter-uex/            UEX-HTTP-Client, DTOs + Mapping auf domain, Envelope, Fehlercodes, Rate-Limiter, Host-Fallback
+├── adapter-refdata/        Referenzdaten-Cache, Refresh, Vokabular-Indizes, Fuzzy-Matcher, global.ini-Parser → `ReferenceSnapshot`
+├── adapter-ocr/            ONNX Runtime, DB-Detektion, CTC-Erkennung → implementiert `Reader`, `TextDetector`
+├── adapter-vlm/            Optional: Ollama-Client, Prompt-Ressourcen, Antwort-Parser → implementiert `Reader`
+├── adapter-capture/        Ordner-Register, Einlese-Scan, Auto-Watcher, Stable-File-Gate, Clipboard → implementiert `CaptureSource`
+├── adapter-storage/        SQLite: Verbindung, Migrationen, Repositories (Captures, Reports, Queue, Historie, Cache)
+├── adapter-platform/       OS-Integration: Secret-Store (FFM), Spiel-Prozess-Monitor, SC-Installationserkennung, Pfade, Truststore
+│
+│   ── Präsentation & Start ──
+├── ui/                     JavaFX (MVVM): Views, ViewModels, Ressourcen/CSS/i18n – spricht nur mit application
+├── app/                    main(), Composition Root (Verdrahtung), Konfiguration laden, jlink/jpackage
 └── tools/ocr-eval/         CLI: Golden-Korpus-Auswertung, Crop-Dumps, Digest
 ```
 
-Abhängigkeiten (nur in Pfeilrichtung):
+Abhängigkeiten (nur in Pfeilrichtung, **zyklenfrei**):
 
 ```
-app → submission → uex-api → domain
-app → pipeline → domain       (pipeline kennt weder ocr noch vlm noch refdata direkt)
-app → ocr → domain            (ocr implementiert das Interface `Reader`)
-app → vlm → domain            (vlm implementiert ebenfalls `Reader`)
-app → refdata → uex-api       (refdata erzeugt unveränderliche `ReferenceSnapshot`s, Typ in domain)
-app → capture → domain
-tools/ocr-eval → pipeline, ocr, vlm, refdata
+pipeline      → domain
+application   → pipeline, domain
+ui            → application, domain
+adapter-*     → domain                (implementieren Ports)
+adapter-refdata → adapter-uex, adapter-storage   (einzige erlaubte Adapter→Adapter-Kanten)
+adapter-capture, adapter-vlm → adapter-storage    (nur wenn eigene Tabellen nötig; sonst über Ports)
+app           → alle                  (verdrahtet; enthält keine Logik)
+tools/ocr-eval → pipeline, adapter-ocr, adapter-vlm, adapter-refdata
 ```
 
-`app` verdrahtet alles (Composition Root). Die Pipeline bekommt `ReferenceSnapshot` und `ReaderResult`s als Parameter. Damit bleibt sie frei von I/O und ist mit Golden-Daten testbar, wie in Leitprinzip 3 gefordert. In einer früheren Fassung hing `pipeline` direkt an `refdata` und `ocr`; das widersprach diesem Prinzip.
+**Ports** (Auszug, in `domain`):
+
+| Port | Zweck | Implementiert in |
+|---|---|---|
+| `Reader` | Panel lesen → `ReaderResult` | adapter-ocr, adapter-vlm |
+| `TextDetector` | Grob-OCR für Locate-Anker | adapter-ocr |
+| `ReferenceDataSource` | aktuellen `ReferenceSnapshot` liefern, Refresh anstoßen | adapter-refdata |
+| `SubmissionGateway` | Report an UEX senden, zurückziehen, Status abfragen | adapter-uex |
+| `CaptureSource` | Captures aus Ordnern, Drag & Drop, Zwischenablage | adapter-capture |
+| `CaptureRepository`, `ReportRepository`, `SubmissionQueueRepository`, `HistoryRepository` | Persistenz | adapter-storage |
+| `SecretStore` | Secret-Key ablegen/lesen | adapter-platform |
+| `GameStateProbe` | läuft Star Citizen? | adapter-platform |
+| `java.time.Clock` | Zeit (Cooldown, Hysterese, Gruppierung) | JDK, in Tests fest |
+
+**Warum diese Aufteilung?** (Gegenüber der ersten Fassung, in der `app` UI, Secret-Store und KI-Steuerung vereinte und `submission`/`capture` Fachlogik mit Technik mischten.)
+
+- Use-Cases (`application`) sind **ohne JavaFX, Netz und Datenbank testbar** – mit Fakes der Ports.
+- Technikwechsel (z. B. anderes OCR-Modell, anderer Secret-Store, später ein anderes UI) betrifft genau ein Modul.
+- Jedes Modul hat eine Aufgabe; `app` bleibt klein und frei von Logik.
 
 Package-Root: `space.uexdatarunner.<modul>` (Platzhalter – Projektname und Reverse-Domain sind vom Projektinhaber festzulegen).
 
@@ -122,11 +159,11 @@ public record ReportDraft(Field<TerminalId> terminal, TradeSide side, GameEnviro
 - **Geld:** `BigDecimal`, nie `double`. Seit SC 4.7 zeigt das Spiel ganze aUEC; die API akzeptiert float.
 - **Pattern Matching:** Pipeline-Ergebnisse sind `sealed` (`ScanResult.Located | NotLocated | WrongScreen`) und werden mit `switch` und Record-Patterns ausgewertet.
 
-## 4. Erkennungs-Pipeline (`ocr` + `pipeline`)
+## 4. Erkennungs-Pipeline (`pipeline`, Leser in `adapter-ocr`)
 
 Details und Herleitung stehen in [07-ocr-konzept.md](07-ocr-konzept.md). Kurzfassung:
 
-Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `ocr` abhängt, bekommt sie dafür das Interface `TextDetector` (in `domain`) injiziert; `ocr` implementiert es.
+Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `adapter-ocr` abhängt, bekommt sie dafür den Port `TextDetector` (in `domain`) injiziert.
 
 | Stufe | Eingabe → Ausgabe | Wichtigste Techniken |
 |---|---|---|
@@ -137,7 +174,7 @@ Locate braucht für die Text-Anker eine Grob-OCR. Damit `pipeline` nicht von `oc
 | 5 Validierung | Kandidaten → `Field<T>` mit Findings | Zahlparser, UEX-Prior, `data_parameters`-Toleranzen, Confusable-Reparatur, Glyph-Topologie-Veto, Status↔SCU-Konsistenz |
 | 6 Stitching | Scans → `ReportDraft` | Gruppierung nach Terminal, Seite und Zeitfenster; Merge über `CommodityId` (dank Auflösung einfacher als in basetool); Randkarten-Regel; Konflikt ⇒ `Ambiguous` |
 
-## 4a. Bildeingang (`capture`)
+## 4a. Bildeingang (`adapter-capture`, Steuerung in `application`)
 
 ```java
 public record WatchedFolder(Path path, boolean enabled, ImportMode mode, boolean recursive,
@@ -154,7 +191,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - **`StableFileGate`**: wartet, bis Größe und mtime eine Ruhezeit lang stabil sind und `ImageIO` die Datei dekodiert; danach Übergabe an die Capture-Queue.
 - Einstellungen werden live übernommen: Wechselt ein Ordner zwischen MANUAL und AUTOMATIC, startet bzw. stoppt der Watcher ohne Neustart der App.
 
-## 4b. Optionale KI-Erkennung (`vlm` + Spiel-Monitor)
+## 4b. Optionale KI-Erkennung (`adapter-vlm`, `adapter-platform`, Steuerung in `application`)
 
 - **Leser-Abstraktion** (in `domain`):
 
@@ -175,12 +212,12 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 
   Das VLM liest pro Capture; nach einem KI-Lauf wird der betroffene Report neu gestitcht.
 
-- **`GameProcessMonitor`** (`capture`):
+- **`GameProcessMonitor`** (`adapter-platform`, implementiert `GameStateProbe`):
   - Prüft periodisch auf einem Virtual Thread `ProcessHandle.allProcesses()` (Windows: Pfad `…\Bin64\StarCitizen.exe`; Linux: Wine-/Proton-Kommandozeile, Annahme A7).
   - Veröffentlicht die Zustände `RUNNING` und `CLOSED` mit Hysterese als JavaFX-Property bzw. Listener.
   - Hat keine weiteren Rechte und keinen Prozesszugriff.
 
-- **`RecognitionPolicy`** (`app`) entscheidet anhand der Einstellung (Aus / Automatisch / Immer) und des Spielzustands, ob die KI-Queue arbeiten darf:
+- **`RecognitionPolicy`** (`application`) entscheidet anhand der Einstellung (Aus / Automatisch / Immer) und des Spielzustands, ob die KI-Queue arbeiten darf:
 
   | Einstellung | Spiel läuft | Spiel geschlossen |
   |---|---|---|
@@ -188,15 +225,15 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   | Automatisch | nur OCR; Reports werden für die KI vorgemerkt | KI-Queue läuft (nur Reports mit Warnungen oder alle) |
   | Immer | OCR + KI (Warnung) | OCR + KI |
 
-- **KI-Queue** (`vlm`):
+- **KI-Queue** (`application`, Persistenz über `adapter-storage`):
   - Ein Job pro Capture, einer nach dem anderen (das VLM nutzt die GPU exklusiv), persistiert in SQLite als „KI ausstehend“.
   - Während ein Job läuft, prüft der Spiel-Monitor im 2-s-Takt statt im 5-s-Takt.
   - Beim Wechsel auf `RUNNING`: laufenden Request abbrechen (`HttpClient`-Future `cancel`), Modell entladen (`keep_alive: 0`), Jobs zurück in die Queue.
   - Wenn die Queue leer ist: Modell nach kurzer Zeit entladen (Standard `keep_alive` 5 min).
 
-- **`OllamaClient`**: `java.net.http` und Jackson; Endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (Streaming-Fortschritt) und `/api/chat` (`stream: false`, `images` als Base64, `options.temperature = 0`). Host-Allowlist: localhost; andere Hosts nur nach Bestätigung (R-VLM-6).
+- **`OllamaClient`** (`adapter-vlm`): `java.net.http` und Jackson; Endpoints `/api/version`, `/api/tags`, `/api/ps`, `/api/pull` (Streaming-Fortschritt) und `/api/chat` (`stream: false`, `images` als Base64, `options.temperature = 0`). Host-Allowlist: localhost; andere Hosts nur nach Bestätigung (R-VLM-6).
 
-## 5. Referenzdaten (`refdata`)
+## 5. Referenzdaten (`adapter-refdata`)
 
 - Die Endpoints und TTLs stehen in [06-uex-api.md](06-uex-api.md). Beim Start wird gecacht geladen (sofort nutzbar), dann im Hintergrund aktualisiert.
 - **Indizes im Speicher:**
@@ -208,9 +245,13 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - Der **Preis-Prior** wird beim Öffnen bzw. Erkennen eines Terminals nachgeladen (`commodities_prices?id_terminal=`) und gecacht (30 min).
 - **Persistenz:** SQLite (`sqlite-jdbc`), Tabellen `ref_*` mit Roh-JSON und extrahierten Indexspalten; Schema-Migrationen versioniert (einfaches eigenes Migrationsskript, kein ORM).
 
-## 6. Übermittlung (`submission`)
+## 6. Übermittlung (Logik in `application`, HTTP in `adapter-uex`, Persistenz in `adapter-storage`)
 
-- **Payload-Bau:** pro Report eine Liste `prices[]`. Buy-Zeilen enthalten `price_buy`/`scu_buy`/`status_buy`, Sell-Zeilen die `_sell`-Felder. Dazu kommen `container_sizes` und `screenshot` (Base64 ohne `data:`-Präfix), `game_version` und `is_production`.
+- **Zuständigkeiten:**
+  - `application` (`SubmissionService`): Sende-Gate, Queue-Zustände, Cooldown, Gruppierung.
+  - `adapter-uex` (`UexSubmissionGateway`): JSON-Payload, HTTP, Rate-Limiter, Retry, Fehlercode-Mapping auf `domain`-Fehlertypen.
+  - `adapter-storage`: Persistenz.
+- **Payload-Bau** (in `adapter-uex`): pro Report eine Liste `prices[]`. Buy-Zeilen enthalten `price_buy`/`scu_buy`/`status_buy`, Sell-Zeilen die `_sell`-Felder. Dazu kommen `container_sizes` und `screenshot` (Base64 ohne `data:`-Präfix), `game_version` und `is_production`.
 - **Queue:**
   - persistent in SQLite (Zustände: eingereiht → gesendet / fehlgeschlagen / verworfen); nach einem Neustart erst nach Freigabe durch den Nutzer
   - Virtual Threads
@@ -221,9 +262,9 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - **Screenshot pro Report:** Mehrere Captures werden zu einem Bild zusammengesetzt (R-SUB-7).
 - **Historie:** `ids_reports`, Zeitstempel, Payload-Hash, Antwort-Status; Link `https://uexcorp.space/data/info/id/<id>`.
 
-## 7. UI (`app`, JavaFX 27)
+## 7. UI (`ui`, JavaFX 27)
 
-- **MVVM:** Views in Java-Code oder FXML; ViewModels mit JavaFX-Properties; Services über Konstruktor-Injektion (kein DI-Framework).
+- **MVVM:** Views in Java-Code oder FXML (passiv, keine Logik); ViewModels mit JavaFX-Properties rufen nur Use-Cases aus `application` auf; Abhängigkeiten per Konstruktor (kein DI-Framework). ViewModels sind ohne gestartetes Fenster unit-testbar.
 - **Threading:** Pipeline und Netzwerk laufen in einem `ExecutorService` auf Virtual Threads. UI-Updates passieren ausschließlich über `Platform.runLater`. CPU-lastige OCR läuft in einem **begrenzten** Plattform-Thread-Pool (Standard: `max(1, min(2, cores / 2))`), damit das Spiel nicht ausgebremst wird.
 - **Ansichten:**
   1. Eingang/Queue
@@ -233,7 +274,11 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   5. Einstellungen (Ordner, Umgebungen, Key, Sprache, Testmodus, Schwellwerte)
   6. Onboarding-Assistent
   7. Diagnose
-- **Theming:** eigenes CSS (dunkel/hell), unabhängig vom OS.
+- **Theming:** eigenes CSS (dunkel/hell), unabhängig vom OS. Die Farben für Erkennungssicherheit und Abweichung sind Theme-Variablen (farbsehschwäche-taugliche Palette, im Theme austauschbar).
+- **Abweichungsmarkierung** (R-UI-10..12):
+  - `application` berechnet pro Feld ein `FieldAssessment(confidence, deviation, reference, referenceAge, delta)`. Die Funktion ist rein und property-getestet.
+  - Das ViewModel bildet das nur auf CSS-Pseudoklassen ab (`:deviation-minor`, `:deviation-major`, `:no-reference`, `:needs-confirmation`).
+  - Die View enthält keine Vergleichslogik; so ist dieselbe Bewertung in OCR- und manueller Erfassung garantiert.
 
 ## 8. Plattform-Integration
 

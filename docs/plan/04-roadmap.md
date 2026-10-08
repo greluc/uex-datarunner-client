@@ -7,8 +7,9 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 - [ ] Projektinhaber entscheidet: Projekt- und Paketname, Lizenz (GPL-3.0 bei Code-Port aus basetool), JDK 27 vs. 25 LTS
 - [ ] **Toolchain-Check JDK 27:** Laufen Gradle 9.8.1 (Toolchain 27), Error Prone 2.50.0, NullAway, palantir-java-format, `org.beryx.jlink` und jpackage (WiX ≥ 4 unter Windows) mit JDK 27? Wenn nicht: JDK 25 LTS (siehe ADR)
 - [ ] Gradle-Multiprojekt nach [02-architektur.md](02-architektur.md), `build-logic`, Version-Catalog, Spotless, Error Prone/NullAway, JUnit 6
+- [ ] Qualitäts-Gates nach [09-engineering-prinzipien.md](09-engineering-prinzipien.md): ArchUnit-Regeln (Schichten, Zyklen, verbotene Abhängigkeiten), JaCoCo-Schwellen, Dependabot, PR-Vorlage mit Checkliste – **vor** dem ersten Fachcode, damit die Regeln von Anfang an greifen
 - [ ] CI: GitHub Actions, Matrix Windows/Linux, `./gradlew check`
-- [ ] **API-Spike** (kleine CLI im Modul `uex-api`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
+- [ ] **API-Spike** (kleine CLI im Modul `adapter-uex`) gegen die Live-API mit `is_production=0`; klärt alle offenen Punkte aus [06-uex-api.md](06-uex-api.md) (Header, App-Token, `status_*`, `container_sizes`, `/user`)
 - [ ] Mit UEX klären: App-Token für Open-Source-Clients, Nutzungsbedingungen, Annahmen A9–A12 (Umgebungs-Mapping, `scu_sell` vs. `scu_sell_stock`, zusammengesetzter Screenshot, Duplikatsperre)
 - [ ] Korpus anlegen: Patch-City-Screenshots plus weitere Terminals/Themes; Erwartungswerte transkribieren
 
@@ -16,17 +17,20 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 
 ## M1 – Referenzdaten, manuelle Erfassung, Senden (erstes nutzbares Release 0.1)
 
-- [ ] `uex-api`: Client, Envelope, Fehlercodes, Rate-Limiter, Host-Fallback, OS-Truststore
-- [ ] `refdata`: SQLite-Cache, TTL-Refresh, Vokabular-Indizes, Fuzzy-Matcher (property-getestet)
-- [ ] `submission`: Payload, Queue, Cooldown, Historie, `data_remove`
-- [ ] `app`: Onboarding (Key → `/user`-Check), Secret-Store (FFM: Credential Manager / libsecret), Einstellungen, **manuelle Erfassung** (R-MAN-*), Historie, Diagnose
+- [ ] `domain`: Value Objects, Ports; `application`: Use-Cases Senden (Queue, Cooldown, Sendeschwelle), Abweichungsbewertung (R-UI-10), manuelle Erfassung – getestet mit Fakes der Ports
+- [ ] `adapter-uex`: Client, DTO-Mapping, Envelope, Fehlercodes, Rate-Limiter, Host-Fallback; Kontrakt-Tests mit aufgezeichneten Antworten
+- [ ] `adapter-storage`: SQLite, Migrationen, Repositories (Queue, Historie, Cache)
+- [ ] `adapter-refdata`: Cache, TTL-Refresh, Vokabular-Indizes, Fuzzy-Matcher (property-getestet)
+- [ ] `adapter-platform`: Secret-Store (FFM: Credential Manager / libsecret), Pfade, Truststore
+- [ ] `ui`: Onboarding (Key → `/user`-Check), Einstellungen, **manuelle Erfassung** (R-MAN-*) mit Abweichungsmarkierung (R-UI-10..12), Historie, Diagnose
+- [ ] `app`: Composition Root, Konfiguration
 - [ ] Packaging: MSI / `.deb` / Archive aus CI
 
 **Abnahme:** Ein Nutzer erfasst ein Terminal manuell in < 1 min (Zielwert), sendet es und sieht die Report-IDs. Ein Cooldown überlebt den Neustart der App.
 
 ## M2 – OCR-Kern und Eval
 
-- [ ] `ocr`: ORT-Sessions, DB-Postprocessing, CTC-Decode, Bildoperationen, Homographie
+- [ ] `adapter-ocr`: ORT-Sessions, DB-Postprocessing, CTC-Decode, Bildoperationen, Homographie
 - [ ] `tools/ocr-eval`: Korpus-Runner, Metriken, Crop-Dumps, Digest
 - [ ] Baseline-Messung auf dem Korpus: Rohgenauigkeit pro Feldtyp, Laufzeit, RAM
 
@@ -35,8 +39,8 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 ## M3 – Pipeline und Review-UI (Release 0.5)
 
 - [ ] `pipeline`: Locate, Layout, Feldparser, Auflösung, Validierung, Reparatur, Stitching, Konfidenz
-- [ ] `capture`: nutzerdefinierte Ordner, Button „Einlesen“ (manuell, Standard), Auto-Watch opt-in pro Ordner (WatchService plus Polling-Fallback, Nachhol-Scan), Stable-File-Gate, Verarbeitet-Register, Drag & Drop, Strg+V, Aufnahmezeit
-- [ ] `app`: Queue-Ansicht, Report-Editor mit Bildausschnitten und Quell-Highlight, Sendesperre, „Alle sicheren übernehmen“
+- [ ] `adapter-capture` + `application`: nutzerdefinierte Ordner, Button „Einlesen“ (manuell, Standard), Auto-Watch opt-in pro Ordner (WatchService plus Polling-Fallback, Nachhol-Scan), Stable-File-Gate, Verarbeitet-Register, Drag & Drop, Strg+V, Aufnahmezeit
+- [ ] `ui`: Queue-Ansicht, Report-Editor mit Bildausschnitten und Quell-Highlight, Abweichungsmarkierung gegen UEX (R-UI-10..12), Sendesperre, „Alle sicheren übernehmen“
 - [ ] Upload-Screenshot: Zuschnitt, Kontostand schwärzen (Test!)
 
 **Abnahme:** Auf dem Korpus ist „still falsch“ ≈ 0. Die Feldgenauigkeit nach Validierung ist gemessen, und die Zielwerte werden **auf Basis der Messung** festgelegt und in CI eingefroren.
@@ -53,11 +57,11 @@ Reihenfolge nach Risiko und Nutzen: zuerst werden die API-Unsicherheiten geklär
 
 Setzt M3 voraus (gemeinsame Auflösung, Validierung und Stitching). Kann parallel zu M4 laufen, wenn Kapazität da ist.
 
-- [ ] `capture`: `GameProcessMonitor` (Windows und Linux/Wine, Hysterese); Annahme A7 auf echten Systemen verifizieren
-- [ ] `vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), Host-Allowlist, Abbruch und Entladen (`keep_alive: 0`)
+- [ ] `adapter-platform`: `GameProcessMonitor` (Windows und Linux/Wine, Hysterese); Annahme A7 auf echten Systemen verifizieren
+- [ ] `adapter-vlm`: `OllamaClient` (`/api/version`, `/api/tags`, `/api/ps`, `/api/pull`, `/api/chat`), Host-Allowlist, Abbruch und Entladen (`keep_alive: 0`)
 - [ ] Prompt v1 plus deterministischer Antwort-Parser (Golden-Tests mit aufgezeichneten Antworten, ohne Ollama in CI)
-- [ ] `pipeline`: Leser-Abstraktion und Fusionsregeln (07 §2.7), property-getestet
-- [ ] KI-Queue (persistiert), `RecognitionPolicy`, Einstellungen (Aus / Automatisch / Immer), UI: Status „KI ausstehend / läuft / fertig“, Anzeige beider Kandidaten bei Widerspruch, Modellverwaltung mit Pull-Fortschritt
+- [ ] `pipeline`: Fusionsregeln (07 §2.7), property-getestet
+- [ ] `application`: KI-Queue (persistiert), `RecognitionPolicy`; `ui`: Einstellungen (Aus / Automatisch / Immer), UI: Status „KI ausstehend / läuft / fertig“, Anzeige beider Kandidaten bei Widerspruch, Modellverwaltung mit Pull-Fortschritt
 - [ ] **Bake-off** auf dem Korpus: Modelle (u. a. `qwen3-vl:8b-instruct`, `qwen3-vl:4b-instruct`), Markdown- vs. `format`-Ausgabe, Bildgröße; Metriken „nur OCR“ / „nur VLM“ / „Fusion“, Laufzeit, VRAM
 
 **Abnahme:**

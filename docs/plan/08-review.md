@@ -62,3 +62,16 @@ Geprüft wurden alle Dokumente unter `docs/plan/`, dazu `CLAUDE.md` und `README.
 - Der Plan ist für den Start von M0 vollständig genug. Die größten Unsicherheiten liegen **außerhalb** unseres Einflusses: App-Token und Nutzungsbedingungen von UEX sowie die exakte Semantik von `data_submit`. Diese Punkte sollten vor jeder größeren Implementierung geklärt werden, weil sie das Projekt im schlimmsten Fall blockieren.
 - Die zweitgrößte Unsicherheit ist die **reale OCR-Genauigkeit** von PP-OCR auf Terminal-Screenshots. Deshalb kommt M2 (Messung) vor dem Bau der kompletten Pipeline.
 - Die Zahlen aus basetool (VLM-Geschwindigkeit, Markdown- vs. JSON-Genauigkeit, Erkennungsraten) stammen aus einer anderen Domäne (Refinery). Sie sind als Startwerte zu verstehen, nicht als Zusage.
+
+## F. Nachtrag: Modularisierung, Wartbarkeit und Abweichungsmarkierung
+
+Eine zweite Prüfung mit Blick auf Modularisierung, Clean Code und Best Practices hat Folgendes ergeben (Modulnamen in den Abschnitten A–E beziehen sich noch auf den alten Schnitt):
+
+| # | Befund | Änderung |
+|---|---|---|
+| F-1 | `app` vereinte UI, Secret-Store, KI-Steuerung und Verdrahtung; `submission` und `capture` mischten Fachlogik (Queue, Cooldown, Policy) mit Technik (HTTP, SQLite, Dateisystem). Use-Cases waren dadurch nur mit UI bzw. Technik testbar. | Neuer Schnitt nach **Ports & Adapters**: Kern `domain`/`pipeline`/`application`, Adapter `adapter-*`, Präsentation `ui`, Composition Root `app` (02 §2) |
+| F-2 | Mehrere Module hätten eigene SQLite-Zugriffe gehabt (Duplikation, verstreutes SQL) | Ein Modul `adapter-storage` mit Repositories; SQL nur dort (09 §6) |
+| F-3 | OS-Integration (Secret-Store, Prozess-Monitor, Installationserkennung, Truststore) lag verteilt in `app` und `capture` | Gebündelt in `adapter-platform` |
+| F-4 | Best Practices waren genannt, aber nicht **durchgesetzt** | 09: Regeln mit Durchsetzung (JPMS, ArchUnit, Error Prone/NullAway, JaCoCo-Gate, Dependabot, PR-Checkliste, Definition of Done); M0 richtet die Gates vor dem ersten Fachcode ein |
+| F-5 | Zeitabhängige Logik (Cooldown, Hysterese, Gruppierung) war nicht deterministisch testbar | `java.time.Clock` als injizierter Port |
+| F-6 | Abweichungen vom bisherigen UEX-Wert waren nur indirekt über die Konfidenz sichtbar. Ein **sauber gelesener, aber falscher** Wert (Zahlendreher in der Quelle, falsche Zeile) wäre unmarkiert geblieben. | Eigene Dimension „Abweichung“ mit farblicher Markierung, Δ-Anzeige, Alter der Referenz und Bestätigungspflicht bei starker Abweichung (R-UI-10..12, 07 §2.6, 02 §7) |

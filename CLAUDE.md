@@ -15,6 +15,7 @@ Desktop-Client (Windows + Linux) zum Erfassen von Star-Citizen-Rohstoff-Terminal
 | `docs/plan/06-uex-api.md` | API-Notizen; **ungesicherte Punkte sind markiert** |
 | `docs/plan/07-ocr-konzept.md` | OCR-Pipeline, Konfidenz und Sendeschwelle, KI-Fusion, Screenshot-Beobachtungen |
 | `docs/plan/08-review.md` | Review des Plans: gefundene Fehler und Lücken, was geändert wurde, was offen ist |
+| `docs/plan/09-engineering-prinzipien.md` | **Verbindliche** Regeln zu Modularisierung, Clean Code, Tests, Definition of Done – inklusive Durchsetzung (ArchUnit, Error Prone, CI) |
 
 Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht, aktualisiere das Dokument im selben Commit oder frage nach.
 
@@ -44,6 +45,7 @@ Wenn eine Änderung einer Anforderung oder Architekturentscheidung widerspricht,
 | Nullness | JSpecify + NullAway (über Error Prone) | 1.0.1 / 0.14.2 / 2.50.0 |
 | Format | Spotless (palantir-java-format) | Plugin 8.10.3 |
 | Tests | JUnit Jupiter, AssertJ, Mockito, WireMock, jqwik, TestFX | 6.1.3 / 3.27.7 / 5.24.0 / 3.13.2 / 1.10.1 / 4.0.18 |
+| Architektur/Coverage | ArchUnit (`archunit-junit5`), JaCoCo | 1.5.1 / 0.8.15 (JDK-27-Support in M0 prüfen) |
 | Gradle-Plugins | `net.ltgt.errorprone` 5.1.1, `org.beryx.jlink` 4.1.1, `com.github.ben-manes.versions` 0.65.0, `org.gradle.toolchains.foojay-resolver-convention` 1.0.0 | |
 
 Regeln für den Stack:
@@ -67,7 +69,7 @@ Gelten ab M0, sobald der Build existiert:
 ./gradlew :app:jpackage         # Installer für das aktuelle OS
 ```
 
-Vor jedem Commit muss `./gradlew check` grün sein.
+Vor jedem Commit muss `./gradlew check` grün sein (inkl. ArchUnit, JaCoCo-Gate). Definition of Done und Review-Checkliste: `09-engineering-prinzipien.md` §11.
 
 ## Java-Konventionen (modernes Java, nur finale Features)
 
@@ -96,7 +98,10 @@ Vor jedem Commit muss `./gradlew check` grün sein.
 
 ## Architektur-Leitplanken
 
-- Abhängigkeiten nur in Pfeilrichtung (siehe `02-architektur.md`); `domain` hat keine Abhängigkeiten außer JSpecify. `pipeline` hängt nur von `domain` ab und bekommt `ReferenceSnapshot`, `TextDetector` und `ReaderResult`s übergeben. Verdrahtet wird alles in `app`.
+- **Ports & Adapters:** Kern = `domain`, `pipeline`, `application` (ohne JavaFX, HTTP, SQL, ONNX, Dateisystem; Zeit über `Clock`). Adapter (`adapter-*`) implementieren Ports aus `domain`. `ui` spricht nur mit `application`; `app` ist reine Composition Root. Abhängigkeiten nur wie in `02-architektur.md` §2, zyklenfrei, durch JPMS und ArchUnit erzwungen.
+- Module exportieren nur ihr `api`-Package; Implementierung in `internal`. Keine Technik-Typen (DTOs, `ResultSet`, `OrtSession`, JavaFX) über Modulgrenzen.
+- Package-by-Feature innerhalb eines Moduls; keine Service-Locator, keine statischen Singletons, keine globalen veränderlichen Zustände.
+- Schwellwerte in typisierten Settings-Records mit dokumentierten Defaults, keine magischen Zahlen; keine Boolean-Steuerparameter in öffentlichen APIs.
 - `sealed` nur innerhalb eines JPMS-Moduls; Interfaces, die andere Module implementieren (z. B. `Reader`), sind nicht `sealed`.
 - Pipeline-Stufen sind **reine Funktionen** auf unveränderlichen Records, ohne UI-, Netz- oder Dateisystemzugriff. Dadurch sind sie golden-testbar.
 - **Nichts still raten:**
@@ -104,6 +109,7 @@ Vor jedem Commit muss `./gradlew check` grün sein.
   - Das Sende-Gate blockiert Felder unter der Sendeschwelle (Startwert 0.80) und unklare Terminals.
   - Reparaturen, die sich nur auf den UEX-Prior stützen, werden nie automatisch übernommen; dafür ist ein unabhängiger Zeuge nötig (R-VAL-2b).
   - Vorgaben aus UEX werden in der manuellen Erfassung als Referenz angezeigt, nicht vorausgefüllt (R-MAN-2).
+  - **Abweichungen vom bisherigen UEX-Wert** werden in der UI farblich (plus Symbol und Δ-Text) markiert. Starke Abweichungen erfordern immer eine Bestätigung, auch bei sicherer Erkennung (R-UI-10..12). Erkennungssicherheit und Abweichung sind getrennte Dimensionen (`FieldAssessment`), Farben nur über CSS-Theme-Variablen.
   - Wenn es mehrere Kandidaten gibt, wählt die App nichts still vor.
 - **UEX-Werte nicht hartkodieren:** Spielversion, Statusstufen und Toleranzen kommen aus der API bzw. dem Cache, niemals aus Konstanten (siehe F14).
 - Freie OCR-Strings erreichen nie die API; nur aufgelöste IDs aus dem UEX-Vokabular.
