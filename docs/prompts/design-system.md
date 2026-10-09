@@ -629,7 +629,7 @@ Sources: the project's planning documents (requirements, architecture, OCR conce
 **5. The review table**
 
 - One row per commodity, in the order seen on screen. Rows marked missing come after the observed rows.
-- Columns: image crop of the source in readable size; commodity name; status; SCU; price per SCU (aUEC); container sizes. Marked fields also show the UEX value, its age, the Δ and a confirmation control.
+- Columns (corrected 2026-10-09: the review table has no crop column; the detail strip shows the crop of the focused field, R-UI-3): commodity name; status; SCU; price per SCU (aUEC); container sizes. Marked fields also show the UEX value, its age, the Δ and a confirmation control.
 - Deviation covers all four fields (Appendix B). Major means beyond the effective tolerance for price and SCU (the UEX tolerance, which the user can only tighten, or a conservative default while the UEX value is unverified), and two or more status levels apart. Container sizes are compared as a set and are never major.
 - **A major deviation always requires the user's confirmation, even when the value was read confidently and even against an outdated reference.**
 - A confirmation applies to exactly that value. It must be repeated after any change, and when the deviation gets worse before release.
