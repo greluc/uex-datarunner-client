@@ -1,6 +1,6 @@
 # Release and hotfix process
 
-> **Doc type:** Living spec — binding; followed from release 0.1 on. Last reviewed: 2026-10-08.
+> **Doc type:** Living spec — binding; followed from release 0.1 on. Last reviewed: 2026-10-09.
 
 Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md](plan/10-supply-chain-security.md). This is a plan; it is followed from release 0.1 on and refined with experience.
 
@@ -10,7 +10,7 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
   - PATCH: fixes and recognition-profile updates.
   - MINOR: features.
   - MAJOR: a change to persisted data after which a downgrade loses data or needs the user to act. Every format change still ships a tested forward migration (09 §6, §10).
-- The app version is shown in the UI, written to the logs and sent in the User-Agent (R-API-7).
+- The app version is shown in the UI, written to the logs and sent in the User-Agent and the `X-Client-Version` header (R-API-7, O-86).
 - `CHANGELOG.md` follows "Keep a Changelog" with an `[Unreleased]` section. Every user-visible change adds its entry in the same commit as the change: one to three sentences on what changed and why it matters to the user, plus the requirement ID ([CLAUDE.md](../CLAUDE.md)).
 - The version comes only from the signed `v<MAJOR>.<MINOR>.<PATCH>` tag: CI passes it to Gradle, which writes it into the build information read by the UI, the logs and the User-Agent; nobody edits a version by hand, and local builds carry a fixed development version.
 
@@ -18,7 +18,7 @@ Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md
 
 1. `main` is green on Windows and Linux: `./gradlew check` (format check, Error Prone/NullAway, all tests, ArchUnit, JaCoCo gate); the full PIT run on the release commit meets the mutation-score gate (11 §B3); the OSV scan (S-19) on the release commit shows no blocking finding (runtime dependencies, CVSS ≥ 7.0 or unscored), apart from documented exceptions that have not expired.
 2. Corpus evaluation (R-QA-3): no regression in any `gated` class; no new silently wrong field in any class; every required R-QA-2 class that is not `gated` is named "not verified" in the release notes; classes that exist only in the private corpus are evaluated locally with `UEXDR_CORPUS_DIR`. If the recommended Ollama model or the evaluated-model list changes, the bake-off report is linked in the release notes, and the resource (tag, digest(s), approximate download size, metrics; R-VLM-11, S-27) is updated in the same release.
-3. Live smoke test against UEX with `is_production=0` and a test key (manual, opt-in): onboarding check, one manual report, one OCR report, one withdrawal.
+3. Live smoke test against UEX with `is_production=0` and a test key and the tester's own app token (manual, opt-in): onboarding check, one manual report, one OCR report. Decided 2026-10-09 (O-89): the earlier "one withdrawal" step is removed until UEX confirms that `data_remove` works on `is_production=0` submissions ([06](plan/06-uex-api.md) open point 29), because a withdrawal must never touch production data.
 4. Database migrations tested: an empty DB and the DB of the previous release (with test data) migrate to the new version; the previous release refuses the new schema (R-NF-11); the pre-migration backup of a DB with an un-checkpointed WAL passes `PRAGMA integrity_check`, and restoring it in the previous release sends Released and Queued reports back to Draft and marks OutcomeUnknown ones (see 'After a restore').
 5. Check that `CHANGELOG.md`, `README.md` and the user guide (`docs/user/`) are complete. They are updated with every user-visible change in the same commit; this step only checks them.
 6. Create a signed tag on protected `main`. The release workflow then runs read-only build jobs (installers, archives, SBOM, packaged-app smoke test) and a separate publish job without Gradle that computes SHA256SUMS, attests and publishes (S-14 to S-18). The release notes record the bundled JDK build and the installer tool versions (S-11). The release also publishes the plain Windows app image as a ZIP next to the MSI and attaches the source archives of R-DOC-4 (see 'Licence compliance'); the release notes link the tag, which is the Corresponding Source.
@@ -77,4 +77,5 @@ Users get fixes for the bundled runtime and libraries only through our releases 
 1. Contract tests with recorded responses fail, or users report errors (issue template with diagnostics bundle).
 2. Verify the change against the live API with `is_production=0`; update `docs/plan/06-uex-api.md`.
 3. Fix test-first and make a PATCH release.
-4. If the faulty version sent bad data, coordinate with UEX: User-Agent identification (R-API-7), withdrawal via `data_remove` if needed.
+4. If the faulty version sent bad data, coordinate with UEX: User-Agent and `X-Client-Version` identification (R-API-7), withdrawal via `data_remove` per row if needed (only rows not yet consolidated, R-SUB-4).
+5. An HTML (non-JSON) HTTP 404 on a write holds the whole queue as "API changed" (R-SUB-11) until a PATCH release adapts the client or the user retries.
