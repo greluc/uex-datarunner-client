@@ -1,5 +1,5 @@
 {
-  "source": "Claude Design system Tallyline, version 1791537441-68f0",
+  "source": "Claude Design system Tallyline, version 1791542897-a5d3",
   "cooccurrence": [
     "A major-deviation cell (`deviation-major-bg`, filled `deviation-major-badge-bg`) next to the danger button (`critical-bg-strong`) and a \"Blocked\" chip (`critical-bg-strong`). Dark: 1.56:1 between cell and button, separated by shape and label; the filled badge stands 3.15:1 from the button fill.",
     "The TEST indicator (`env-test-*`) next to a critical banner (`critical-*`): violet against red; distinct icons (`science`, `error`) and words.",

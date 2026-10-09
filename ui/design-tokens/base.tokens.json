@@ -1,5 +1,5 @@
 {
-  "$description": "Theme-independent tokens, converted from Claude Design system Tallyline, version 1791537441-68f0; lengths are px at the 14 px base.",
+  "$description": "Theme-independent tokens, converted from Claude Design system Tallyline, version 1791542897-a5d3; lengths are px at the 14 px base.",
   "font-face": {
     "$type": "fontFamily",
     "ibmplexsans-regular": {
@@ -731,28 +731,16 @@
         "value": 20,
         "unit": "px"
       },
-      "$description": "Crop thumbnail height at compact density."
+      "$description": "Retired 2026-10-09, not used: crop thumbnail height at compact density.",
+      "$deprecated": "Retired 2026-10-09; no view uses it."
     },
     "size-crop-thumb-comfortable": {
       "$value": {
         "value": 28,
         "unit": "px"
       },
-      "$description": "Crop thumbnail height at comfortable density (default)."
-    },
-    "size-crop-detail-min-height": {
-      "$value": {
-        "value": 32,
-        "unit": "px"
-      },
-      "$description": "Minimum height of the focused field's crop in the DetailStrip; the crop is shown at 1:1 source scale between min and max."
-    },
-    "size-crop-detail-max-height": {
-      "$value": {
-        "value": 96,
-        "unit": "px"
-      },
-      "$description": "Maximum height of the focused field's crop in the DetailStrip; larger crops are scaled down to it, never cropped."
+      "$description": "Retired 2026-10-09, not used: crop thumbnail height at comfortable density.",
+      "$deprecated": "Retired 2026-10-09; no view uses it."
     },
     "size-window-min-width": {
       "$value": {

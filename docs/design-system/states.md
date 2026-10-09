@@ -2,14 +2,17 @@
 
 > **Doc type:** Living spec — draft (JavaFX handoff stage 2, ADR-0004 Proposed). Last reviewed: 2026-10-09.
 
-This document maps every user-visible state of the plan to the Tallyline state ids, and each id to what the JavaFX theme uses: a pseudo-class or a style class. The id list with labels, icons, tokens and accessible texts is generated into [`ui/design-tokens/states.json`](../../ui/design-tokens/states.json) from the system's "State language" section (Claude Design system Tallyline, version `1791537441-68f0`, 171 ids). The domain terms are those of [11](../plan/11-ddd-and-tdd.md) §A1.
+This document maps every user-visible state of the plan to the Tallyline state ids, and each id to what the JavaFX theme uses: a pseudo-class or a style class. The id list with labels, icons, tokens and accessible texts is generated into [`ui/design-tokens/states.json`](../../ui/design-tokens/states.json) from the system's "State language" section (Claude Design system Tallyline, version `1791542897-a5d3`, 179 ids). The domain terms are those of [11](../plan/11-ddd-and-tdd.md) §A1.
 
 ## Rules
 
 - Every state is shown by colour, icon and text together (R-UI-4, R-UI-11, R-UI-17). Colour comes only from the tokens; the ViewModel sets pseudo-classes and style classes and holds no colours or thresholds (02 §7, 09 §7).
 - A state id is the stable key. The label and the accessible text come from bundle keys `state.<id>.label` and `state.<id>.accessible` (R-L10N-1); the icon is fixed per id.
 - **Reference outdated** is a modifier, not a level: with it, a minor deviation is shown like equal, a major deviation is never lowered and still needs a confirmation, and "no reference" stays ([07](../plan/07-ocr-concept.md) §2.6). The default staleness limit is UEX's `commodity.ttl` (15 days today) with a 15-day fallback (R-UI-11).
-- **Unreviewed** follows its definition in 11 §A1: a counter and a row marker, never a gate.
+- **Unreviewed** follows its definition in 11 §A1: a counter and a row marker (`radio_button_unchecked`), never a gate; F8 does not jump to it. The system files it under "Row markers and counters".
+- **Needs confirmation** marks every case that blocks release and drives the row marker, the F8 targets and the counters. An optional value that fails its checks is `field-not-sent` and never sets it; that includes container sizes the game log contradicts (`gamelog-sizes-inconsistent`).
+- UEX's own per-row statuses always carry the prefix "UEX:", so they never read as a report or job state. Only consolidated, declined and expired are final; whether a row can be withdrawn comes from UEX's `is_editable`, never from the status.
+- Glyphs are distinct within each group, including the 17 block reasons; the action "Withdraw row" keeps `undo`, its result uses `settings_backup_restore`.
 - Test and production are shown in the shell of every view and on report and history rows; their tokens (`env-test-*`, `env-production-*`) stay outside the critical family.
 
 ## Field level: the pseudo-class set of 02 §7
@@ -63,40 +66,43 @@ Report, job, capture, intake, folder, game, game version, game log, faction affi
 
 | Group (`states.json`) | Ids | Plan source |
 |---|---|---|
-| Report state | 18 (`report-*`) | 02 §3 `ReportState`, Draft sub-states R-UI-1, `report-partly-withdrawn` I4, `report-split` 02 §3 |
-| Job | 13 (`job-*`), plus `job-next`, `job-waiting-row-budget`, `job-waiting-retry-time` | 02 §6, R-SUB-2 |
+| Report state | 19 (`report-*`) | 02 §3 `ReportState`, Draft sub-states R-UI-1, `report-partly-withdrawn` I4, `report-split` 02 §3, `report-possibly-received` R-SUB-9 |
+| Job | 16 (`job-*`), each with its own glyph; `job-next`, `job-waiting-row-budget` and `job-waiting-retry-time` are defined in the queue group. A report whose job is queued, next or sending reads "Queued", one waiting for its cooldown "Waiting for cooldown", never "Released" | 02 §6, R-SUB-2 |
 | Queue | `queue-paused-app-token`, `queue-paused-key-unconfirmed`, `queue-held-api-changed`, `queue-held-stale-acceptance`, `queue-held-not-accepting` | R-SUB-11, R-SUB-5 |
 | Account | `account-*` (6), `key-*` (5) | R-API-4, R-SUB-11 |
 | UEX row lifecycle | `uex-*` (10) | R-SUB-4, 06 "Reading, correcting and withdrawing reports" |
 | Report-ID mapping and withdrawal | `mapping-*` (4), `row-withdraw*`, `row-withdrawn`, `row-already-consolidated` | R-SUB-9, I4 |
-| Capture and intake | `capture-*` (9), `intake-*` (6) | R-CAP-1c, R-CAP-1d, R-CAP-8, R-OCR-8, R-OCR-16 |
-| Folder | `folder-*` (6) | R-CAP-1e |
-| Release split and returns | `release-split`, `returned-*` (2) | 02 §3, R-SUB-11 |
+| Capture | `capture-*` (10), among them `capture-waiting-version-data` and `capture-ready` ("Ready to scan") | R-CAP-1c, R-CAP-1d, R-UI-13, R-OCR-8, R-OCR-16 |
+| Capture intake (files set aside, not captures) | `intake-*` (8): HDR, HDR container, SDR copy used, decode failed, file too large, too many pixels, colour profile too large, skipped after a crash | R-CAP-8, R-CAP-1d |
+| Folder | `folder-*` (7), among them `folder-polling` | R-CAP-1e |
+| Release split and returns | `release-split`, `returned-*` (5: date rejected, screenshot too large, too many rows, terminal not found, interrupted – restart) | 02 §3, R-SUB-11 |
 | Game, game version, game log | `game-*` (3), `game-version-*` (4), `gamelog-*` (6) | 02 §4b, R-CAP-3b, R-OCR-20 |
 | Faction affinity, staff notice | `affinity-*` (2), `staff-notice` | R-SUB-13, R-UI-8 |
 | AI and AI jobs | `ai-*` (11), `ai-job-*` (6), `ai-queue-paused`, `ai-remote-host`, `ai-pull-progress` | R-VLM-1…8, 02 §4b |
 | Connection and mode | 11 connection ids, `env-test`, `env-production`, `env-other-channel` | R-UI-8, R-SUB-8, R-CAP-10 |
 | Generic feedback | `feedback-*` (6) | — |
 
-## Open design defects (version `1791537441-68f0`)
+## Design defects
 
-Found when the update was checked against its brief and the plan on 2026-10-09. They go back to Claude Design or to @greluc; the repository does not patch the design silently.
+Found when version `1791537441-68f0` was checked against its brief and the plan on 2026-10-09 (1–16), and when version `1791541897-0513` was checked on the same day (17–18). They go back to Claude Design or to @greluc; the repository does not patch the design silently. A closed defect keeps its row with the version and the check that closed it.
 
-| # | Defect | Plan | Needs |
+| # | Defect | Plan | Status |
 |---|---|---|---|
-| 1 | "UEX: approved" is shown as final and "not editable" | Final UEX statuses are consolidated, declined and expired; editability comes from `is_editable` (R-SUB-4, 02 §6) | Claude Design |
-| 2 | Combination case 13 (confirmation revoked, now "no reference") cannot occur: a move to no reference is never "worse" | 07 §2.6 `isWorseThan`; the case came from the update brief, not from the plan | Claude Design (remove the case) |
-| 3 | The staff notice is a banner only in the report editor and manual capture, and "Show full notice" opens the uncapped text | R-UI-8, 02 §7, O-100: in the global status area, length-capped | decided 2026-10-09 (short form in the status area plus a banner in the report editor and manual capture, cut after 280 characters, never shown uncut; R-UI-8); Claude Design |
-| 4 | `gamelog-sizes-inconsistent` sets the gate marker | Container sizes are optional: a failing set is "not sent" and does not block (11 §A1); R-OCR-20 makes a contradiction `Ambiguous` | Claude Design |
-| 5 | The release-split sample counts 11 rows in three parts and ignores the row without a size set | A row without a sent set goes into its own part without the field (02 §3) | Claude Design |
-| 6 | Reports whose job is sending, next or waiting for cooldown are labelled "Released" | Those jobs belong to a `Queued` or `WaitingForCooldown` report (02 §6) | Claude Design |
-| 7 | "Queue held – UEX API changed" has no "retry now" | R-SUB-11: until an app update or the user's "retry now" | Claude Design |
-| 8 | A failed AI job uses the critical tone | 02 §4b: the report keeps its OCR result and the queue row shows an info note | Claude Design |
-| 9 | One "Reference outdated after 7 days" example remains (Panel preview) | 15-day default (R-UI-11) | Claude Design |
-| 10 | Glyphs still repeat inside a group: `help` six times in the block-reason list, `schedule` four times, `visibility_off` twice; `swap_horiz` for both superseded states; `undo` for the withdraw action and its result; "newer observation already sent" uses `schedule` as a block reason and `upcoming` as a row flag | The design's own rule: distinct within each group | Claude Design |
-| 11 | Findings severity still files Ambiguous, a repair without a witness, UnvalidatedGameVersion and UnexpectedCommodity as blocking/critical | The confidence ladder makes them select- or confirm-level (07 §2.6) | Claude Design |
-| 12 | The detail-strip crop is bounded by box height (32–96 px), not by digit size; under 1:1 a small-text capture shows digits at or below body-text size | R-UI-3 "readable size"; R-OCR-17 | decided 2026-10-09 (whole-number nearest-neighbour upscaling until the digit cap height is at least twice the body text's; R-UI-3); Claude Design, then a JavaFX spike |
-| 13 | StatusBar and TopBar previews do not show the queue-wide holds, the app-token pause or the staff notice; the Settings board has no "UEX account" section with the app-token field | 02 §7 status area, R-API-4 | Claude Design |
-| 14 | `PossiblyAlreadyReceived` (R-SUB-9), the capture label "waiting for the first UEX version data" (R-UI-13), the folder status "polling active" (R-CAP-1e) and specific labels for the return reasons `TOO_MANY_ROWS`, `TERMINAL_NOT_FOUND` and `RESTART` are missing | — | Claude Design |
-| 15 | The capture label "Ready" collides with the report label "Ready" in the same queue list | — | Claude Design ("Ready to scan") |
-| 16 | `README.md` of the system still calls "unreviewed" a proposal | Decided 2026-10-09 (11 §A1) | Claude Design |
+| 1 | "UEX: approved" is shown as final and "not editable" | Final UEX statuses are consolidated, declined and expired; editability comes from `is_editable` (R-SUB-4, 02 §6) | Closed 2026-10-09 in `1791541897-0513`: "UEX: approved" is not final ("still checked for changes"), and withdrawal follows UEX's "editable" flag |
+| 2 | Combination case 13 (confirmation revoked, now "no reference") cannot occur: a move to no reference is never "worse" | 07 §2.6 `isWorseThan`; the case came from the update brief, not from the plan | Closed 2026-10-09 in `1791541897-0513`: the case is removed, and the matrix lists a revocation by a move to "no reference" under "never show" |
+| 3 | The staff notice is a banner only in the report editor and manual capture, and "Show full notice" opens the uncapped text | R-UI-8, 02 §7, O-100: in the global status area, length-capped | Decided 2026-10-09 (R-UI-8). Closed 2026-10-09 in `1791541897-0513`: a short form in the StatusBar of every view plus a banner in the report editor and Manual capture, cut after 280 characters, no "Show full notice" |
+| 4 | `gamelog-sizes-inconsistent` sets the gate marker | Container sizes are optional: a failing set is "not sent" and does not block (11 §A1); R-OCR-20 makes a contradiction `Ambiguous` | Closed 2026-10-09 in `1791541897-0513`: the state is `field-not-sent` (`cancel_schedule_send`, `neutral-*`), never sets the gate marker |
+| 5 | The release-split sample counts 11 rows in three parts and ignores the row without a size set | A row without a sent set goes into its own part without the field (02 §3) | Closed 2026-10-09 in `1791541897-0513`: four parts, the row without sizes in its own part; one leftover is defect 18 |
+| 6 | Reports whose job is sending, next or waiting for cooldown are labelled "Released" | Those jobs belong to a `Queued` or `WaitingForCooldown` report (02 §6) | Closed 2026-10-09 in `1791541897-0513`: "Queued" while the job is queued, next or sending; "Waiting for cooldown"; never "Released" then |
+| 7 | "Queue held – UEX API changed" has no "retry now" | R-SUB-11: until an app update or the user's "retry now" | Closed 2026-10-09 in `1791541897-0513`: the label ends "· Retry now" |
+| 8 | A failed AI job uses the critical tone | 02 §4b: the report keeps its OCR result and the queue row shows an info note | Closed 2026-10-09 in `1791541897-0513`: "AI could not read it – … OCR result kept", `report_off`, `info-*` |
+| 9 | One "Reference outdated after 7 days" example remains (Panel preview) | 15-day default (R-UI-11) | Closed 2026-10-09 in `1791541897-0513`: no outdated example under 15 days remains in the system or the boards (text search) |
+| 10 | Glyphs still repeat inside a group: `help` six times in the block-reason list, `schedule` four times, `visibility_off` twice; `swap_horiz` for both superseded states; `undo` for the withdraw action and its result; "newer observation already sent" uses `schedule` as a block reason and `upcoming` as a row flag | The design's own rule: distinct within each group | Closed 2026-10-09 in `1791541897-0513`: 17 distinct block-reason glyphs, `timeline` for the later reading, `settings_backup_restore` for a withdrawal result, `upcoming` for both uses of "newer observation already sent", a glyph per job state; no group in `states.json` repeats a glyph (script check) |
+| 11 | Findings severity still files Ambiguous, a repair without a witness, UnvalidatedGameVersion and UnexpectedCommodity as blocking/critical | The confidence ladder makes them select- or confirm-level (07 §2.6) | Closed 2026-10-09 in `1791541897-0513`: only Unreadable and TextTooSmall are critical; Ambiguous is select level; the others confirm level; OutOfTolerance uses the deviation families |
+| 12 | The detail-strip crop is bounded by box height (32–96 px), not by digit size; under 1:1 a small-text capture shows digits at or below body-text size | R-UI-3 "readable size"; R-OCR-17 | Decided 2026-10-09 (R-UI-3). Closed for the design 2026-10-09 in `1791541897-0513`: whole-number nearest-neighbour scale until the digits' cap height is at least twice the body text's, in the DetailStrip, the Main board and the deviation dialog; `size-crop-detail-*` removed ([tokens.md](tokens.md), "Readable crop"). The JavaFX spike is still open |
+| 13 | StatusBar and TopBar previews do not show the queue-wide holds, the app-token pause or the staff notice; the Settings board has no "UEX account" section with the app-token field | 02 §7 status area, R-API-4 | Closed 2026-10-09 in `1791541897-0513`: the StatusBar, TopBar and shell boards show holds, pauses and the staff notice; board 9b SettingsAccount has the account section |
+| 14 | `PossiblyAlreadyReceived` (R-SUB-9), the capture label "waiting for the first UEX version data" (R-UI-13), the folder status "polling active" (R-CAP-1e) and specific labels for the return reasons `TOO_MANY_ROWS`, `TERMINAL_NOT_FOUND` and `RESTART` are missing | — | Closed 2026-10-09 in `1791541897-0513`: `report-possibly-received`, `capture-waiting-version-data`, `folder-polling`, `returned-too-many-rows`, `returned-terminal-not-found`, `returned-restart` |
+| 15 | The capture label "Ready" collides with the report label "Ready" in the same queue list | — | Closed 2026-10-09 in `1791541897-0513`: "Ready to scan" (`check`) |
+| 16 | `README.md` of the system still calls "unreviewed" a proposal | Decided 2026-10-09 (11 §A1) | Closed 2026-10-09 in `1791541897-0513`: "Unreviewed" is a listed domain term and has its own section |
+| 17 | `capture-ready` and `capture-refinery` lost their own table rows: they appear only in the capture summary line, without tokens or accessible text (`68f0` had `neutral-*` and "Capture ready to scan"); the refinery label reads "scan result: Refinery terminal – not supported" with a description folded into the label | Every state has a label, an icon, tokens and an accessible text (R-UI-4) | Closed 2026-10-09 in `1791542897-a5d3`: a new section "Capture states before and after the scan" gives `capture-waiting-version-data`, `capture-ready`, `capture-refinery` and `folder-polling` their own rows with `neutral-*` and an accessible text; the refinery label is "Refinery terminal – not supported" |
+| 18 | The ReleaseSplitNotice README gives the accessible name "Will be sent as 3 reports", while its preview and the boards say four | Defect 5 | Closed 2026-10-09 in `1791542897-a5d3`: the README says "Will be sent as 4 reports" |

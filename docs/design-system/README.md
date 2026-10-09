@@ -2,7 +2,7 @@
 
 > **Doc type:** Living reference — draft (JavaFX handoff stage 2). Last reviewed: 2026-10-09.
 
-The app's design system is **Tallyline** (working name, D1; trademark search open). It was designed in Claude Design from the brief [`docs/prompts/design-system.md`](../prompts/design-system.md) and its update [`design-system-update-2026-10.md`](../prompts/design-system-update-2026-10.md), and is translated into the repository by the JavaFX handoff [`design-system-javafx-handoff.md`](../prompts/design-system-javafx-handoff.md). The decisions behind it are [ADR-0004](../adr/0004-design-system.md) (Proposed) and register point O-83.
+The app's design system is **Tallyline** (working name, D1; trademark search open). It was designed in Claude Design from the brief [`docs/prompts/design-system.md`](../prompts/design-system.md) its update [`design-system-update-2026-10.md`](../prompts/design-system-update-2026-10.md) and the correction brief [`design-system-update-2-2026-10.md`](../prompts/design-system-update-2-2026-10.md); the repository follows Design System version `1791542897-a5d3` and screens canvas `1791541917-46e6`. It is translated into the repository by the JavaFX handoff [`design-system-javafx-handoff.md`](../prompts/design-system-javafx-handoff.md). The decisions behind it are [ADR-0004](../adr/0004-design-system.md) (Proposed) and register point O-83.
 
 | File | What belongs there |
 |---|---|

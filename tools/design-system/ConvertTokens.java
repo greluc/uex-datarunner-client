@@ -33,7 +33,8 @@ final class ConvertTokens {
   private static final Pattern OVER =
       Pattern.compile("^([a-z0-9-]+) over imagery \\((\\d+), (\\d+), (\\d+)\\)$");
   private static final Pattern ID_CELL = Pattern.compile("^`([a-z0-9-]+)`(?:\\s*\\((.*)\\))?$");
-  private static final Pattern PX = Pattern.compile("^(-?\\d+(?:\\.\\d+)?)px$");
+  private static final Pattern RETIRED = Pattern.compile("^Retired (\\d{4}-\\d{2}-\\d{2})\\b");
+  private static final Pattern PX =Pattern.compile("^(-?\\d+(?:\\.\\d+)?)px$");
   private static final Pattern SHADOW =
       Pattern.compile("^(-?\\d+)(?:px)? (-?\\d+)(?:px)? (\\d+)(?:px)? (\\d+)(?:px)? (rgba?\\([^)]*\\)|#[0-9a-fA-F]{6})$");
 
@@ -146,7 +147,12 @@ final class ConvertTokens {
       for (Object token : Json.array(Json.get(Json.get(system, family), "tokens"))) {
         Map<String, Object> t = new LinkedHashMap<>();
         t.put("$value", dimension(px(Json.string(Json.get(token, "value")))));
-        t.put("$description", Json.string(Json.get(token, "usage")));
+        String usage = Json.string(Json.get(token, "usage"));
+        t.put("$description", usage);
+        Matcher retired = RETIRED.matcher(usage);
+        if (retired.find()) {
+          t.put("$deprecated", "Retired " + retired.group(1) + "; no view uses it.");
+        }
         group.put(Json.string(Json.get(token, "name")), t);
       }
       root.put(family, group);
@@ -318,35 +324,39 @@ final class ConvertTokens {
     Map<String, Map<?, ?>> full = new LinkedHashMap<>();
     for (Object state : states) {
       Map<?, ?> s = Json.object(state);
-      if (s.containsKey("icon")) {
-        if (full.put(Json.string(s.get("id")), s) != null) {
-          throw new IllegalArgumentException("state " + s.get("id") + " is defined twice");
-        }
+      if (!s.containsKey("summary") && full.put(Json.string(s.get("id")), s) != null) {
+        throw new IllegalArgumentException("state " + s.get("id") + " is defined twice");
       }
     }
     Map<String, Object> summaryGroups = new LinkedHashMap<>();
     for (Object state : states) {
       Map<?, ?> s = Json.object(state);
       String id = Json.string(s.get("id"));
-      if (!s.containsKey("icon") && full.containsKey(id)) {
+      if (s.containsKey("summary") && full.containsKey(id)) {
         summaryGroups.put(id, s.get("group"));
       }
     }
     List<Object> merged = new ArrayList<>();
+    Map<String, Boolean> seenSummary = new LinkedHashMap<>();
     for (Object state : states) {
       Map<?, ?> s = Json.object(state);
       String id = Json.string(s.get("id"));
-      if (!s.containsKey("icon") && full.containsKey(id)) {
+      if (s.containsKey("summary") && full.containsKey(id)) {
         continue;
       }
-      if (summaryGroups.containsKey(id)) {
-        Map<String, Object> copy = new LinkedHashMap<>();
-        s.forEach((k, v) -> copy.put(String.valueOf(k), v));
-        copy.put("summary-group", summaryGroups.get(id));
-        merged.add(copy);
-      } else {
-        merged.add(state);
+      Map<String, Object> copy = new LinkedHashMap<>();
+      s.forEach((k, v) -> {
+        if (!"summary".equals(k)) {
+          copy.put(String.valueOf(k), v);
+        }
+      });
+      if (s.containsKey("summary") && seenSummary.put(id, Boolean.TRUE) != null) {
+        throw new IllegalArgumentException("state " + id + " is listed twice");
       }
+      if (summaryGroups.containsKey(id)) {
+        copy.put("summary-group", summaryGroups.get(id));
+      }
+      merged.add(copy);
     }
     return merged;
   }
@@ -360,8 +370,30 @@ final class ConvertTokens {
       Map<String, Object> state = new LinkedHashMap<>();
       state.put("group", group);
       state.put("id", m.group(1));
-      if (m.group(2) != null && !m.group(2).startsWith("`")) {
-        state.put("label", m.group(2).trim());
+      state.put("summary", Boolean.TRUE);
+      if (m.group(2) != null) {
+        String inner = m.group(2);
+        String note = null;
+        int semicolon = inner.indexOf(';');
+        if (semicolon >= 0) {
+          note = inner.substring(semicolon + 1).trim();
+          inner = inner.substring(0, semicolon);
+        }
+        Matcher glyph = Pattern.compile("`([a-z0-9_]+)`").matcher(inner);
+        if (glyph.find()) {
+          state.put("icon", "`" + glyph.group(1) + "`");
+          String after = inner.substring(glyph.end()).replaceAll("^[,\\s]+", "").trim();
+          if (!after.isEmpty()) {
+            note = note == null ? after : after + "; " + note;
+          }
+          inner = inner.substring(0, glyph.start()).replaceAll("[,\\s]+$", "");
+        }
+        if (!inner.isBlank()) {
+          state.put("label", inner.trim());
+        }
+        if (note != null && !note.isEmpty()) {
+          state.put("notes", note);
+        }
       }
       states.add(state);
     }

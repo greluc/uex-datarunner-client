@@ -2,7 +2,7 @@
   "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
   "version": "2025.10",
   "name": "Tallyline",
-  "description": "Design tokens of UEX Datarunner Client, converted from Claude Design system Tallyline, version 1791537441-68f0.",
+  "description": "Design tokens of UEX Datarunner Client, converted from Claude Design system Tallyline, version 1791542897-a5d3.",
   "sets": {
     "base": {
       "sources": [
