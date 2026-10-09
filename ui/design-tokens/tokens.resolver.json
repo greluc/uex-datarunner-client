@@ -1,0 +1,46 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
+  "version": "2025.10",
+  "name": "Tallyline",
+  "description": "Design tokens of UEX Datarunner Client, converted from Claude Design system Tallyline, version 1791537441-68f0.",
+  "sets": {
+    "base": {
+      "sources": [
+        {
+          "$ref": "base.tokens.json"
+        }
+      ]
+    }
+  },
+  "modifiers": {
+    "theme": {
+      "description": "Colour theme",
+      "contexts": {
+        "dark": [
+          {
+            "$ref": "theme-dark.tokens.json"
+          }
+        ],
+        "light": [
+          {
+            "$ref": "theme-light.tokens.json"
+          }
+        ],
+        "high-contrast": [
+          {
+            "$ref": "theme-high-contrast.tokens.json"
+          }
+        ]
+      },
+      "default": "dark"
+    }
+  },
+  "resolutionOrder": [
+    {
+      "$ref": "#/sets/base"
+    },
+    {
+      "$ref": "#/modifiers/theme"
+    }
+  ]
+}

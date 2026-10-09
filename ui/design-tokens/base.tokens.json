@@ -1,0 +1,803 @@
+{
+  "$description": "Theme-independent tokens, converted from Claude Design system Tallyline, version 1791537441-68f0; lengths are px at the 14 px base.",
+  "font-face": {
+    "$type": "fontFamily",
+    "ibmplexsans-regular": {
+      "$value": "IBM Plex Sans",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "file": "fonts/IBMPlexSans-Regular.ttf",
+          "weight": 400,
+          "style": "normal"
+        }
+      }
+    },
+    "ibmplexsans-semibold": {
+      "$value": "IBM Plex Sans",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "file": "fonts/IBMPlexSans-SemiBold.ttf",
+          "weight": 600,
+          "style": "normal"
+        }
+      }
+    },
+    "ibmplexsans-bold": {
+      "$value": "IBM Plex Sans",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "file": "fonts/IBMPlexSans-Bold.ttf",
+          "weight": 700,
+          "style": "normal"
+        }
+      }
+    },
+    "jetbrainsmononl-regular": {
+      "$value": "JetBrains Mono NL",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "file": "fonts/JetBrainsMonoNL-Regular.ttf",
+          "weight": 400,
+          "style": "normal"
+        }
+      }
+    },
+    "jetbrainsmononl-bold": {
+      "$value": "JetBrains Mono NL",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "file": "fonts/JetBrainsMonoNL-Bold.ttf",
+          "weight": 700,
+          "style": "normal"
+        }
+      }
+    }
+  },
+  "font-family": {
+    "$type": "fontFamily",
+    "sans": {
+      "$value": "IBM Plex Sans"
+    },
+    "mono": {
+      "$value": "JetBrains Mono NL"
+    }
+  },
+  "typography": {
+    "$type": "typography",
+    "display-name": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 40,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.1
+      },
+      "$description": "The system and app name on the cover and the About dialog only.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "display",
+          "lineHeightPx": 44
+        }
+      }
+    },
+    "heading-1": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 22,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.2727
+      },
+      "$description": "View titles (Report editor, Settings).",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "heading",
+          "lineHeightPx": 28
+        }
+      }
+    },
+    "heading-2": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Panel and dialog titles.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "heading",
+          "lineHeightPx": 24
+        }
+      }
+    },
+    "heading-3": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 15,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Group titles inside panels and settings sections.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "heading",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "label-caps": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Short labels written as literal capitals (TERMINAL, SIDE, MODE). No tracking.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "heading",
+          "lineHeightPx": 16
+        }
+      }
+    },
+    "body": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Default UI and body text. The 100 % base size.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "body-strong": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Emphasised values in prose, counters' words, selected navigation.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "ui-small": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 13,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3846
+      },
+      "$description": "Secondary meta lines, status-bar items.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 18
+        }
+      }
+    },
+    "caption": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Hints under fields, the key hint, column captions. Smallest text in the system.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 16
+        }
+      }
+    },
+    "button": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Button and menu-item labels.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "chip": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 13,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3846
+      },
+      "$description": "State chips, source chips, environment chip.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "ui",
+          "lineHeightPx": 18
+        }
+      }
+    },
+    "table-header": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Column headers, literal capitals.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "table",
+          "lineHeightPx": 16
+        }
+      }
+    },
+    "table-name": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 600,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Commodity names in rows. Never smaller than the base.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "table",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "table-text": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Text cells (status names) and the State column.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "table",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "table-meta": {
+      "$value": {
+        "fontFamily": "{font-family.sans}",
+        "fontSize": {
+          "value": 13,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3846
+      },
+      "$description": "Ages and sources beside values (\"3 days ago\").",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "table",
+          "lineHeightPx": 18
+        }
+      }
+    },
+    "numerals": {
+      "$value": {
+        "fontFamily": "{font-family.mono}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Every price, SCU, UEX value, Δ figure, count and time in tables and headers.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "numerals",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "numerals-strong": {
+      "$value": {
+        "fontFamily": "{font-family.mono}",
+        "fontSize": {
+          "value": 14,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.4286
+      },
+      "$description": "Counters and the value in a focused or confirmed cell.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "numerals",
+          "lineHeightPx": 20
+        }
+      }
+    },
+    "numerals-large": {
+      "$value": {
+        "fontFamily": "{font-family.mono}",
+        "fontSize": {
+          "value": 18,
+          "unit": "px"
+        },
+        "fontWeight": 700,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Summary-header counters.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "numerals",
+          "lineHeightPx": 24
+        }
+      }
+    },
+    "mono-log": {
+      "$value": {
+        "fontFamily": "{font-family.mono}",
+        "fontSize": {
+          "value": 13,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3846
+      },
+      "$description": "Log viewer, file paths, hosts in diagnostics.",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "mono",
+          "lineHeightPx": 18
+        }
+      }
+    },
+    "keycap": {
+      "$value": {
+        "fontFamily": "{font-family.mono}",
+        "fontSize": {
+          "value": 12,
+          "unit": "px"
+        },
+        "fontWeight": 400,
+        "letterSpacing": {
+          "value": 0,
+          "unit": "px"
+        },
+        "lineHeight": 1.3333
+      },
+      "$description": "Shortcut hints (F8, Shift+F8, Esc).",
+      "$extensions": {
+        "space.uexdatarunner": {
+          "group": "mono",
+          "lineHeightPx": 16
+        }
+      }
+    }
+  },
+  "spacing": {
+    "$type": "dimension",
+    "space-2": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Icon-to-text nudge inside chips."
+    },
+    "space-4": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      },
+      "$description": "Gap between an icon and its label; badge padding."
+    },
+    "space-6": {
+      "$value": {
+        "value": 6,
+        "unit": "px"
+      },
+      "$description": "Gap between chips in a row."
+    },
+    "space-8": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      },
+      "$description": "Compact cell padding; control inner padding."
+    },
+    "space-12": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      },
+      "$description": "Panel padding (compact); gap between toolbar groups."
+    },
+    "space-16": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      },
+      "$description": "Panel padding; gutter between panes."
+    },
+    "space-24": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      },
+      "$description": "Gap between counter groups; section spacing in settings."
+    },
+    "space-32": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      },
+      "$description": "Dialog padding; onboarding step spacing."
+    },
+    "space-cell-pad-x-compact": {
+      "$value": {
+        "value": 8,
+        "unit": "px"
+      },
+      "$description": "Horizontal cell padding at compact density."
+    },
+    "space-cell-pad-x-comfortable": {
+      "$value": {
+        "value": 12,
+        "unit": "px"
+      },
+      "$description": "Horizontal cell padding at comfortable density (default)."
+    }
+  },
+  "radius": {
+    "$type": "dimension",
+    "radius-0": {
+      "$value": {
+        "value": 0,
+        "unit": "px"
+      },
+      "$description": "Table cells, in-table inputs, crop thumbnails: never rounded or chamfered."
+    },
+    "radius-sm": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Controls, chips, badges, panels, keycaps."
+    },
+    "radius-md": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      },
+      "$description": "Popovers, menus, dialogs, toasts."
+    }
+  },
+  "width": {
+    "$type": "dimension",
+    "width-hairline": {
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      },
+      "$description": "Every hairline border and divider."
+    },
+    "width-state": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Borders that carry a state (confidence borders, test indicator)."
+    },
+    "width-focus-ring": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Solid inset focus ring."
+    },
+    "width-focus-gap": {
+      "$value": {
+        "value": 1,
+        "unit": "px"
+      },
+      "$description": "Gap between a state border and the focus ring inside it, filled with the cell's background."
+    },
+    "width-frame-accent": {
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Top edge of the single focal panel."
+    },
+    "width-selection-mark": {
+      "$value": {
+        "value": 4,
+        "unit": "px"
+      },
+      "$description": "Selection bar in the row's leading slot."
+    }
+  },
+  "size": {
+    "$type": "dimension",
+    "size-row-compact": {
+      "$value": {
+        "value": 28,
+        "unit": "px"
+      },
+      "$description": "Row height at compact density."
+    },
+    "size-row-comfortable": {
+      "$value": {
+        "value": 36,
+        "unit": "px"
+      },
+      "$description": "Row height at comfortable density (default, D8)."
+    },
+    "size-control": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      },
+      "$description": "Buttons, fields and comboboxes outside tables."
+    },
+    "size-control-small": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      },
+      "$description": "Toolbar icon buttons, chips; minimum target."
+    },
+    "size-in-cell-control": {
+      "$value": {
+        "value": 24,
+        "unit": "px"
+      },
+      "$description": "Controls inside table cells (confirmation control, Keep mine / Take new). Never smaller."
+    },
+    "size-icon-sm": {
+      "$value": {
+        "value": 16,
+        "unit": "px"
+      },
+      "$description": "Icons in cells, chips and badges."
+    },
+    "size-icon-md": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      },
+      "$description": "Icons in buttons, the top bar and navigation."
+    },
+    "size-rail": {
+      "$value": {
+        "value": 48,
+        "unit": "px"
+      },
+      "$description": "Collapsed navigation rail."
+    },
+    "size-sidebar": {
+      "$value": {
+        "value": 232,
+        "unit": "px"
+      },
+      "$description": "Expanded sidebar and the rail overlay."
+    },
+    "size-topbar": {
+      "$value": {
+        "value": 40,
+        "unit": "px"
+      },
+      "$description": "Integrated header bar / top bar (D9)."
+    },
+    "size-statusbar": {
+      "$value": {
+        "value": 28,
+        "unit": "px"
+      },
+      "$description": "Status bar."
+    },
+    "size-crop-thumb-compact": {
+      "$value": {
+        "value": 20,
+        "unit": "px"
+      },
+      "$description": "Crop thumbnail height at compact density."
+    },
+    "size-crop-thumb-comfortable": {
+      "$value": {
+        "value": 28,
+        "unit": "px"
+      },
+      "$description": "Crop thumbnail height at comfortable density (default)."
+    },
+    "size-crop-detail-min-height": {
+      "$value": {
+        "value": 32,
+        "unit": "px"
+      },
+      "$description": "Minimum height of the focused field's crop in the DetailStrip; the crop is shown at 1:1 source scale between min and max."
+    },
+    "size-crop-detail-max-height": {
+      "$value": {
+        "value": 96,
+        "unit": "px"
+      },
+      "$description": "Maximum height of the focused field's crop in the DetailStrip; larger crops are scaled down to it, never cropped."
+    },
+    "size-window-min-width": {
+      "$value": {
+        "value": 1280,
+        "unit": "px"
+      },
+      "$description": "Minimum window width (proposed); reference for the 200 % text check."
+    },
+    "size-window-min-height": {
+      "$value": {
+        "value": 720,
+        "unit": "px"
+      },
+      "$description": "Minimum window height (proposed)."
+    },
+    "size-fankit-logo": {
+      "$value": {
+        "value": 96,
+        "unit": "px"
+      },
+      "$description": "Square placeholder frame of the Fan Kit logo. Provisional; the kit's minimum size is unverified."
+    }
+  },
+  "motion": {
+    "$description": "From the system README, section Motion; the system's tokens.json has no motion family.",
+    "duration-hover": {
+      "$type": "duration",
+      "$value": {
+        "value": 120,
+        "unit": "ms"
+      },
+      "$description": "Hover and pressed colour transitions."
+    },
+    "duration-select": {
+      "$type": "duration",
+      "$value": {
+        "value": 160,
+        "unit": "ms"
+      },
+      "$description": "Selection and panel-open colour transitions."
+    },
+    "easing-standard": {
+      "$type": "cubicBezier",
+      "$value": [0, 0, 0.58, 1],
+      "$description": "CSS ease-out."
+    }
+  }
+}

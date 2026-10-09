@@ -9,6 +9,7 @@ path = [
   ".gitleaks.toml",
   ".github/**",
   "corpus/public/**/expected.json",
+  "ui/design-tokens/*.json",
   "gradle.properties",
   "gradle/libs.versions.toml",
   "gradle/verification-metadata.xml",
