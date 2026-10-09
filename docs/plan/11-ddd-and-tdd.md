@@ -1,0 +1,244 @@
+# Domain-Driven Design and Test-Driven Development
+
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+
+How we model the domain (DDD) and how we let code come into being (TDD). Both complement [02-architecture.md](02-architecture.md) (Ports & Adapters) and [09-engineering-principles.md](09-engineering-principles.md) (enforcement).
+
+**Principle "as far as possible":**
+
+- **DDD** pays off where real domain rules live: Report, submission gate, deviations, recognition, cooldown. In technical peripheral areas (file watching, OS integration) it would be ceremony.
+- **TDD** applies to the core without exception. For OCR thresholds, UI layout and native OS integration it is only of limited use; for these there are explicitly different rules below, instead of pretending to do TDD.
+
+## Part A – Domain-Driven Design
+
+### A1. Ubiquitous Language
+
+The domain terms are binding: the same terms in docs, UI and code (all English). One term = one meaning. New terms come here first, then into the code.
+
+| Term | Meaning |
+|---|---|
+| Capture (`Capture`) | an imported screenshot (file identity, source, environment, capture time with its source and certainty (`CaptureTime`, R-CAP-5), game version at capture time) |
+| Scan (`Scan`) | result of the recognition of a Capture: read cards with findings |
+| Card reading (`CardReading`) | a read commodity card (raw values per reader, its section and its completeness) |
+| Complete card | a card whose top and bottom edges lie inside the list viewport ([07](07-ocr-concept.md) §2.3); only complete cards produce rows, an incomplete one gets `PartialCard` |
+| Reader (`Reader`, `ReaderKind`) | method that reads a panel (OCR, VLM); "second reader" always means the VLM. Witnesses such as glyph topology or the status-bar witness are not readers |
+| Witness | independent evidence that singles out one candidate or vetoes one: glyph topology ([07](07-ocr-concept.md) §2.5), the currency-glyph box (07 §2.4), a VLM reading of an evaluated model (07 §2.7). The prior and a repeated reading by the same reader are never witnesses |
+| Status-bar witness | classifier of the status bar's fill and colour that confirms or contradicts the OCR status text (R-OCR-10); not a `Reader`, not part of `ReaderFusion` |
+| Uncertain confusable position | a digit of a read number that is in the confusable set and whose per-digit probability is below the digit threshold, or that glyph topology contradicts, or that came from a letter; only such positions get repair candidates ([07](07-ocr-concept.md) §2.5) |
+| Report (`Report`) | report for **one** terminal, **one** side, **one** environment; unit for `data_submit` |
+| Report key | terminal, side and environment of a Report; also its grouping key (R-OCR-13). Changing it in Draft re-runs resolution and validation ([02](02-architecture.md) §3). |
+| Manual attachment (`ManualAttachment`) | user-selected upload region of a manual report (R-MAN-5, R-SUB-7) with its preview confirmation |
+| Row (`ReportRow`) | a commodity in the Report, identified by a stable `RowId`: observed (`ObservedRow`: price, SCU, status, container sizes, screen order; its commodity may still be unresolved (several candidates) until the user selects one or excludes the row) or marked missing (`MissingRow`) |
+| Not observed | derived, not stored: a commodity listed at the terminal for this side in the `ReferenceSnapshot` that is in no row (R-VAL-5) |
+| Marked missing (`MissingRow`) | the user's explicit decision to report a not-observed commodity as `is_missing` (R-VAL-5); no values, no screen order |
+| Unexpected commodity | an observed row whose commodity is not listed at the terminal for this side in the `ReferenceSnapshot`; derived for the R-UI-12 summary. In the OCR path the assortment pass also gives the commodity field the finding `UnexpectedCommodity`, which needs a confirmation ([07](07-ocr-concept.md) §2.5 item 2) |
+| Side (`TradeSide`) | BUY ("Buy" tab) / SELL ("Local Market Value" tab) |
+| Prior (`PricePrior`) | the latest UEX value (price, SCU, status) for (terminal, commodity, side) from `commodities_prices`, with its age ([06](06-uex-api.md) open point 23); `reference()` is the one value used by repair scoring and the `DeviationAssessor` ([07](07-ocr-concept.md) §2.5, §2.6). Weekly or monthly averages are not used. |
+| Finding (`Finding`) | justified indication of uncertainty (reason code) |
+| Report finding (`ReportFinding`) | report-level finding owned by Reporting, not a recognition `Finding`: `CaptureTimeUncertain`, `ObservationAgeUnconfirmed`, `ObservationTooOld`, `NewerObservationSent`, `GameVersionChanged`, `PossiblyAlreadyReceived`, `ReturnedForFix(FixableReason)` ([02](02-architecture.md) §3) |
+| Confidence (`Confidence`) | how reliably something was **read** |
+| Field reading (`FieldReading`) | what Recognition read for one field: value, confidence, findings, source region; carried by the rows of a stitched scan |
+| Field (`Field`) | a value in a Report with its origin (`FieldOrigin`), findings, assessment and confirmation; built by Reporting from a field reading or from user input |
+| Deviation (`Deviation`) | how strongly a value deviates from the prior (`EQUAL`, `MINOR`, `MAJOR`, `NO_REFERENCE`); "worse" is defined by `isWorseThan` ([07](07-ocr-concept.md) §2.6), not by the declaration order |
+| Effective tolerance (`EffectiveTolerance`) | price and SCU tolerance used by repair scoring and deviation: the verified UEX value, tightened by the user, or the documented settings default (R-VAL-2) |
+| Field assessment (`FieldAssessment`) | reading confidence (none for `USER` values) + confidence level (`ConfidenceLevel`: OK, CONFIRM, SELECT, CORRECT) + deviation (with the "reference outdated" flag) + reference of a field |
+| Confirmation (`Confirmation`) | explicit approval of a field by the user, bound to exactly this value and to the deviation level it was given against (`Confirmation(value, deviationAtConfirmation)`, R-VAL-7) |
+| Field origin (`FieldOrigin`) | `RECOGNIZED` (read by OCR, VLM or their fusion; reader details stay in the findings) or `USER` (typed in manual capture, set with `correct()`, or explicitly taken over by keystroke, R-MAN-2). `USER` values have no reading confidence and are never replaced by a new capture or a merge (I7). |
+| Send threshold (`SendThreshold`) | minimum confidence for sending without confirmation |
+| Mandatory field | a field of a sent row that goes into the `data_submit` payload and is gated (I2): price, SCU and status of every sent row (status stays gated whenever it is sent, even if M0 shows that `status_*` is optional, [06](06-uex-api.md) open point 3). `container_sizes` is optional: it is sent only if it passes I2 itself and 06 open point 9 allows it (never before R-OCR-9); otherwise it is left out and shown as "not sent" without blocking release. Rows with `is_missing` follow 06 open point 12. A field that is not sent is not gated and does not count towards the report confidence. Sent rows are all rows that are not excluded; in manual reports only rows the user entered or took over (R-MAN-2). |
+| Submission gate (`SubmissionGate`) | set of rules deciding whether a Report may be sent |
+| Block reason (`BlockReason`) | why the submission gate blocks a Report; closed set ([02](02-architecture.md) §3), each shown with icon and text (R-UI-14) |
+| Cooldown (`Cooldown`) | 5-minute lock per `CooldownKey` (UEX user, submission mode, terminal, commodity) after a submission that succeeded, was partially accepted, ended with an unknown outcome (provisional) or was answered with `duplicated_report` (R-SUB-4) |
+| Environment (`GameEnvironment`) | LIVE, PTU, EPTU, HOTFIX, TECH-PREVIEW |
+| Observed version history (`GameVersionHistory`) | per UEX environment, each observed game version with its first and last seen time, only from successful `game_versions` fetches; decides whether a capture's version is certain, provisional, uncertain or unknown (R-CAP-3b) |
+| Version at capture (`VersionAtCapture`) | a Report's game version with its R-CAP-3b class (`VersionCertainty`: certain, provisional, uncertain, unknown; no version only when unknown) and the newest observed version the user's choice was bound to (I5) |
+| Reference snapshot (`ReferenceSnapshot`) | immutable state of the UEX data for one environment and one decision |
+| Session (`Session`) | consecutive captures without a gap longer than 60 min (configurable); context for terminal disambiguation and the session overview (R-UI-14) |
+| Stitched scan (`StitchedScan`) | the merged rows (field readings) of all scans of one report group, produced by Recognition (`StitchingService`) after `ReportGrouper` has formed the group, and consumed by Reporting to create or update the Draft |
+| Observation time (`observedAt`) | time of the oldest capture of a Report (with the source of that time, `CaptureTime`); for a manual Report the earlier of that and the time its Draft was created; the user may move it earlier, never later; basis for the age rules (R-VAL-6) |
+| Age confirmation (`AgeConfirmation`) | the user's per-report confirmation that an observation older than `maxObservationAge` may still be sent; valid for `maxObservationAge` after it was given; revoked when `observedAt` moves (R-VAL-6) |
+| Environment confirmation (`EnvironmentConfirmation`) | the user's report-level confirmation of a manual Report's environment against a running game channel that maps to another UEX environment (R-CAP-10, from M4); records the observed running channel and the time, and counts only for that channel (default until the owner decides) |
+| AI job (`AiJob`) | one VLM re-read of one capture's panel crops for one Draft report; process-manager state of `workflows` (states in [02](02-architecture.md) §4b) |
+
+### A2. Bounded Contexts
+
+| Context | Responsibility | Core model | Relationship |
+|---|---|---|---|
+| **Capture** | Take in images from folders/clipboard, avoid duplicates, record environment and version at capture time | `Capture`, `WatchedFolder` | delivers `CaptureReady` (environment known) to Recognition |
+| **Recognition** | Locate, read, resolve, fuse and validate the panel | `Scan`, `CardReading`, `FieldReading`, `StitchedScan`, `Finding`, `Confidence`, domain services | uses Reference Data (read-only); delivers `CaptureScanned` |
+| **Reporting** | Build, check, confirm and release Reports – **core of the domain rules** | Aggregate `Report`; `Field`, `FieldAssessment`, `Deviation`, `Confirmation` | uses Recognition and Reference Data; delivers `ReportReleased` |
+| **Submission** | Sending, queue, cooldown, history, withdrawal | Aggregates `SubmissionJob`, `Cooldown` | Customer of the UEX API via an **Anti-Corruption-Layer** |
+| **Reference Data** | UEX master data and prices as a read model | `ReferenceSnapshot` and value objects | **Conformist** to UEX (we adopt their model), shielded by the ACL in `adapter-uex` |
+| **Game Environment** | Environment, version and observed version history, "game running" with channel, game localisation | `GameEnvironment`, `GameVersion`, `GameVersionHistory`, `GameState` | Upstream of Capture, Recognition, Reporting and Submission (published language: `GameEnvironment`, `GameVersion`) |
+
+**Implementation in code:**
+
+- Each context is its **own Gradle/JPMS module** (`capture`, `recognition`, `reporting`, `submission`, `reference-data`, `game`) containing its domain model and application services; cross-context processes live in `workflows`. Decision and trade-offs: [ADR-002](../adr/0002-modules-by-bounded-context.md); context map: [02 §2](02-architecture.md).
+- Shared types (IDs, `PricePerScu`, `ScuQuantity`, `SubmissionMode`, `ImageRaster`, `FolderLocation`, `Outcome`, event base, the `LogContext` scoped-value key, marker annotations) live in the **Shared Kernel** module `shared-kernel`. `GameEnvironment` and `GameVersion` belong to the `game` context and are used by others as its published language. It is kept small; changes there require particular care.
+- **Rule:** Contexts reference other aggregates only by ID and communicate via domain events or application services, never via direct object references. This is enforced by JPMS (only `api` packages are exported) and ArchUnit.
+
+### A3. Aggregates and invariants
+
+**`Report`** (aggregate root, context Reporting) – this is where the most important domain rules live:
+
+| Invariant | Rule |
+|---|---|
+| I1 | Each **resolved** commodity appears at most once per Report – as an observed row or as a row marked missing, never both; rows whose commodity is still unresolved do not count. |
+| I2 | Release (`release()`) is only possible if:<br/>• terminal and side are resolved (at or above the send threshold, or confirmed);<br/>• every row's commodity is resolved or the row is excluded;<br/>• every mandatory field (A1) of an observed row is ≥ send threshold **or** confirmed **or** has origin `USER`; a row marked missing has no fields and exists only through the user's explicit `markMissing`;<br/>• a field with an `Ambiguous` or `Unreadable` finding or a repair without independent witness (R-VAL-2b) is decided by the user (confirmed, selected or corrected), whatever its numeric confidence and the send-threshold setting;<br/>• every `MAJOR` deviation of a mandatory field is confirmed (unlowered level, [07](07-ocr-concept.md) §2.6), also on `USER` fields;<br/>• a manual attachment (user-selected region, R-SUB-7) has a full-size preview confirmation bound to its image hash;<br/>• if the gate's screenshot policy requires a screenshot (R-MAN-5, A11), an upload image exists;<br/>• for a manual report (R-CAP-10, from M4): if the `ReleaseContext` carries the environment of the running game's channel (passed by the release use case in `workflows` from the `game` API) and it maps (R-CAP-3a) to another UEX environment than the Report's, the Report holds an `EnvironmentConfirmation` against that channel (`confirmEnvironment`; a report-level confirmation that records the observed running channel and the time); otherwise the gate refuses with `EnvironmentUnconfirmed`. No observation, or an unknown channel, never counts as a mismatch (default until the owner decides);<br/>• the environment is mapped to a UEX target (R-CAP-3a), and the game version is known and equals the newest version observed for that target (`GameVersionHistory`, cached `game_versions`), or the user resolved it per R-CAP-3b (I5).<br/>The UEX acceptance flags are **not** a release condition: release works offline against the cached state (a cached "closed" only shows a warning), and the flags are checked before each send attempt (R-SUB-5). |
+| I3 | A confirmation applies to exactly one value and records the deviation level it was given against (R-VAL-7). `correct(field, newValue)` sets the new value with origin `USER` and drops any confirmation bound to the previous value. A `USER` value counts as reliably read for the confidence part of I2, but a `MAJOR` deviation of the new value still needs its own explicit confirmation (R-UI-10, R-UI-12). The report-level confirmations (game-version choice, observation age, attachment preview, environment confirmation bound to the observed running channel and revoked by `changeEnvironment`) are value-bound in the same way. |
+| I4 | A submitted Report (`Submitted`, `PartiallyAccepted`) is immutable. Withdrawal: `workflows` asks `submission` to run `data_remove` and applies `withdraw()` only after `WithdrawalSucceeded`; on failure the Report keeps its state and shows a notice (parameters: [06](06-uex-api.md) open point 15). Corrections create a **new** Draft (`duplicateAsDraft()`), never an edit in place (unless `data_edit` is verified, R-SUB-10). |
+| I5 | The game version is the one valid at capture time (R-CAP-3b). An uncertain version, or a newer version observed for the environment before submission, marks the Report as "to be checked"; only the R-CAP-3b choice clears it: keep the capture-time version (whether UEX accepts it is unverified, A18), or switch an uncertain version to another version observed around the capture time; otherwise the Report is discarded. The choice is bound to the pair (version at capture, newest observed version), so a further patch needs a new choice. The Report is sent with the chosen version and never relabelled with the current one. Every change of the version re-evaluates the R-OCR-19 cap. |
+| I6 | Release requires:<br/>• the observation age (now − `observedAt`) ≤ `maxObservationAge`, or above it a valid age confirmation (`AgeConfirmation`); above the hard limit release is refused (R-VAL-6). The age confirmation is bound to `observedAt`: moving `observedAt` revokes it;<br/>• an uncertain capture time has been confirmed or moved earlier (R-VAL-6);<br/>• the rows are re-assessed against the newest locally available reference snapshot (R-VAL-7): only the deviation part of each assessment is recomputed; a confirmation stays valid unless the deviation level got worse (`isWorseThan`), otherwise it is revoked and release is refused (`DeviationWorsened`); a mark "missing" whose commodity the snapshot no longer lists for this side is revoked;<br/>• no row is older than an observation of the same terminal, commodity and side that was already sent, unless the user confirmed that row (R-VAL-8). |
+| I7 | A new capture joining a Draft (`applyScan`) or a merge of two Drafts never silently changes a field the user confirmed or corrected (`FieldOrigin.USER`). An equal reading leaves the field as it is. A different reading keeps the user's value, is attached as the alternative with `Superseded`, and suspends the confirmation until the user decides (select). An AI re-read of the same captures only adds a hint and keeps the confirmation ([07](07-ocr-concept.md) §2.7). Fields and rows the new capture does not cover keep their state. |
+
+`markMissing(commodity)` (R-VAL-5) returns `Outcome.Refused` unless the commodity is listed at the terminal for this side in the current snapshot, has no observed row, and the Report's `Coverage` (carried over from the `StitchedScan`) shows every section of this side seen with its header, expanded and gap-free (R-VAL-5 is a per-side rule, because a commodity that was never seen has no known section). Manual Reports have no coverage, so the mark is not offered there; it is not offered at all before [06](06-uex-api.md) open point 12 is verified. `unmarkMissing` reverses it. A snapshot refresh that no longer lists the commodity revokes the mark (I6).
+
+The re-check of queued jobs before every send attempt is not an aggregate invariant. `submission` re-checks age (R-VAL-6), acceptance and game version (R-SUB-5, R-CAP-3b) and newer observations (R-VAL-8) before each attempt, against a state at most 15 min old, using the `observedAt`, the age confirmation and the game version (with the newest version its R-CAP-3b choice was confirmed against, if any) carried by the `SubmissionRequest`:
+
+- closed acceptance or no fresh state holds the job (R-SUB-5, R-SUB-11);
+- a game-version change detected at the send attempt returns the job (`SubmissionReturned`, reason game version changed): the current version of the Report's environment differs from the Report's game version and from the newest version its R-CAP-3b choice was confirmed against, so the user has not resolved it (R-CAP-3b, R-SUB-5);
+- a failed age check or a newer observation already sent returns the job as well.
+
+`workflows` then moves the Report back to Draft with the matching report-level finding ([02 §6](02-architecture.md)); after a game-version change the finding is `GameVersionChanged` and the Report is marked "to be checked" until the user's R-CAP-3b choice (I5). The returned Draft shows in the queue with its reason (R-UI-1), never through a dialog (R-UI-16).
+
+The `Report` carries a `version` number for optimistic concurrency: every command is applied to a specific version, and the repository rejects writes based on a stale version (e.g. user edit and AI re-read at the same time).
+
+States as sealed types. Each arrow is a command or an applied submission event (job phases, events and their mapping: [02 §6](02-architecture.md)):
+
+- `Draft → Released` (`release(gate)`) `→ Queued` (job created) `→ WaitingForCooldown` (`SubmissionDeferred`, R-SUB-4); `Queued/WaitingForCooldown → Submitted | PartiallyAccepted | OutcomeUnknown | Rejected` (the submission result events).
+- Back to Draft: `Released → Draft` (user cancel). `Queued/WaitingForCooldown → Draft` only after `SubmissionCancelled(USER)` (user cancel, refused once the job is `sending`, R-SUB-9) or `SubmissionReturned(reason)`, with a report-level finding (`ReportFinding`). Reasons: report-fixable error (R-SUB-11; `Draft` with `ReturnedForFix(FixableReason)`: `workflows` maps `submission`'s `SubmissionError` to the reason, so no UEX code enters `reporting`), observation age (R-VAL-6), newer observation already sent (R-VAL-8), game version changed since capture, detected at a send attempt (R-CAP-3b, R-SUB-5; finding `GameVersionChanged`, the Report is marked "to be checked" until the R-CAP-3b choice, I5), `duplicated_report` after an unknown outcome (R-SUB-9), app restart (R-SUB-2). The returned Draft shows its reason in the queue (R-UI-1). Confirmations stay (I3); renewed release runs the full gate.
+- "Send the others now" (R-SUB-4): `workflows` asks `submission` to cancel the waiting job for a split; on that `SubmissionCancelled` (reason `SPLIT`) it applies `splitOffCooldownRows(rows)` instead of the move to Draft, which turns the `WaitingForCooldown` Report into two `Released` Reports with disjoint rows. Both keep the header, `observedAt`, captures, confirmations and age confirmation. Both are queued again; the one with the cooldown rows waits. Neither is a Draft, so the AI re-read (R-VLM-4) and capture grouping (R-OCR-13) do not touch them.
+- `OutcomeUnknown → Submitted | PartiallyAccepted`: resolved via `data_info`, or by the user's decision "received", which records no `ids_reports` and therefore offers no withdrawal. The decision "not received" keeps the Report in `OutcomeUnknown`, marked as such in the history, so that a later `data_info` result or `duplicated_report` can still be attributed to it; only then is `duplicateAsDraft()` allowed.
+- `Submitted/PartiallyAccepted → Withdrawn` only after `WithdrawalSucceeded` (I4). Once its rows are resolved, `PartiallyAccepted` offers `duplicateAsDraft()` for the rows resolved as not accepted (R-SUB-9).
+- `Draft → Discarded(reason: USER | VERSION_CHANGED | TOO_OLD)` via `discard()` – by the user only, never automatically (R-CAP-3b, R-VAL-6; retention R-CAP-7). `Discarded` is final and offers no duplicate.
+- `Rejected/Withdrawn` can be duplicated as a new Draft, except a Report rejected with `invalid_game_version` (R-SUB-11), because the duplicate would carry the same version.
+
+Invalid transitions return `Outcome.Refused` with a reason code; there are no status strings.
+
+Records are not fully encapsulated: their canonical constructor is as visible as the record. The compact constructor therefore validates all state-local invariants (I1, value-bound confirmations), and an ArchUnit rule allows `new Report(...)` only inside the aggregate and in the persistence mapper (reconstitution). Transition invariants (I3, I4, I7) and the release preconditions (I2, I5, I6) are enforced by the command methods (`applyScan` for a new capture; the merge use case applies the same rule as I7). `release()` receives everything time- and context-dependent through the `SubmissionGate` (A5: newest locally available snapshot, settings, `Instant now` from the injected `Clock`, `ReleaseContext`), so the aggregate never reads a clock or a repository.
+
+Further aggregates:
+
+- **`Capture`** (Capture): identity = content hash. States `Imported → EnvironmentPending → Ready → Scanned | Failed`; a capture whose environment is known at import goes from `Imported` straight to `Ready` (after the fetch below). Default until the owner decides (R-CAP-3b, R-UI-13): a capture waits in `Imported`, neither versioned nor scanned, until the first successful `game_versions` fetch for its environment has happened (one fetch covers both UEX environments); then it moves to `Ready`, or to `EnvironmentPending` if its environment is unknown or contradicts the running channel (R-CAP-1, R-CAP-10). `rescan()` re-runs recognition on the same Capture: `Scanned → Scanned` (manual corners or crop, "process anyway" R-OCR-16, re-import R-CAP-1d) or `Failed → Ready` (retry, re-import); `workflows` offers re-import only while no active Report references the Capture (R-CAP-1d). "Not located" and "not a terminal" are scan outcomes of a `Scanned` capture (`ScanResult.NotLocated | WrongScreen`, [02](02-architecture.md) §3), not Capture states: a scan with outcome `WrongScreen` leaves the Capture in `Scanned`, set aside as "not a terminal" (R-OCR-16). `Failed` is reserved for a capture whose scan could not run because its file can no longer be read or decoded (02 §4a), never for a recognition outcome. Files that never decode at intake (unsupported or HDR encoding R-CAP-8, decoding still failing after the R-CAP-1c retries) never become Captures; they are recorded in the processed-file register with their reason.
+  - The environment is set exactly once: by the folder rule at import, or by the user for "ask for every image" folders, unknown environments and a mismatch with the running channel (R-CAP-10) (`assignEnvironment`; never asked by a dialog that opens by itself, R-UI-16).
+  - The game version at capture time is derived from the observed version history (`GameVersionHistory`) when the environment is set, or, with an empty history, at the first successful `game_versions` fetch, and classified per R-CAP-3b (e.g. uncertain for catch-up imports). Confirming or replacing an uncertain version happens on the Report (I5, `VersionAtCapture`), not on the Capture.
+  - After that, environment and version are immutable.
+  - Recognition, grouping and per-environment reference data (R-API-6) start only when the capture is `Ready` (event `CaptureReady`); the OCR pipeline never takes an `Imported` or `EnvironmentPending` capture.
+- **`Scan`** (Recognition): identity = `CaptureId`; the stored recognition result of one capture, including the per-reader results needed for later fusion; replaced by a re-scan or an AI fusion; persisted via `ScanRepository`, so re-stitching never runs OCR again.
+- **`SubmissionJob`** (Submission): the submission of one released Report (`SubmissionRequest`), bound to the UEX user and submission mode fixed at release (R-SUB-8, R-SUB-12); phases and their mapping to Report states in [02 §6](02-architecture.md). It records every attempt (start, row count, payload hash, result). The phase `sending` is committed before the request is written, so an interrupted attempt is detected and ends as an unknown outcome (R-SUB-9). `cancel()` returns `Outcome.Refused` (`ALREADY_SENDING`) once the job is `sending`. Retries happen only for the not-processed set of R-SUB-9 and are bounded by `SubmissionRetrySettings` (maximum attempts, backoff cap; a typed settings record with documented defaults). When they are used up, the job is held for the user ("retry now", "cancel"). Invariant: of the jobs of one user and mode that share a (terminal, commodity, side), the one with the older `observedAt` is sent first (R-VAL-8).
+- **`Cooldown`** (Submission): key `CooldownKey(UexUsername user, SubmissionMode mode, TerminalId terminal, CommodityId commodity)` – without side and environment until A12 is verified. User and mode come from the job (fixed at release, R-SUB-8, R-SUB-12). The cooldown holds an `until` timestamp and an origin (success, partial acceptance, unknown outcome – provisional, `duplicated_report`). Invariant: a job with a row whose key is in cooldown is not sent.
+- **`AiJob`** (`workflows`): process-manager state, not an aggregate of a context; states and transitions in [02 §4b](02-architecture.md); persisted via `AiJobRepository`.
+
+**Size:** Aggregates stay small. A Report knows Captures only by ID, terminals and commodities only by ID.
+
+### A4. Value Objects
+
+Immutable records with validation in the compact constructor, equality by value, no primitive types in domain signatures (against "primitive obsession"):
+
+`TerminalId`, `CommodityId`, `CaptureId`, `ReportId`, `RowId`, `PricePerScu` (BigDecimal ≥ 0), `ScuQuantity` (≥ 0), `InventoryStatus`, `ContainerSizes` (subset of the allowed sizes, sorted), `GameVersion`, `Confidence` (0..1), `ConfidenceLevel`, `Deviation`, `Percent`, `FileFingerprint`, `ImageHash`, `FieldOrigin`, `Confirmation`, `SubmissionMode`, `CooldownKey`, `AgeConfirmation`, `EnvironmentConfirmation`, `CaptureTime`, `Coverage`, `VersionAtCapture`, `VersionCertainty`, `ManualAttachment`.
+
+### A5. Domain services
+
+Stateless domain logic that belongs to no single aggregate (pure functions):
+
+- **Recognition** (module `recognition`): `CommodityResolver` (global pass, then the assortment pass once the terminal is resolved), `TerminalResolver` (between the two passes), `PriceCandidateEvaluator`, `ReaderFusion`, `Stitcher` (internal; other modules use the application service `StitchingService.stitch(List<Scan>)` in `recognition.api`)
+- **Reporting**: `DeviationAssessor` (→ `FieldAssessment`), `ReportGrouper` (assigns scans to report groups before stitching, 02 §4 stage 6), `SubmissionGate`. The gate is built per release attempt by the reporting release service from:
+  - the newest locally available `ReferenceSnapshot` with its age (R-VAL-7) and the effective tolerances (R-VAL-2); its acceptance flags only produce a warning at release, because `submission` checks them before each send attempt (R-SUB-5);
+  - the send threshold;
+  - the age settings (`maxObservationAge`, hard limit);
+  - `Instant now` from the injected `Clock`;
+  - a `ReleaseContext` with the account standing (R-API-7), the screenshot policy (R-MAN-5, A11) and, if known, the environment of the running game's channel (R-CAP-10) as enums, filled by the release use case in `workflows`: account standing and screenshot policy from the API of `submission`, the running channel's environment from the API of `game`. The gate compares the UEX environment it maps to (R-CAP-3a) with a manual Report's and returns `EnvironmentUnconfirmed` while they differ and the Report holds no `EnvironmentConfirmation` against that channel (I2; default until the owner decides).
+
+  `evaluate(report)` is side-effect free and returns `Ready` or `Blocked(List<BlockReason>)` (closed set in `reporting.api.model`, 02 §3). `release()` returns `Outcome.Refused` carrying the complete `Blocked` verdict, so a report blocked for several reasons shows all of them.
+
+### A6. Domain events
+
+`CaptureImported`, `CaptureReady`, `CaptureScanned`, `CaptureRescanRequested`, `ReportDraftCreated`, `ReportKeyChanged`, `ReportReleased`, `ReportSplit`, `ReportSubmitted`, `ReportWithdrawn`, `ReportDiscarded`, `SubmissionDeferred`, `SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionOutcomeUnknown`, `SubmissionRejected`, `SubmissionReturned`, `SubmissionCancelled`, `WithdrawalSucceeded`, `WithdrawalFailed`, `GameStateChanged`, `ReferenceDataRefreshed`.
+
+- Events are immutable records in the `api` package of the context that publishes them (base type in `shared-kernel`). Submission results are published by `submission` (`SubmissionDeferred(eta)`, `SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionOutcomeUnknown`, `SubmissionRejected`, `SubmissionReturned(reason)`, `SubmissionCancelled(reason: USER | SPLIT)`, `WithdrawalSucceeded`, `WithdrawalFailed(reason)`; mapping to Report states in [02 §6](02-architecture.md)); `workflows` translates them into Report state changes, which publish `ReportSubmitted` etc. in `reporting`. `SubmissionCancelled` carries why the job was cancelled: `USER` (user cancel, Report back to Draft) or `SPLIT` ("send the others now", R-SUB-4; `workflows` applies `splitOffCooldownRows` instead, A3).
+- They are delivered **in-process** via a small dispatcher in `workflows`, without a framework. To survive crashes, every aggregate repository port saves the new state **together with its events** (`save(newState, expectedVersion, events)`); `adapter-storage` writes the state rows and the outbox rows in **one SQLite transaction** and rejects a stale version. The `EventOutbox` port (`workflows`) reads pending entries, marks them delivered and offers an after-commit notification (implemented in `adapter-storage`, listener registered by `workflows`, wired in `app`); on startup, undelivered entries are dispatched again. Delivery is at-least-once, so handlers are idempotent. Events not tied to persisted aggregate state (`GameStateChanged`, `ReferenceDataRefreshed`) are transient and dispatched directly, without the outbox. Outbox rows are serialised in `adapter-storage`; event types stay in each context's `api` package.
+- **Aggregates are immutable** (records): a command such as `report.confirm(…)` returns `Outcome.Ok(newState, events)` or `Outcome.Refused(reason)`. The application service passes the new state and its events to the repository in one call; dispatch happens only after commit, through the outbox. This makes aggregates testable without mocks and thread-safe.
+- Events make the flows testable: "Given events / When command / Then events".
+
+### A7. Repositories and Anti-Corruption-Layer
+
+- **One repository per aggregate** (port in the owning context module, implementation in `adapter-storage`). There are no repositories for entities within an aggregate. Repository ports take the events of a command together with the new state (A6).
+- **ACL to UEX** (`adapter-uex`):
+  - UEX DTOs (snake_case, numbers as strings, 0/1 flags, status strings) are translated into value objects at the boundary.
+  - UEX error codes become sealed `SubmissionError` types.
+  - No UEX term "leaks" into the core.
+- **ACL to the game:** `global.ini` and in-game texts are translated into domain terms via mapping tables (`InventoryStatus`, `TradeSide`).
+- **ACL to Ollama:** the model response becomes a `CardReading`.
+
+### A8. Marking and enforcement
+
+- Our own dependency-free marker annotations in `shared-kernel` (`@AggregateRoot`, `@ValueObject`, `@DomainEvent`, `@DomainService`).
+- **No jMolecules:** that would be an additional dependency in the core (checked: `org.jmolecules:jmolecules-ddd` 2.0.1). Four annotations of our own do the same job here.
+- **ArchUnit rules:**
+  - `@ValueObject` and `@DomainEvent` are records.
+  - `@AggregateRoot` classes are loaded and stored only via their repository.
+  - Aggregates reference other aggregates only via `*Id` types.
+  - Domain types have no public setters.
+  - Context modules do not access the `internal` packages of other contexts (also enforced by JPMS exports).
+
+## Part B – Test-Driven Development
+
+### B1. Where TDD applies
+
+| Area | Approach |
+|---|---|
+| Core modules (context modules, `shared-kernel`, `workflows`) | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
+| Adapters (`adapter-uex`, `adapter-storage`, `adapter-files`) | **Test-first, as far as possible:** contract and integration tests (WireMock, real SQLite file, real temp directory) first, then the implementation |
+| `adapter-ocr`, `adapter-vlm` and OCR thresholds | **Spike & Stabilise:** exploration in the eval harness is allowed (result: measurements, no merge). Before the merge, the desired behaviour is pinned down with golden and unit tests that fail without the change. |
+| `ui` | ViewModels via TDD (without a window); views (layout, CSS) without TDD, critical flows via TestFX after implementation; exception: the Star Citizen Fan Kit unit's pinning tests (R-UI-19), including the TestFX tests of both placements, are written first |
+| `adapter-platform` (FFM, process list) | Thin wrappers behind ports; the port is tested via a fake, the native side via integration tests on the target OS (CI matrix) |
+| Bugfix (everywhere) | First a test that reproduces the bug |
+
+### B2. Outside-in per use case
+
+1. **Acceptance test** at the application-service level of the context module (or `workflows` for cross-context use cases) (domain language, fakes for all ports), derived from the requirement. The test name or tag refers to the requirement ID, e.g. `@Tag("R-UI-10")` (qualified, e.g. `@Tag("R-VAL-1:ocr")`, where 04 splits the requirement, §B4).
+2. Unit tests for aggregates, value objects and domain services follow from it.
+3. Finally come the adapters with their contract tests.
+
+Example (structure, not final code):
+
+```java
+@Test @Tag("R-UI-10") @Tag("R-VAL-2")
+void majorPriceDeviationBlocksReleaseUntilConfirmed() {
+  var report = aDraftReport().at(PYRO_GATEWAY_STANTON).side(BUY)
+      .row(HYDROGEN_FUEL, price("782"), prior("520", ageDays(1)))   // > effective tolerance
+      .build();
+
+  assertThat(report.release(gate)).satisfies(isRefusedWith(MajorDeviationUnconfirmed.class));
+
+  var confirmed = report.confirm(rowOf(report, HYDROGEN_FUEL), PRICE).orThrow();
+  assertThat(confirmed.release(gate)).satisfies(isOkWithState(Released.class));
+}
+```
+
+Further acceptance tests pin edge cases of the same rules:
+
+- `majorDeviationAgainstStaleReferenceStillBlocksRelease` (`@Tag("R-UI-11")`, `@Tag("R-VAL-2")`): the example above with a prior older than the staleness limit is still refused until confirmed.
+- `confirmationIsRevokedWhenDeviationWorsensAtRelease` (`@Tag("R-VAL-7")`): a field confirmed at `NO_REFERENCE` whose fresh snapshot gives `MAJOR` is not released.
+- `testSubmissionLeavesPriorUnchanged` (`@Tag("R-VAL-7")`, `workflows`): a `SubmissionSucceeded` with `is_production=0` leaves the `PricePrior` unchanged.
+- `toleranceOverrideAboveUexValueDoesNotLowerMajor` and `unverifiedOrMissingUexToleranceFallsBackToDefault` (`@Tag("R-VAL-2")`, `@Tag("R-UI-10")`).
+- `manualValuesReleaseWithoutConfirmationKeystrokes` (`@Tag("R-MAN-2")`): the manual path – a manual report with typed values (origin `USER`) and no `MAJOR` deviation is released without further confirmation keystrokes.
+
+### B3. Tools and rules
+
+- **Fakes before mocks:** for every port there is a handwritten fake implementation in the Gradle `java-test-fixtures` source set of the respective module. All tests share these fixtures. (How `java-test-fixtures` behaves with JPMS modules is not verified – M0 spike; the GradleX `java-module-testing` plugin is the fallback.) Mockito only for interaction checks that a fake cannot sensibly represent. Repository fakes record the saved events, so "Given events / When command / Then events" tests can assert on them. A dispatcher test proves that a crash between commit and dispatch loses no event (redelivery on startup).
+- **Test data builders** (`aDraftReport()`, `aCapture()`, `aSnapshot()`) in the same test fixtures, instead of copying test data.
+- **Property-based tests** (jqwik) for parser, fuzzy matcher, fusion, `DeviationAssessor` and the invariants of the `Report` (e.g. "after `correct`, the field has origin `USER` and no confirmation bound to an earlier value; the confidence part of I2 no longer blocks it, an unconfirmed `MAJOR` deviation still does"; "AI fusion and re-stitching never change the value of a field with origin `USER` or a confirmation; a differing new reading only becomes an alternative (I7)"; "`applyScan` never changes a `USER` field").
+- **Golden tests** for the `recognition` pipeline against the corpus (`corpus/`).
+- **Mutation testing** (PIT) for the core modules, to check whether the tests really find bugs – with TDD, the honest check against "tests that assert nothing":
+  - Initial value for the mutation score ≥ 70 %; it is fixed after the first measurement and may only rise.
+  - Runs in the PR for changed classes and fully nightly.
+  - Versions checked: PIT 1.30.0, Gradle plugin `info.solidsoft.pitest` 1.19.0, `pitest-junit5-plugin` 1.2.3. **That the JUnit 5 plugin works together with JUnit 6 and JDK 27 has not been checked** → M0.
+- **Never red on `main`:** red/green happens locally or in the feature branch; every commit on `main` is green.
+- **The refactor step is mandatory:** after green, clean up (names according to the Ubiquitous Language, remove duplicates) while the tests stay green.
+
+### B4. Traceability
+
+- Every M requirement from 01 is covered either by at least one acceptance test with `@Tag("<R-ID>")` or by an entry in the list "Verified outside JUnit" under "Requirement coverage" in [04-roadmap.md](04-roadmap.md). That list is only for requirements, or parts of requirements, that are enforced by the build, CI, repository settings or the release checklist, and each entry names an existing check. Requirements that are code always need a tagged test (e.g. R-SEC-7, R-SEC-8, the portable mode of R-NF-2, the corpus schema of R-QA-1).
+- **Split requirements:** if 04 assigns parts of one requirement to different milestones or verification methods, each part carries a qualifier there (e.g. `:manual`, `:ocr`), and its tests use the qualified tag, e.g. `@Tag("R-VAL-1:ocr")` (a colon is allowed; JUnit reserves only `,` `(` `)` `&` `|` `!` in tags). For a split requirement an unqualified tag does not count.
+- A small report in the build lists R-IDs and qualified parts without coverage (Gradle task over the JUnit tags plus the list in 04). Each requirement group is assigned to a milestone in [04-roadmap.md](04-roadmap.md) ("Requirement coverage"). Missing coverage is a warning for open milestones and a **build error** for M requirements of milestones that are already completed.

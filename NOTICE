@@ -1,0 +1,501 @@
+UEX Datarunner Client
+Copyright (C) 2026 Lucas Greuloch
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+UEX Datarunner Client is an unofficial community project and is not
+affiliated with UEX Corp. Its relation to Cloud Imperium is stated by the
+Star Citizen Fan Kit notices in section 4.
+
+
+About this file
+---------------
+
+This file lists every third-party component that the planned installers and
+archives ship (section 2), the files in this repository that are not under
+the project licence (section 3), the Star Citizen Fan Kit unit (section 4),
+material adapted from other projects (section 5) and the credits that the
+bundled licences require (section 6).
+
+The project is in its planning phase and ships nothing yet; section 2
+describes what the plan ships. Values in angle brackets are filled in when a
+component is pinned. Square brackets mark points that are unverified or not
+yet decided; the open ones are tracked in docs/adr/0000-open-points.md. Once
+the build exists, every entry is checked against the shipped artefacts, not
+against upstream repositories, because the two can differ.
+
+Not shipped, and therefore not listed: the build, test and CI tools, which
+are run but never conveyed; Ollama and the model weights it downloads, which
+the user installs; UEX data, which the app fetches at run time.
+
+
+1. Where the licence texts live
+-------------------------------
+
+Repository
+  LICENSE
+    The GNU General Public License version 3: the FSF's plain-text file,
+    unmodified, SHA-256
+    3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986
+  LICENSES/GPL-3.0-or-later.txt
+    A byte-identical copy of LICENSE, for REUSE.
+  LICENSES/CC-BY-SA-4.0.txt
+    From spdx/license-list-data, tag v3.29.0 (commit
+    31ba1a50e5397e00a304dbadc76531740e89ee48), file text/CC-BY-SA-4.0.txt,
+    unmodified, SHA-256
+    cde7883b9050a1104f4ac19a1572aafd6e5d7323b68351aaf51fbf4beba54966
+  LICENSES/LicenseRef-Game-Screenshots.txt
+  LICENSES/LicenseRef-Fankit-Agreement.txt
+    Written by this project. Each states that the files it marks are not
+    covered by the project licence and that this project grants no rights
+    in them.
+  REUSE.toml
+    The licence and copyright line of every file that carries no header of
+    its own (REUSE specification 3.3).
+  NOTICE
+    This file.
+
+Installers and archives (Windows MSI and ZIP, Linux .deb and tar.gz)
+  LICENSE (the GPL text) and NOTICE (this file).
+  <runtime>/legal/
+    The notices of the OpenJDK modules in the bundled runtime, written by
+    jlink and kept by jpackage. [exact path checked in a JDK 27 jpackage
+    image in M0]
+  legal/<component>/
+    [proposed path, decided in M0] The licence texts and notices that this
+    project collects for every other component in section 2, because most
+    of the jars carry none and jlink hides the ones in modular jars inside
+    lib/modules.
+  The .deb package
+    Its copyright file is replaced with a machine-readable (DEP-5) file that
+    lists the components of this file; jpackage's default file would claim
+    every file for the application's licence or say "Unknown".
+  About dialog
+    The Appropriate Legal Notices of GPL-3.0 section 5(d), the Logback
+    notice (2.9) and the credits of section 6, plus an "Open-source
+    licences" view that shows the texts of this file offline.
+
+Source code
+  Every GitHub release links the tagged source of this project. It is the
+  Corresponding Source of the release, including the Gradle build, its
+  lockfiles and verification metadata, and the packaging resources.
+  Attached to every release: the complete source of every shipped component
+  under GPL-2.0, LGPL-2.1, MPL-2.0 or MS-RL, that is the OpenJDK runtime
+  (2.1), OpenJFX (2.2), Eigen inside ONNX Runtime (2.3), Logback (2.9) and
+  the WiX parts of the MSI (2.11).
+  Linked from this file: the source of every permissively licensed shipped
+  component, by its pinned upstream tag or commit and by its Maven Central
+  sources jar.
+  [open point O-81: whether the sources of ONNX Runtime's other native
+  dependencies are archived as well]
+  Next to the MSI, every release also publishes a plain archive of the app
+  image, so the GPL work is available outside the MSI container (2.11).
+
+
+2. Components shipped in the installers and archives
+----------------------------------------------------
+
+2.1 OpenJDK runtime (jlink image)
+  Version       27, vendor build <exact release and build, pinned in M0 per
+                S-11; planned vendor: Temurin> [whether the vendor publishes
+                the source archive of exactly that build is checked when it
+                is pinned; O-25]
+  Upstream      openjdk/jdk tag jdk-27-ga
+                (commit 815ff4dc327fe17f2433c7d115a5a503af10f3c4)
+  Modules       java.base, java.desktop, java.xml, java.sql,
+                java.sql.rowset, java.naming, java.logging, java.net.http,
+                java.scripting, java.prefs, java.datatransfer,
+                java.transaction.xa, java.security.sasl; jdk.crypto.mscapi
+                on Windows [final list from the jlink configuration in M0]
+  Licence       GPL-2.0-only WITH Classpath-exception-2.0. The HotSpot VM
+                files are GPL-2.0-only without the exception; the runtime is
+                used as a System Library in the sense of GPL-3.0 section 1
+                [FSF position unverified; O-82]. The legal files also
+                contain the OpenJDK Assembly Exception, which concerns only
+                Oracle's designated exception modules and adds nothing for
+                this project's code; the combination rests on the Classpath
+                Exception.
+  Third party   per module in <runtime>/legal/: zlib, ICU, Unicode and CLDR,
+                siphash, c-libutl, the GCC runtime 14.2.0 (GPL-3.0 with the
+                GCC Runtime Library Exception 3.1), the Mozilla Public Suffix
+                List (MPL-2.0), wepoll (Windows); FreeType 2.14.3 (used under
+                the FreeType License), HarfBuzz, libpng, giflib, IJG JPEG,
+                Little CMS, Mesa, PipeWire headers (Linux), xwd, Eastman
+                Kodak; Xerces, Xalan and BCEL (Apache-2.0), W3C, CUP
+  Copyright     per file; see <runtime>/legal/
+  Text          <runtime>/legal/, kept unmodified
+  Source        attached: the vendor's source archive of exactly this build
+  Also          the jpackage application launcher (Linux: bin/<App> and
+                lib/libapplauncher.so; Windows: <App>.exe), jpackage's
+                msica.dll custom action inside the MSI, and the control file
+                and maintainer scripts of the .deb, all from the same JDK:
+                same licence, same source. On Windows the launcher and
+                msica.dll are built with -MT and contain the Microsoft C/C++
+                runtime statically (2.10).
+
+2.2 OpenJFX
+  Version       27, the Maven Central jars org.openjfx:javafx-base,
+                -graphics, -controls and -fxml, each with the classifier win
+                or linux
+  Upstream      openjdk/jfx tag 27-ga
+                (commit e77ca96ebc30a05356082cd56e19bcadccf7dcae)
+                [unverified that the Maven Central build matches this tag]
+  Licence       GPL-2.0-only WITH Classpath-exception-2.0
+  Third party   in javafx.graphics: IJG JPEG, Mesa (MIT), PipeWire headers
+                (MIT), the GCC runtime 14.2.0 (GPL-3.0 with the GCC Runtime
+                Library Exception 3.1, Linux only); the win jar also carries
+                the Microsoft C/C++ runtime DLLs (2.10)
+  Text          legal/openjfx/: LICENSE, ADDITIONAL_LICENSE_INFO,
+                ASSEMBLY_EXCEPTION and
+                modules/javafx.graphics/src/main/legal/*.md from the tag
+                above, added by this project because the Maven jars contain
+                no licence or notice files
+  Source        attached: the source archive of openjdk/jfx 27-ga (the Maven
+                Central sources jars lack the native code and the build
+                scripts)
+
+2.3 ONNX Runtime
+  Version       com.microsoft.onnxruntime:onnxruntime 1.30.0
+  Upstream      microsoft/onnxruntime tag v1.30.0
+                (commit f2c39fe2f838cf35ce7da92824f5a5e3ee6e88a7)
+  Licence       MIT
+  Copyright     Copyright (c) Microsoft Corporation
+  Third party   statically linked into the natives and listed in the jar's
+                ThirdPartyNotices.txt: protobuf 33.6, abseil 20250814.0, onnx
+                1.22.0, re2 2024-07-02, flatbuffers 23.5.26, Eigen (MPL-2.0),
+                XNNPACK, cpuinfo, KleidiAI 1.20.0, nlohmann json 3.11.3,
+                SafeInt 3.0.28, GSL 4.2.1, date 3.0.1; in the linux-x64
+                native only: cpp_client_telemetry 3.10.173.1, curl 8.21.0,
+                Mbed TLS 3.6.7 (used under Apache-2.0) and SQLite
+  Not included  ThirdPartyNotices.txt covers every ONNX Runtime build. It
+                also lists Intel MKL and a component under the JSON licence;
+                the shipped CPU natives contain neither (string scan of the
+                1.30.0 natives).
+  Text          legal/onnxruntime/: the MIT licence text from the tag above
+                (the jar has none), and ThirdPartyNotices.txt and Privacy.md
+                from the jar, unmodified
+  Source        linked: the tag above and
+                com.microsoft.onnxruntime:onnxruntime:1.30.0:sources;
+                attached: Eigen from eigen-mirror/eigen at commit
+                1d8b82b0740839c0de7f1242a3585e3390ff5f33, as pinned in the
+                tag's cmake/deps.txt (MPL-2.0 section 3.2(a))
+                [open point O-81: archiving the other cmake/deps.txt
+                sources]
+  Shipped       the linux-x64 and win-x64 natives only, on Windows including
+                onnxruntime_providers_shared.dll [strip list decided in M0]
+  Privacy       the official natives contain telemetry (1DS over HTTPS on
+                Linux, ETW TraceLogging on Windows); the app switches it off
+                per R-NF-12, verified by an M0 spike (O-13); no release
+                bundles ONNX Runtime before that
+
+2.4 PaddleOCR PP-OCRv6 small models
+  Files         the text-detection and the text-recognition model (ONNX)
+                <file names, decided at integration>
+  Source        Hugging Face PaddlePaddle/PP-OCRv6_small_det_onnx and
+                PaddlePaddle/PP-OCRv6_small_rec_onnx at revision <commit>;
+                PaddlePaddle/PaddleOCR at <release tag or commit> for
+                provenance
+  SHA-256       <per file at the pinned revision, also in the checksum file
+                of S-22>
+                [for reference, the copies in basetool-sc-extractor have
+                det d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e
+                rec 5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634]
+  Licence       Apache-2.0 [per the PaddleOCR repository; the licence on the
+                Hugging Face model cards is unverified; O-20]
+  Copyright     Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+  Text          legal/paddleocr/LICENSE (Apache-2.0); in the repository
+                LICENSES/Apache-2.0.txt, added together with the models
+  Modified      no [if converted, quantised or fine-tuned: "modified <date>:
+                <how>" (Apache-2.0 section 4(b))]
+
+2.5 PP-OCRv6 recognition dictionary
+  File          <file name>, 18,708 entries
+  Source        either PaddleOCR ppocr/utils/dict/ppocrv6_dict.txt at <tag or
+                commit> (at commit dab3fe35379033fdcb2d0e9572fac0b36c9a9ebf
+                its SHA-256 is
+                b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d),
+                or the character list in the inference.yml of the
+                recognition model at the revision of 2.4 [decided at
+                integration]
+  Licence       Apache-2.0
+  Modified      if taken from inference.yml: "extracted, one entry per line,
+                <date>" (Apache-2.0 section 4(b))
+
+2.6 Jackson
+  Versions      tools.jackson.core:jackson-databind 3.2.3,
+                tools.jackson.core:jackson-core 3.2.3,
+                com.fasterxml.jackson.core:jackson-annotations 2.22
+  Licence       Apache-2.0
+  Third party   inside jackson-core: FastDoubleParser (MIT, Werner
+                Randelshofer) with fast_float (MIT), bigint (BSD-2-Clause,
+                Tim Buktu) and code by Daniel Lemire (BSL-1.0); Schubfach
+                (MIT, Raffaello Giulietti)
+  Text          legal/jackson/: META-INF/LICENSE and META-INF/NOTICE of each
+                jar, and FastDoubleParser-LICENSE,
+                FastDoubleParser-ThirdParty-LICENSE and Schubfach-LICENSE
+                from jackson-core, unmodified
+  Source        linked: FasterXML/jackson-databind tag jackson-databind-3.2.3
+                (commit 4179a66668017f3dcd7f7f3f22dbc48f0bf88ae5),
+                FasterXML/jackson-core tag jackson-core-3.2.3
+                (commit 8c64e645729259234ba8eae2675aaba1c253c2b5),
+                FasterXML/jackson-annotations tag jackson-annotations-2.22
+                (commit c638c81e78c0857d8d70edf7636066c2abe5a863), and the
+                Maven Central sources jar of each
+
+2.7 SQLite JDBC driver and SQLite
+  Version       org.xerial:sqlite-jdbc 3.53.4.0, with SQLite 3.53.4 inside
+                its natives
+  Licence       Apache-2.0 AND BSD-2-Clause (the zentus portions)
+  Copyright     zentus portions: Copyright 2006 David Crawshaw
+  SQLite        public-domain dedication (SPDX blessing) [unverified at
+                sqlite.org; O-82]
+  Text          legal/sqlite-jdbc/: LICENSE and LICENSE.zentus from the jar,
+                NOTICE from the tag below (the jar does not contain it)
+  Source        linked: xerial/sqlite-jdbc tag 3.53.4.0
+                (commit cab7981c19ce04d691f0675f0b2586afc2bbf803),
+                org.xerial:sqlite-jdbc:3.53.4.0:sources, and the SQLite
+                3.53.4 amalgamation that the tag's Makefile downloads from
+                sqlite.org, because the sources jar does not contain it
+                <download URL and hash, pinned in M0>
+  Also          the Windows DLL contains GCC 11.4 and mingw-w64 runtime
+                start-up code [licence terms unverified; O-82]
+
+2.8 SLF4J API
+  Version       org.slf4j:slf4j-api 2.0.20
+  Licence       MIT
+  Copyright     Copyright (c) 2004-2023 QOS.ch, as in the shipped jar; the
+                LICENSE.txt of the upstream tag reads differently, so the
+                text is taken from the jar
+  Text          legal/slf4j/LICENSE.txt from the jar
+  Source        linked: qos-ch/slf4j tag v_2.0.20
+                (commit 58d80a4fe8f2e811707fcfba4d292b5d62fc2fe9) and
+                org.slf4j:slf4j-api:2.0.20:sources
+
+2.9 Logback
+  Version       ch.qos.logback:logback-classic 1.6.5 and
+                ch.qos.logback:logback-core 1.6.5
+  Licence       EPL-2.0 OR LGPL-2.1-only. This project elects
+                LGPL-2.1-only: Logback names no GPL Secondary Licence for its
+                EPL-2.0 option, so only the LGPL option is compatible with
+                the project licence.
+  Copyright     Copyright (C) 1999-2026, QOS.ch
+  Text          legal/logback/: the LGPL-2.1 text and Logback's dual-licence
+                statement (the jars contain neither)
+  Source        attached: qos-ch/logback tag v_1.6.5
+                (commit d1b829dcdb9fd98511c64401beb1419a9c9384aa); also
+                linked: the Maven Central sources jars
+  Modified      no
+  Notice        This application uses the Logback library, which is covered
+                by the GNU Lesser General Public License version 2.1. The
+                About dialog shows Logback's copyright line and a reference
+                to that licence (LGPL-2.1 section 6).
+
+2.10 Microsoft Visual C++ runtime and Universal C Runtime (Windows only)
+  Files         vcruntime140*.dll, msvcp140*.dll, ucrtbase.dll and
+                api-ms-win-*.dll from the OpenJDK runtime and from
+                javafx-graphics-27-win.jar; the jpackage launcher and
+                msica.dll contain the C runtime statically (2.1); the ONNX
+                Runtime natives import these DLLs
+  Licence       Microsoft's redistribution terms [text not obtained yet;
+                unverified; O-12, O-82]
+  Status        redistributed unmodified. For now the project relies on the
+                System Library definition of GPL-3.0 section 1. A legal review
+                follows before the first release, and a narrow GPL-3.0
+                section 7 additional permission is decided before the first
+                external contribution [open point O-12]. The system-component
+                exception of GPL-2.0 section 3 does not cover components that
+                accompany the executable.
+
+2.11 WiX Toolset parts inside the MSI (Windows only)
+  Version       WiX <version, decided in M1; O-11>
+  Files         the WixToolset.Util custom-action DLL (utilca.dll); with an
+                installer UI also the WixUI dialogs, bitmaps, icons and
+                uica.dll
+  Licence       MS-RL [WiX licence terms not read at the source; O-82]
+  Text          legal/wix/LICENSE.TXT (MS-RL) from the pinned WiX tag, also
+                next to the MSI on the release page
+  Source        attached: the source of these files from wixtoolset/wix at
+                the pinned tag (MS-RL section 3(A))
+  Note          The MSI is one file that embeds both the GPL application and
+                these MS-RL files. Treating it as an aggregate is an
+                interpretation that is not verified, so the MSI is never
+                described as entirely GPL, and a plain archive of the app
+                image is published next to it.
+
+2.12 Fonts [pending design-system decision D10]
+  Per family    name, version, upstream source and commit, SHA-256 of every
+                font file
+  Licence       OFL-1.1. The OFL.txt ships next to the font files and comes
+                from the same source and commit as they do, because the
+                Reserved Font Name can differ between sources. The font files
+                are not subset, converted or otherwise modified.
+
+2.13 Icons [pending design-system decision D10]
+  Set           <name and version>, upstream tarball SHA-256
+  Licence       Apache-2.0, MIT or ISC, depending on the set (Lucide: ISC,
+                plus MIT for the icons derived from Feather)
+  Modified      extracting path data is a modification: "path data extracted
+                into <file>, <date>"
+
+2.14 Star Citizen Fan Kit logo
+  See section 4.
+
+
+3. Content in this repository that is not under the project licence
+-------------------------------------------------------------------
+
+LICENSE and LICENSES/
+  Licence texts; see section 1.
+
+CODE_OF_CONDUCT.md
+  Contributor Covenant 3.0, from EthicalSource/contributor_covenant at commit
+  7255a28d23d5bc296de2e4e4e9bb5ee1126f1345
+  (content/version/3/0/code_of_conduct.md), adapted: the front matter and
+  the editor's note before the enforcement ladder are dropped, and the
+  reporting placeholder is filled in (contact address, the maintainer's
+  roles, GitHub abuse reporting for reports about the maintainer). Licence
+  CC-BY-SA-4.0 (LICENSES/CC-BY-SA-4.0.txt). Its attribution names the
+  Organization for Ethical Source as steward; upstream states no copyright
+  holder, so REUSE.toml names the steward [copyright holder unverified;
+  O-82].
+
+corpus/public/**/*.jpg, *.jpeg, *.png
+  Screenshots of Star Citizen, used as test data. The game content is
+  copyright Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd. Not
+  covered by the project licence; this project grants no rights in them
+  (LICENSES/LicenseRef-Game-Screenshots.txt). Never shipped in the binary
+  installers and archives; they are part of the repository and of its
+  GitHub source archives. [Whether Cloud Imperium's terms allow them in a
+  public repository is unverified; O-28.] The transcriptions in
+  corpus/public/**/expected.json are under the project licence.
+
+docs/images/fankit/*.png
+  Star Citizen Fan Kit artwork; see section 4.
+
+Gradle Wrapper (gradlew, gradlew.bat, gradle/wrapper/gradle-wrapper.jar)
+  Added in M0. Apache-2.0, "Copyright © 2015 the original authors" as in the
+  gradlew header of Gradle 9.8.1; LICENSES/Apache-2.0.txt is added together
+  with the files. Not shipped in the installers.
+
+Recorded UEX API responses
+  None. They are added only once UEX's terms allow it (06-uex-api.md open
+  point 7) and then get their own LicenseRef. Until then the test fixtures
+  are synthetic.
+
+
+4. Star Citizen Fan Kit unit
+----------------------------
+
+The app shows the Star Citizen Fan Kit unit, adopted as in basetool: the
+"Made By The Community" logo together with the two notices below, always as
+one unit. It appears in the app's About dialog and on its onboarding start
+screen (R-UI-19) and in README.md; further places only with the project
+owner's approval. [Whether these placements satisfy the placement rule of
+Fan Kit Guidelines section 2b and the "reasonably prominent location" of
+Agreement clause 2(g) for a desktop app is open point O-79.] The logo files
+are artwork of Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd.,
+used under the Fankit Agreement and the Fan Kit Guidelines. They are not
+covered by the project licence, and this project grants no rights in them
+(LICENSES/LicenseRef-Fankit-Agreement.txt).
+
+  Agreement        Fankit Agreement, accepted by Lucas Greuloch
+  Acceptance date  open point O-26 in docs/adr/0000-open-points.md
+  Kit version      Fankit_2025_11_19: 06_Fankit_Agreement_2025_11_19.pdf
+                   (clause 2(g)) and 08_Fankit_Guidelines.pdf (section 2b)
+                   [file names as recorded in basetool; the documents were
+                   not re-read for this file]
+
+Logo files, copied byte for byte from basetool (github.com/krt-profit/basetool,
+commit 4dfdfc40679d742965abdfadfb4c7304be5987ea):
+
+  docs/images/fankit/MadeByTheCommunity_Black.png
+    1418 x 1418 pixels; basetool docs/images/fankit/MadeByTheCommunity_Black.png
+    SHA-256 cdf1b50182a1702388d65950a970008b148f9c2d241aa80d28b1cf05e7167607
+  docs/images/fankit/MadeByTheCommunity_White.png
+    1418 x 1418 pixels; basetool docs/images/fankit/MadeByTheCommunity_White.png
+    SHA-256 1a146fa257b648baa58840fe17149b7cce06c446d8861586a4749d813372a50b
+  docs/images/fankit/made-by-the-community.png
+    256 x 256 pixels; basetool
+    frontend/src/main/resources/static/images/made-by-the-community.png, the
+    band asset of basetool and basetool-android, in the
+    MadeByTheCommunity_Black design (black ring, white lettering)
+    SHA-256 b6869016da2220a61dc6306f8365dcce006ddb6d8b405545c6d4540166469b6b
+    [whether the kit provides this size or it was scaled from the
+    1418 x 1418 file is not recorded; unverified; O-27]
+
+Which variant goes on which surface (light or dark background) is checked by
+the owner against the kit [open point O-27].
+
+The two notices follow verbatim. They stay in English in every locale, each
+as one unbroken line, and are never reworded, translated, wrapped or
+"tidied"; their quirks are part of the prescribed text.
+
+Fan Kit Guidelines, section 2b (SHA-256 of the UTF-8 line without its line
+break: 154deedbb183aeec2ba7f05c3d16416e55ceee634a36ec1f9ee4785b26467fa1):
+
+Star Citizen®, Roberts Space Industries® and Cloud Imperium ® are registered trademarks of Cloud Imperium Rights LLC
+
+Fankit Agreement, clause 2(g) (SHA-256 of the UTF-8 line without its line
+break: 703b53f047769fe1a5299b53454cc79a36e2b3a09129291baf2c6948ce740933):
+
+This site is not endorsed by or affiliated with the Cloud Imperium or Roberts Space Industries group of companies. All game content and materials are copyright Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd.. Star Citizen®, Squadron 42®, Roberts Space Industries®, and Cloud Imperium® are registered trademarks of Cloud Imperium Rights LLC. All rights reserved.
+
+
+5. Material adapted from other projects
+---------------------------------------
+
+From basetool (github.com/krt-profit/basetool, commit
+4dfdfc40679d742965abdfadfb4c7304be5987ea), where it is licensed under
+GPL-3.0-only. The adapted text was written by Lucas Greuloch, who as its
+copyright holder licenses it here under GPL-3.0-or-later. [Parts were written
+with an AI assistant; whether those parts carry copyright is an unverified
+legal point.]
+
+  CLA.md
+    From CLA.md (version 1.0), modified 2026-10-08. That text is modelled on
+    the Apache Software Foundation Individual Contributor License Agreement,
+    whose copyright is held by The Apache Software Foundation; REUSE.toml
+    therefore names both copyright holders. [The ASF form states no licence
+    of its own; the terms for adapting it are unverified.]
+  .github/SECURITY.md
+    From .github/SECURITY.md, modified 2026-10-08.
+  .gitignore
+    Patterns from .gitignore.
+
+From basetool-sc-extractor (licensed under GPL-3.0-or-later):
+
+  LICENSE
+    Its LICENSE file, the unmodified GPL text (section 1).
+  .gitignore
+    Patterns from .gitignore.
+
+Code adapted from other projects: none yet. Each future entry names the path
+in this repository, the upstream repository, path and commit, the upstream
+licence and copyright line, and the date and nature of the modification.
+
+
+6. Credits that the bundled licences require
+--------------------------------------------
+
+This software is based in part on the work of the Independent JPEG Group.
+
+  IJG licence, condition (2). IJG code is part of the OpenJDK runtime and of
+  OpenJFX.
+
+Portions of this software are copyright © 2026 The FreeType
+Project (https://freetype.org).  All rights reserved.
+
+  FreeType License credit clause, in the wording FreeType suggests, with the
+  year of FreeType 2.14.3. FreeType is bundled in the Windows runtime
+  [whether the pinned Linux build bundles it is checked in M0].
