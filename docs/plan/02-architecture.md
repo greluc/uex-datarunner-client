@@ -494,7 +494,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - test or production mode and environment (R-SUB-8);
   - connection and reference-data age with the background loading line (R-API-1, R-UI-8, R-UI-13);
   - queue-wide blocks with their action: "queue paused – re-authentication required", "queue paused – app token missing or invalid" (R-SUB-11, R-API-7), "UEX not accepting reports for <environment>" (R-CAP-3a, R-SUB-11) and "queue held – UEX API changed" (R-SUB-11);
-  - the UEX staff notification for the report types the app sends (`data_parameters` `notification`), as untrusted plain text (R-UI-8, O-100);
+  - the UEX staff notification for the report types the app sends (`data_parameters` `notification`), as untrusted plain text cut after 280 characters, in short form here and as a banner in the report editor and manual capture (R-UI-8, O-100);
   - counts of reports and jobs that need action, and the next cooldown ETA (R-SUB-4);
   - game and AI state from M5.
 
