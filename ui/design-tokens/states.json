@@ -1,5 +1,5 @@
 {
-  "source": "Claude Design system Tallyline, version 1791537441-68f0",
+  "source": "Claude Design system Tallyline, version 1791542897-a5d3",
   "states": [
     {
       "group": "Recognition confidence (per field)",
@@ -65,7 +65,7 @@
       "tokens": "`needs-confirmation-fg`"
     },
     {
-      "group": "Gate state (per field)",
+      "group": "Row markers and counters",
       "id": "unreviewed",
       "qualifier": "row marker and counter",
       "label": "Unreviewed",
@@ -120,7 +120,7 @@
       "label": "Deviation worsened since your confirmation",
       "icon": "`trending_up`",
       "tokens": "deviation tokens of the new level",
-      "rules": "Shows the new marking and Δ, revokes the confirmation and asks for a new one, also when the field is now minor or has no reference; the report stays a Draft."
+      "rules": "Shows the new marking and Δ, revokes the confirmation and asks for a new one, also when the field is now minor; moving to \"no reference\" never counts as worsened. The report stays a Draft."
     },
     {
       "group": "Superseded (per field)",
@@ -133,7 +133,7 @@
       "group": "Superseded (per field)",
       "id": "superseded-later-reading",
       "label": "Later reading proposed – confirm",
-      "icon": "`swap_horiz` + `help`",
+      "icon": "`timeline`",
       "tokens": "`confidence-confirm-*`"
     },
     {
@@ -251,6 +251,13 @@
     },
     {
       "group": "Report state (chip + icon + label)",
+      "id": "report-possibly-received",
+      "label": "Possibly already received – UEX answered with a duplicate",
+      "icon": "`move_to_inbox`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
       "id": "report-offered-for-discard",
       "label": "Offered for discard",
       "icon": "`auto_delete`",
@@ -309,7 +316,7 @@
       "group": "Report state (chip + icon + label)",
       "id": "report-withdrawn",
       "label": "Withdrawn",
-      "icon": "`undo`",
+      "icon": "`settings_backup_restore`",
       "tokens": "`neutral-*`"
     },
     {
@@ -336,61 +343,75 @@
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-queued",
+      "icon": "`schedule`",
       "label": "Queued"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-sending",
+      "icon": "`send`",
+      "label": "Sending",
+      "notes": "one attempt per send"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-cooldown",
+      "icon": "`hourglass_top`",
       "label": "Waiting for cooldown · ETA"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-sending",
-      "label": "Sending; one attempt per send"
-    },
-    {
-      "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-retrying",
+      "icon": "`autorenew`",
       "label": "Retrying · next try in …"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-held",
+      "icon": "`pause_circle`",
       "label": "Held – acceptance closed · next check …"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-held-retries",
+      "icon": "`sync_disabled`",
       "label": "Held – retries used up · Retry now"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
       "id": "job-paused",
+      "icon": "`lock_reset`",
       "label": "Paused – re-authenticate"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-succeeded"
+      "id": "job-succeeded",
+      "icon": "`cloud_done`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-partially-accepted"
+      "id": "job-partially-accepted",
+      "icon": "`rule`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-outcome-unknown"
+      "id": "job-outcome-unknown",
+      "icon": "`question_mark`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-rejected"
+      "id": "job-rejected",
+      "icon": "`cancel`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-returned"
+      "id": "job-returned",
+      "icon": "`assignment_return`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Job",
-      "id": "job-cancelled"
+      "id": "job-cancelled",
+      "icon": "`stop_circle`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Capture",
@@ -448,11 +469,13 @@
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Game",
-      "id": "game-running"
+      "id": "game-running",
+      "icon": "`sports_esports`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Game",
-      "id": "game-closed"
+      "id": "game-closed",
+      "icon": "`videogame_asset_off`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Game",
@@ -506,15 +529,19 @@
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Connection",
-      "id": "online"
+      "id": "online",
+      "icon": "`cloud`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Connection",
-      "id": "offline"
+      "id": "offline",
+      "icon": "`cloud_off`"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Connection",
-      "id": "refreshing"
+      "id": "refreshing",
+      "icon": "`sync`",
+      "notes": "static"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Connection",
@@ -551,17 +578,20 @@
     {
       "group": "Submission job, capture, folder, game, AI, connection / Mode",
       "id": "env-test",
-      "label": "TEST, `science`"
+      "icon": "`science`",
+      "label": "TEST"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Mode",
       "id": "env-production",
-      "label": "PRODUCTION, `public`"
+      "icon": "`public`",
+      "label": "PRODUCTION"
     },
     {
       "group": "Submission job, capture, folder, game, AI, connection / Mode",
       "id": "env-other-channel",
-      "label": "Game runs on PTU – confirm at release, `sync_problem`"
+      "icon": "`sync_problem`",
+      "label": "Game runs on PTU – confirm at release"
     },
     {
       "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
@@ -590,10 +620,10 @@
     {
       "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
       "id": "uex-approved",
-      "label": "UEX: approved · final",
+      "label": "UEX: approved",
       "icon": "`verified`",
       "tokens": "`success-*`",
-      "accessible-text": "\"UEX status: approved, final\""
+      "accessible-text": "\"UEX status: approved; still checked for changes\""
     },
     {
       "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
@@ -687,7 +717,7 @@
       "group": "Report ID mapping and per-row withdrawal (History detail)",
       "id": "row-withdrawn",
       "label": "Withdrawn",
-      "icon": "`undo`",
+      "icon": "`settings_backup_restore`",
       "tokens": "`neutral-fg`",
       "accessible-text": "\"Row withdrawn\""
     },
@@ -734,7 +764,7 @@
     {
       "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
       "id": "queue-held-api-changed",
-      "label": "Queue held – UEX API changed; waiting for an app update",
+      "label": "Queue held – UEX API changed; waiting for an app update · Retry now",
       "icon": "`api`",
       "tokens": "`caution-*`",
       "accessible-text": "\"Queue held: UEX API changed\""
@@ -761,7 +791,8 @@
       "label": "Waiting for the row budget · 2 min",
       "icon": "`hourglass_bottom`",
       "tokens": "`info-*`",
-      "accessible-text": "\"Waiting for the row budget, about 2 minutes\""
+      "accessible-text": "\"Waiting for the row budget, about 2 minutes\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Job"
     },
     {
       "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
@@ -769,7 +800,8 @@
       "label": "Waiting for UEX's retry time · 45 s",
       "icon": "`timer`",
       "tokens": "`info-*`",
-      "accessible-text": "\"Waiting for UEX's retry time, 45 seconds\""
+      "accessible-text": "\"Waiting for UEX's retry time, 45 seconds\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Job"
     },
     {
       "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
@@ -829,15 +861,15 @@
       "accessible-text": "\"Account not verified with RSI\""
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Release split and returns",
       "id": "release-split",
-      "label": "Will be sent as 3 reports, one per container-size set",
+      "label": "Will be sent as 4 reports: one per container-size set, plus one for the row without sizes",
       "icon": "`call_split`",
       "tokens": "`info-*`",
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Release split and returns",
       "id": "returned-date-rejected",
       "label": "Returned: report date rejected by UEX",
       "icon": "`event_busy`",
@@ -845,7 +877,7 @@
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Release split and returns",
       "id": "returned-screenshot-too-large",
       "label": "Returned: screenshot too large",
       "icon": "`photo_size_select_large`",
@@ -853,31 +885,75 @@
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
-      "id": "capture-ready",
-      "label": "Ready",
-      "icon": "`check`",
-      "tokens": "`neutral-*`",
-      "accessible-text": "\"Capture ready to scan\""
+      "group": "Release split and returns",
+      "id": "returned-too-many-rows",
+      "label": "Returned: too many rows",
+      "icon": "`format_list_numbered`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Release split and returns",
+      "id": "returned-terminal-not-found",
+      "label": "Returned: terminal not found at UEX",
+      "icon": "`wrong_location`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split and returns",
+      "id": "returned-restart",
+      "label": "Returned: interrupted – restart",
+      "icon": "`power_settings_new`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Capture states before and after the scan",
+      "id": "capture-waiting-version-data",
+      "label": "Waiting for the first UEX version data",
+      "icon": "`cloud_sync`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"Capture imported, waiting for the first UEX version data\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Capture"
+    },
+    {
+      "group": "Capture states before and after the scan",
+      "id": "capture-ready",
+      "label": "Ready to scan",
+      "icon": "`check`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"Capture ready to scan\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Capture"
+    },
+    {
+      "group": "Capture states before and after the scan",
       "id": "capture-refinery",
       "label": "Refinery terminal – not supported",
       "icon": "`factory`",
       "tokens": "`neutral-*`",
-      "accessible-text": "same as label"
+      "accessible-text": "\"Scan result: refinery terminal, not supported\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Capture"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Capture states before and after the scan",
+      "id": "folder-polling",
+      "label": "Polling active",
+      "icon": "`manage_search`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"Folder polled for new files; file watching unavailable\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Folder"
+    },
+    {
+      "group": "Capture intake (files set aside; not captures)",
       "id": "intake-hdr",
-      "label": "HDR or unsupported colour format – use an SDR copy",
+      "label": "HDR or unsupported colour encoding – use an SDR copy",
       "icon": "`hdr_on`",
       "tokens": "`caution-*`",
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Capture intake (files set aside; not captures)",
       "id": "intake-hdr-container",
       "label": "HDR screenshot format (JPEG XR/AVIF/EXR) – not supported · Import the SDR copy",
       "icon": "`hdr_off`",
@@ -885,7 +961,7 @@
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Capture intake (files set aside; not captures)",
       "id": "intake-sdr-copy-used",
       "label": "HDR original – SDR copy used",
       "icon": "`published_with_changes`",
@@ -893,7 +969,7 @@
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Capture intake (files set aside; not captures)",
       "id": "intake-decode-failed",
       "label": "Decode failed after retries",
       "icon": "`broken_image`",
@@ -901,17 +977,33 @@
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
-      "id": "intake-too-large",
-      "label": "Image too large",
+      "group": "Capture intake (files set aside; not captures)",
+      "id": "intake-file-too-large",
+      "label": "File too large",
+      "icon": "`storage`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Capture intake (files set aside; not captures)",
+      "id": "intake-too-many-pixels",
+      "label": "Too many pixels",
       "icon": "`aspect_ratio`",
       "tokens": "`caution-*`",
       "accessible-text": "same as label"
     },
     {
-      "group": "Release split, returns, capture intake",
+      "group": "Capture intake (files set aside; not captures)",
+      "id": "intake-profile-too-large",
+      "label": "Colour profile too large",
+      "icon": "`palette`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Capture intake (files set aside; not captures)",
       "id": "intake-skipped-after-crash",
-      "label": "Skipped after a crash – import again",
+      "label": "Skipped after a crash – Re-import",
       "icon": "`restart_alt`",
       "tokens": "`caution-*`",
       "accessible-text": "same as label"
@@ -991,9 +1083,9 @@
     {
       "group": "Game version, game log, faction affinity, staff notice",
       "id": "gamelog-sizes-inconsistent",
-      "label": "Container sizes inconsistent with the game log – needs confirmation",
-      "icon": "`difference`",
-      "tokens": "`caution-*`; sets the gate marker",
+      "label": "Container sizes ambiguous – game log disagrees · not sent",
+      "icon": "`cancel_schedule_send`",
+      "tokens": "`neutral-*`; the `field-not-sent` state; does not block, no gate marker",
       "accessible-text": "same as label"
     },
     {
@@ -1015,10 +1107,10 @@
     {
       "group": "Game version, game log, faction affinity, staff notice",
       "id": "staff-notice",
-      "label": "UEX notice: [text, plain, at most 280 characters]",
+      "label": "UEX notice: [text, plain, cut after 280 characters, no links]",
       "icon": "`campaign`",
-      "tokens": "`info-*` banner",
-      "accessible-text": "\"Notice from UEX staff: [text]\""
+      "tokens": "short form in the StatusBar of every view (shortened to the space, ellipsis, no click action); `info-*` banner in the report editor and Manual capture",
+      "accessible-text": "\"Notice from UEX staff: [text, cut after 280 characters]\""
     },
     {
       "group": "AI jobs",
@@ -1047,9 +1139,9 @@
     {
       "group": "AI jobs",
       "id": "ai-job-failed",
-      "label": "Failed – output cut off / unreadable answer / crop no longer available · Retry",
-      "icon": "`error`",
-      "tokens": "`critical-*`",
+      "label": "AI could not read it – output cut off / unreadable answer / crop no longer available; OCR result kept · Retry",
+      "icon": "`report_off`",
+      "tokens": "`info-*`",
       "accessible-text": "same as label"
     },
     {
@@ -1087,34 +1179,46 @@
     {
       "group": "AI jobs",
       "id": "ai-pull-progress",
-      "label": "Downloading model · 2.1 of 5.2 GB (40 %)",
+      "label": "Downloading model · 2.1 of 5.2 GB (40%)",
       "icon": "`download`",
       "tokens": "`info-*`",
       "accessible-text": "same as label"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-success"
+      "id": "feedback-success",
+      "icon": "`task_alt`",
+      "notes": "success"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-info"
+      "id": "feedback-info",
+      "icon": "`info`",
+      "notes": "info"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-warning"
+      "id": "feedback-warning",
+      "icon": "`warning`",
+      "notes": "caution"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-danger"
+      "id": "feedback-danger",
+      "icon": "`error`",
+      "notes": "critical"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-neutral"
+      "id": "feedback-neutral",
+      "icon": "`circle`",
+      "notes": "neutral"
     },
     {
       "group": "Generic feedback",
-      "id": "feedback-update"
+      "id": "feedback-update",
+      "icon": "`update`",
+      "notes": "info"
     }
   ]
 }
