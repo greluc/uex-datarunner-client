@@ -128,7 +128,7 @@ tools/ocr-eval → recognition, reference-data, adapter-ocr, adapter-vlm, adapte
 | `CaptureImageLoader` | capture | decode a Capture's file into an `ImageRaster` when its OCR job starts (R-CAP-8 decoding, pixel budget R-OCR-17) | adapter-files |
 | `CaptureRepository` / `ScanRepository` / `ReportRepository` / `SubmissionJobRepository`, `CooldownRepository` / `GameObservationRepository` | capture / recognition / reporting / submission / game | persistence (one repository per aggregate); `save(newState, expectedVersion, events)` writes state and outbox rows in one transaction (11 §A6); `ScanRepository` keeps the scans for re-stitching and AI fusion; `GameObservationRepository` holds the observed version history per UEX environment and the observed running channels | adapter-storage |
 | `GameLocalizationSource` | game | localised names from `global.ini` | adapter-files |
-| `GameLogSource` | game | witness facts from `Game.log` (kiosk location, assortment, container sizes per commodity, game version) with their log time, parsed by the format validated for the game version; player handle and ID are dropped while parsing (R-OCR-20, A24) | adapter-files |
+| `GameLogSource` | game | witness facts from `Game.log` and `build_manifest.id` (kiosk location, buy-side assortment, buy-side container sizes per commodity, branch and build version) with their log time, parsed by the format validated for the game version; player handle and ID are dropped while parsing (R-OCR-20, A24) | adapter-files |
 | `CaptureSettingsStore`, `GameSettingsStore`, `ReportingSettingsStore`, `RecognitionSettingsStore`, `AppSettingsStore` | capture / game / reporting / workflows / workflows | user settings per the settings catalogue below, in the versioned config file (R-NF-5) | adapter-files |
 | `ImageEncoder` | reporting | encode the composed, redacted upload screenshot | adapter-files |
 | `WorkingCopyStore` | workflows | save/load/delete the redacted, perspective-corrected panel crops per `CaptureId` and panel kind (lossless, about 1:1 source scale, R-CAP-7) and the user-selected attachment region per `ReportId` (R-MAN-5) | adapter-files |
@@ -594,7 +594,7 @@ The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to lea
 
 | # | Source | What is used | When | Control | Ref. |
 |---|---|---|---|---|---|
-| G1 | the game's `Game.log` of the capture's channel | witness facts only: kiosk location, assortment, container sizes per commodity, game version, each with its log time; kept with the scan in L3. The player's handle and player ID are dropped while parsing and never stored, logged or exported; stock quantities and prices are never used. Never part of the diagnostics export | while the witness is on, for captures of a game version whose line format is validated | opt-in, default off (`GameSettingsStore`) | R-OCR-20, A24 |
+| G1 | the game's `Game.log` of the capture's channel, and its `build_manifest.id` | witness facts only: kiosk location, buy-side assortment, container sizes per commodity, branch and build version, each with its log time; kept with the scan in L3. The player's handle and player ID, network endpoints, addresses, session IDs and user paths are dropped while parsing and never stored, logged or exported; stock quantities and prices are never used. Never part of the diagnostics export | while the witness is on, for captures of a game version whose line format is validated | opt-in, default off (`GameSettingsStore`) | R-OCR-20, A24 |
 
 ## 10. Build and CI
 
