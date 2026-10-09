@@ -1,0 +1,229 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -tl-surface-0: #12202d;
+    -tl-surface-1: #172635;
+    -tl-surface-sunken: #0e1923;
+    -tl-border-subtle: #22374a;
+    -tl-border-default: #2c4357;
+    -tl-text-primary: #e8eef4;
+    -tl-text-secondary: #b3c2d1;
+    -tl-accent: #7cc3ef;
+    -tl-focus-ring: #b4e0fa;
+    -tl-selection-row-bg: #1f3a52;
+    -tl-selection-row-mark: #7cc3ef;
+    -tl-row-hover-bg: #1b2c3c;
+    -tl-row-hover-mark: #4f6a85;
+    -tl-confidence-confirm-border: #e5c25c;
+    -tl-confidence-select-border: #e5c25c;
+    -tl-confidence-correct-border: #ff8078;
+    -tl-user-entered-border: #c9d3df;
+    -tl-confirmed-border: #52cfb2;
+    -tl-double-confirmed-border: #52cfb2;
+    -tl-deviation-minor-bg: #2a2913;
+    -tl-deviation-minor-fg: #e6d67a;
+    -tl-deviation-major-bg: #62300c;
+    -tl-deviation-major-fg: #ff9440;
+    -tl-deviation-major-badge-bg: #ff9440;
+    -tl-deviation-major-badge-fg: #1a0d02;
+    -tl-no-reference-bg: #262d37;
+    -tl-no-reference-border: #7189a2;
+    -tl-needs-confirmation-fg: #ff8078;
+    -fx-background-color: -tl-surface-0;
+    -fx-font-family: "IBM Plex Sans";
+    -fx-font-size: 14px;
+}
+
+.review-table {
+    -fx-fixed-cell-size: 36px;
+    -fx-background-color: -tl-surface-sunken;
+    -fx-border-color: -tl-border-default;
+    -fx-border-width: 1px;
+}
+
+.review-table .column-header-background,
+.review-table .column-header,
+.review-table .filler {
+    -fx-background-color: -tl-surface-1;
+}
+
+.review-table .column-header {
+    -fx-border-color: -tl-border-subtle;
+    -fx-border-width: 0 1px 1px 0;
+    -fx-padding: 0 12px;
+    -fx-pref-height: 32px;
+}
+
+.review-table .column-header .label {
+    -fx-text-fill: -tl-text-secondary;
+    -fx-font-family: "IBM Plex Sans SmBld";
+    -fx-font-size: 12px;
+}
+
+.review-table .table-row-cell {
+    -fx-background-color: -tl-border-subtle, -tl-surface-sunken;
+    -fx-background-insets: 0, 0 0 1px 0;
+    -fx-padding: 0;
+}
+
+.review-table .table-row-cell:hover {
+    -fx-background-color: -tl-border-subtle, -tl-row-hover-mark, -tl-row-hover-bg;
+    -fx-background-insets: 0, 0 0 1px 0, 0 0 1px 2px;
+}
+
+.review-table .table-row-cell:selected,
+.review-table .table-row-cell:selected:hover {
+    -fx-background-color: -tl-border-subtle, -tl-selection-row-mark, -tl-selection-row-bg;
+    -fx-background-insets: 0, 0 0 1px 0, 0 0 1px 4px;
+}
+
+.review-table .table-cell {
+    -tl-cell-noref: transparent;
+    -tl-cell-conf: transparent;
+    -tl-cell-focus: transparent;
+    -fx-background-color: transparent;
+    -fx-border-color: -tl-cell-noref, -tl-cell-conf, -tl-cell-focus;
+    -fx-border-width: 1px, 2px, 2px;
+    -fx-border-style: segments(3px, 2px), solid, solid;
+    -fx-border-insets: 0, 0, 0;
+    -fx-padding: 0 12px;
+    -fx-text-fill: -tl-text-primary;
+    -fx-alignment: center-left;
+    -fx-text-overrun: center-ellipsis;
+    -fx-ellipsis-string: "…";
+}
+
+.review-table .table-cell.num {
+    -fx-alignment: center-right;
+    -fx-font-family: "JetBrains Mono NL";
+}
+
+.review-table .table-cell.name {
+    -fx-font-family: "IBM Plex Sans SmBld";
+}
+
+.review-table .table-cell.slot,
+.review-table .table-cell.marker {
+    -fx-padding: 0;
+    -fx-alignment: center;
+}
+
+.review-table .table-cell:deviation-minor {
+    -fx-background-color: -tl-deviation-minor-bg;
+}
+
+.review-table .table-cell:deviation-major {
+    -fx-background-color: -tl-deviation-major-bg;
+}
+
+.review-table .table-cell:no-reference {
+    -tl-cell-noref: -tl-no-reference-border;
+    -fx-background-color: -tl-no-reference-bg;
+    -fx-border-insets: 0, 1px, 1px;
+}
+
+.review-table .table-cell:confidence-confirm {
+    -tl-cell-conf: -tl-confidence-confirm-border;
+}
+
+.review-table .table-cell:confidence-select {
+    -tl-cell-conf: -tl-confidence-select-border;
+}
+
+.review-table .table-cell:confidence-correct {
+    -tl-cell-conf: -tl-confidence-correct-border;
+}
+
+.review-table .table-cell:user-entered {
+    -tl-cell-conf: -tl-user-entered-border;
+}
+
+.review-table .table-cell:confirmed {
+    -tl-cell-conf: -tl-confirmed-border;
+}
+
+.review-table .table-cell:double-confirmed {
+    -tl-cell-conf: -tl-double-confirmed-border;
+    -fx-border-width: 1px, 1px, 2px;
+}
+
+.review-table .table-cell:focused {
+    -tl-cell-focus: -tl-focus-ring;
+}
+
+.review-table .table-cell:focused:confidence-confirm,
+.review-table .table-cell:focused:confidence-select,
+.review-table .table-cell:focused:confidence-correct,
+.review-table .table-cell:focused:user-entered,
+.review-table .table-cell:focused:confirmed {
+    -fx-border-insets: 0, 0, 3px;
+}
+
+.review-table .table-cell:focused:no-reference:confidence-confirm,
+.review-table .table-cell:focused:no-reference:confidence-select,
+.review-table .table-cell:focused:no-reference:confidence-correct,
+.review-table .table-cell:focused:no-reference:user-entered,
+.review-table .table-cell:focused:no-reference:confirmed {
+    -fx-border-insets: 0, 1px, 4px;
+}
+
+.lead-icon {
+    -fx-min-width: 16px;
+    -fx-min-height: 16px;
+    -fx-max-width: 16px;
+    -fx-max-height: 16px;
+    -fx-background-color: transparent;
+    -fx-scale-shape: true;
+    -fx-shape: "M 8 0 A 8 8 0 1 1 7.99 0 Z";
+}
+
+.table-cell:confidence-confirm .lead-icon,
+.table-cell:confidence-select .lead-icon {
+    -fx-background-color: -tl-confidence-confirm-border;
+}
+
+.table-cell:confidence-correct .lead-icon {
+    -fx-background-color: -tl-confidence-correct-border;
+}
+
+.table-cell:user-entered .lead-icon {
+    -fx-background-color: -tl-user-entered-border;
+}
+
+.table-cell:confirmed .lead-icon,
+.table-cell:double-confirmed .lead-icon {
+    -fx-background-color: -tl-confirmed-border;
+}
+
+.value-text {
+    -fx-text-fill: -tl-text-primary;
+    -fx-font-family: "JetBrains Mono NL";
+    -fx-font-size: 14px;
+}
+
+.delta-badge {
+    -fx-font-family: "JetBrains Mono NL";
+    -fx-font-size: 12px;
+    -fx-padding: 0 4px;
+    -fx-background-radius: 2px;
+}
+
+.table-cell:deviation-minor .delta-badge {
+    -fx-text-fill: -tl-deviation-minor-fg;
+}
+
+.table-cell:deviation-major .delta-badge {
+    -fx-background-color: -tl-deviation-major-badge-bg;
+    -fx-text-fill: -tl-deviation-major-badge-fg;
+}
+
+.flag {
+    -fx-background-color: -tl-needs-confirmation-fg;
+    -fx-min-width: 12px;
+    -fx-min-height: 14px;
+    -fx-max-width: 12px;
+    -fx-max-height: 14px;
+    -fx-scale-shape: true;
+    -fx-shape: "M 0 0 h 2 v 14 h -2 z M 2 0 h 10 l -3 3.5 l 3 3.5 h -10 z";
+}

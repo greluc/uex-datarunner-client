@@ -1,0 +1,75 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -tl-accent: #7cc3ef;
+    -tl-surface-0: #12202d;
+    -tl-text-primary: #e8eef4;
+    -tl-2x: #00aa00;
+    -tl-bead: #ff9440;
+    -tl-red: #00ff00;
+    -tl-Mixed-Case: #0000ff;
+    -tl-alias: -tl-accent;
+    red: #00ff00;
+    bead: #00ff00;
+    fade: #00ff00;
+    -fx-base: -tl-surface-0;
+    -fx-accent: -tl-accent;
+}
+
+.probe-named-red {
+    -fx-background-color: red;
+}
+
+.probe-bare-bead {
+    -fx-background-color: bead;
+}
+
+.probe-bare-fade {
+    -fx-background-color: fade;
+}
+
+.probe-tl-red {
+    -fx-background-color: -tl-red;
+}
+
+.probe-tl-bead {
+    -fx-background-color: -tl-bead;
+}
+
+.probe-digit {
+    -fx-background-color: -tl-2x;
+}
+
+.probe-case-exact {
+    -fx-background-color: -tl-Mixed-Case;
+}
+
+.probe-case-lower {
+    -fx-background-color: -tl-mixed-case;
+}
+
+.probe-alias {
+    -fx-background-color: -tl-alias;
+}
+
+.probe-derive {
+    -fx-background-color: derive(-tl-accent, -40%);
+}
+
+.probe-ladder {
+    -fx-background-color: ladder(-tl-surface-0, white 49%, black 50%);
+}
+
+.probe-missing {
+    -fx-background-color: -tl-does-not-exist;
+}
+
+.button.probe-modena-rule {
+    -fx-background-color: -tl-accent;
+    -fx-text-fill: -tl-surface-0;
+}
+
+.label.probe-text {
+    -fx-text-fill: -tl-text-primary;
+}

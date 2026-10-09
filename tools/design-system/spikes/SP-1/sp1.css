@@ -1,0 +1,131 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -fx-font-size: 10px;
+    -tl-space-8: 8px;
+    -tl-space-16: 16px;
+    -tl-space-alias: -tl-space-16;
+    -tl-space-em: 1.5em;
+    -tl-radius-md: 4px;
+    -tl-width-state: 2px;
+    -tl-font-body: 14px;
+    -tl-duration-fast: 400ms;
+    -tl-duration-show: 120ms;
+    -tl-duration-forever: indefinite;
+    -tl-fill: #1d2e3f;
+    -tl-fill-hover: #7cc3ef;
+    -tl-border: #ff9440;
+}
+
+.pad-px {
+    -fx-padding: -tl-space-16;
+    -fx-background-color: -tl-fill;
+    -fx-background-radius: -tl-radius-md;
+    -fx-border-color: -tl-border;
+    -fx-border-width: -tl-width-state;
+    -fx-border-radius: -tl-radius-md;
+    -fx-pref-width: 200px;
+}
+
+.pad-mixed {
+    -fx-padding: -tl-space-8 -tl-space-16;
+    -fx-background-color: -tl-fill, -tl-border;
+    -fx-background-insets: 0, -tl-width-state;
+}
+
+.pad-alias {
+    -fx-padding: -tl-space-alias;
+}
+
+.pad-em-root-defined {
+    -fx-font-size: 20px;
+    -fx-padding: -tl-space-em;
+}
+
+.pad-em-local-defined {
+    -fx-font-size: 20px;
+    -tl-space-em-local: 1.5em;
+    -fx-padding: -tl-space-em-local;
+}
+
+.pad-em-literal {
+    -fx-font-size: 20px;
+    -fx-padding: 1.5em;
+}
+
+.font-lookup {
+    -fx-font-size: -tl-font-body;
+}
+
+.box-spacing {
+    -fx-spacing: -tl-space-16;
+}
+
+.density-compact {
+    -tl-space-16: 6px;
+}
+
+.trans-shorthand {
+    -fx-background-color: -tl-fill;
+    transition: -fx-background-color -tl-duration-fast linear;
+}
+
+.trans-shorthand:hover-sim {
+    -fx-background-color: -tl-fill-hover;
+}
+
+.trans-longhand {
+    -fx-background-color: -tl-fill;
+    transition-property: -fx-background-color;
+    transition-duration: -tl-duration-fast;
+    transition-timing-function: linear;
+}
+
+.trans-longhand:hover-sim {
+    -fx-background-color: -tl-fill-hover;
+}
+
+.trans-literal {
+    -fx-background-color: -tl-fill;
+    transition: -fx-background-color 400ms linear;
+}
+
+.trans-literal:hover-sim {
+    -fx-background-color: -tl-fill-hover;
+}
+
+.tooltip {
+    -fx-show-delay: -tl-duration-show;
+    -fx-show-duration: -tl-duration-forever;
+    -fx-hide-delay: -tl-duration-show;
+}
+
+.probe-single-sizes {
+    -fx-pref-width: -tl-space-16;
+    -fx-min-height: -tl-space-16;
+}
+
+.probe-pad-four {
+    -fx-padding: -tl-space-8 -tl-space-8 -tl-space-8 -tl-space-8;
+}
+
+.probe-gap-root-em {
+    -fx-font-size: 20px;
+    -fx-graphic-text-gap: -tl-space-em;
+}
+
+.probe-gap-local-em {
+    -fx-font-size: 20px;
+    -tl-gap-local: 1.5em;
+    -fx-graphic-text-gap: -tl-gap-local;
+}
+
+.probe-label-padding {
+    -fx-label-padding: -tl-space-16;
+}
+
+.probe-fixed-cell {
+    -tl-row: 36px;
+    -fx-fixed-cell-size: -tl-row;
+}

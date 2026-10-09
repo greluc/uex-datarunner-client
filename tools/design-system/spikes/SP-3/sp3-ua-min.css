@@ -1,0 +1,196 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -tl-ua-surface: #12202d;
+    -tl-ua-surface-raised: #1d2e3f;
+    -tl-ua-border: #2c4357;
+    -tl-ua-border-strong: #7189a2;
+    -tl-ua-text: #e8eef4;
+    -tl-ua-text-secondary: #b3c2d1;
+    -tl-ua-accent: #7cc3ef;
+    -tl-ua-selection: #1f3a52;
+    -tl-ua-focus: #b4e0fa;
+    -fx-font-size: 14px;
+    -fx-background-color: -tl-ua-surface;
+}
+
+.label,
+.text,
+.check-box,
+.list-cell,
+.table-cell,
+.menu-item .label,
+.column-header .label {
+    -fx-text-fill: -tl-ua-text;
+}
+
+.button {
+    -fx-background-color: -tl-ua-surface-raised;
+    -fx-border-color: -tl-ua-border-strong;
+    -fx-border-width: 1px;
+    -fx-border-radius: 2px;
+    -fx-background-radius: 2px;
+    -fx-padding: 6px 12px;
+    -fx-text-fill: -tl-ua-text;
+}
+
+.button:focus-visible,
+.text-field:focus-visible,
+.combo-box:focus-visible,
+.check-box:focus-visible > .box {
+    -fx-border-color: -tl-ua-focus;
+    -fx-border-width: 2px;
+}
+
+.text-field {
+    -fx-background-color: -tl-ua-surface;
+    -fx-border-color: -tl-ua-border-strong;
+    -fx-border-width: 1px;
+    -fx-padding: 6px 8px;
+    -fx-text-fill: -tl-ua-text;
+    -fx-prompt-text-fill: -tl-ua-text-secondary;
+    -fx-highlight-fill: -tl-ua-selection;
+    -fx-highlight-text-fill: -tl-ua-text;
+}
+
+.combo-box {
+    -fx-background-color: -tl-ua-surface-raised;
+    -fx-border-color: -tl-ua-border-strong;
+    -fx-border-width: 1px;
+}
+
+.combo-box > .list-cell {
+    -fx-padding: 6px 8px;
+}
+
+.combo-box > .arrow-button {
+    -fx-padding: 0 8px;
+}
+
+.combo-box > .arrow-button > .arrow,
+.scroll-bar > .increment-button > .increment-arrow,
+.scroll-bar > .decrement-button > .decrement-arrow {
+    -fx-background-color: -tl-ua-text;
+    -fx-padding: 3px 5px;
+    -fx-shape: "M 0 0 h 7 l -3.5 4 z";
+}
+
+.scroll-bar:vertical > .decrement-button > .decrement-arrow {
+    -fx-shape: "M 0 4 h 7 l -3.5 -4 z";
+}
+
+.scroll-bar:horizontal > .increment-button > .increment-arrow {
+    -fx-shape: "M 0 0 v 7 l 4 -3.5 z";
+    -fx-padding: 5px 3px;
+}
+
+.scroll-bar:horizontal > .decrement-button > .decrement-arrow {
+    -fx-shape: "M 4 0 v 7 l -4 -3.5 z";
+    -fx-padding: 5px 3px;
+}
+
+.combo-box-popup > .list-view,
+.list-view {
+    -fx-background-color: -tl-ua-surface-raised;
+    -fx-border-color: -tl-ua-border;
+    -fx-border-width: 1px;
+}
+
+.list-cell {
+    -fx-padding: 4px 8px;
+}
+
+.list-cell:filled:hover,
+.list-cell:filled:selected {
+    -fx-background-color: -tl-ua-selection;
+}
+
+.scroll-bar {
+    -fx-background-color: -tl-ua-surface;
+}
+
+.scroll-bar > .thumb {
+    -fx-background-color: -tl-ua-border-strong;
+    -fx-background-insets: 2px;
+    -fx-background-radius: 2px;
+}
+
+.scroll-bar > .increment-button,
+.scroll-bar > .decrement-button {
+    -fx-padding: 4px;
+}
+
+.table-view {
+    -fx-background-color: -tl-ua-surface;
+    -fx-border-color: -tl-ua-border;
+    -fx-border-width: 1px;
+}
+
+.table-view .column-header-background,
+.table-view .column-header,
+.table-view .filler,
+.table-view .corner {
+    -fx-background-color: -tl-ua-surface-raised;
+}
+
+.table-view .column-header {
+    -fx-border-color: -tl-ua-border;
+    -fx-border-width: 0 1px 1px 0;
+    -fx-padding: 4px 8px;
+}
+
+.table-row-cell {
+    -fx-background-color: -tl-ua-surface;
+    -fx-border-color: -tl-ua-border;
+    -fx-border-width: 0 0 1px 0;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: -tl-ua-selection;
+}
+
+.table-cell {
+    -fx-padding: 0 8px;
+    -fx-alignment: center-left;
+}
+
+.tooltip {
+    -fx-background-color: -tl-ua-surface-raised;
+    -fx-border-color: -tl-ua-border-strong;
+    -fx-border-width: 1px;
+    -fx-padding: 6px 8px;
+    -fx-text-fill: -tl-ua-text;
+    -fx-font-size: 14px;
+}
+
+.check-box > .box {
+    -fx-background-color: -tl-ua-surface;
+    -fx-border-color: -tl-ua-border-strong;
+    -fx-border-width: 1px;
+    -fx-padding: 3px;
+}
+
+.check-box > .box > .mark {
+    -fx-padding: 5px;
+    -fx-shape: "M 0 5 l 4 4 l 8 -8 l -1.5 -1.5 l -6.5 6.5 l -2.5 -2.5 z";
+}
+
+.check-box:selected > .box > .mark {
+    -fx-background-color: -tl-ua-accent;
+}
+
+.context-menu {
+    -fx-background-color: -tl-ua-surface-raised;
+    -fx-border-color: -tl-ua-border;
+    -fx-border-width: 1px;
+    -fx-padding: 4px 0;
+}
+
+.menu-item {
+    -fx-padding: 4px 12px;
+}
+
+.menu-item:focused {
+    -fx-background-color: -tl-ua-selection;
+}
