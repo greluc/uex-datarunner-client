@@ -449,3 +449,17 @@ No code was copied and none is ported. Every finding is recorded in our own word
 - **O-103** (strictly serial sending, 90 s send timeout, one shared `HttpClient`, row mapping verified through `data_info`): R-SUB-2, R-SUB-9; 02 §6; 11 §A3 `SubmissionJob`; 05 F21 (dated note), F34; 06 open point 24.
 - **O-104** (parser edge cases, each verified on the corpus): R-OCR-5, R-OCR-7, R-L10N-2, R-API-5; 07 §2.4, §2.5 item 1; 11 §A7; 04 M2; 06 "Observed by third parties".
 - **Follow-up decisions (same day):** the staleness fallback is 15 days, never laxer than the last verified UEX value (O-95); R-CAP-6's optional cleanup stays unchanged (O-102); "Add commodity" in R-MAN-2 no longer filters by the global `is_buyable`/`is_sellable` flags; R-OCR-20 is implemented in M2 instead of M4; R-SUB-13 stays in M1. `CLAUDE.md` follows O-103 (row-to-ID mapping verified through `data_info`).
+
+## Q. Game.log spike (2026-10-09)
+
+@greluc provided his own LIVE `Game.log` and its backups (45 builds, 4.4 to 4.10) for the M2 spike of R-OCR-20. The logs stay outside the repository; the results are in A24, R-OCR-20, 07 §2.5 item 6, 02 §9 G1 and 06 open point 9:
+
+- The kiosk lines list only the buy side. The sell side is not in the log, so the witness covers the sell side's location only.
+- Their container sizes equalled UEX's per-row sets.
+- The line template did not change from 4.4 to 4.10.
+- Shop names are templates shared by several stations, so the terminal follows from the location code.
+- Location codes and internal commodity names need maintained mapping tables, because `global.ini` resolves only part of them.
+- The build version (`4.10.193.11644`, also in `build_manifest.id`) gives only the major and minor version, not the UEX patch string.
+- Every capture of one session was taken 7–170 s after the latest kiosk load at its location; the matching window starts at 5 minutes.
+- Open: the two mapping tables and their per-version validation.
+
