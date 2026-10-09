@@ -423,3 +423,29 @@ No code was copied and none is ported. Every finding is recorded in our own word
   - validate the token and the key before saving them (Quantum);
   - link to the DataRunner sign-up (R-API-4).
 - **A post-alignment similarity check** before the crop geometry counts as established (sc-trade-companion). This is a candidate gate for R-SUB-7, implemented on `ImageRaster` without OpenCV.
+
+## P. Owner decisions on the UEX findings (2026-10-09)
+
+@greluc decided O-85 to O-104 on 2026-10-09; the register ([docs/adr/0000-open-points.md](../adr/0000-open-points.md)) holds each outcome. The sections above stay as written; where they call these points open, this section supersedes them.
+
+- **O-85** (own app token per user, validated before saving; already applied): consistency checked; A2, R-NF-4, R-API-4, 06 open point 2, 04 M0 and risk row, 05 F39 now say it is decided.
+- **O-86** (`X-Client-Version` with the build version on every request): R-API-7; 06 "Basics", open point 20; 02 §6, §9 N1; release process "Versioning".
+- **O-87** (every documented `data_submit` code classified; HTML 404 on a write = "API changed"; `GET /user` re-check before asking for a new key; "HTTP 200" of `requests_limit_reached` corrected): R-SUB-11, R-SUB-9, R-SUB-2, R-UI-1, R-MAN-1; 06 class table; 02 §3 `FixableReason`, §6, §7.
+- **O-88** (UEX lifecycle status per row, polled from `data_info`; prior update on `ok`, reverted on `declined`/`expired`; `date_added` with every ID): R-SUB-4, R-VAL-7; 02 §6; 06 "Reading, correcting and withdrawing reports"; 11 §A1 ("UEX report ID", "UEX report status"), §A4, §A6 (`UexReportStatusChanged`).
+- **O-89** (withdrawal per row, only while `is_editable` = 1, per-row outcome, cooldown lifted; smoke-test withdrawal removed): R-SUB-4, R-SUB-10; 02 §3 (`RowWithdrawal`, `applyWithdrawal`), §6; 11 §A3 I4 and states, §A6; release process step 3; `docs/prompts/design-system.md` history and withdrawal lines.
+- **O-90** (no `data_edit`; withdraw plus duplicate): R-SUB-10; 11 I4; 06 open point 17.
+- **O-91** (`observedAt` sent as `date_added`; hard limit ≤ 30 days; R-VAL-8 kept until our own write check): R-SUB-1, R-VAL-6, R-VAL-8; 02 §6, §9 N1; 06 "Submitting", open point 18; O-53 note.
+- **O-92** (one report per distinct container-size set): R-OCR-9, R-SUB-1, R-SUB-7; 02 §3 "Container-size split" (`splitByContainerSizes`); 07 §2.4; 11 §A1 "Report", "Mandatory field", §A3; 05 F27; 06 open point 9.
+- **O-93** (optional user-entered faction affinity): new **R-SUB-13**; R-SUB-1; 02 §3, §6, §9 N1; 11 §A1, §A4; 04 coverage (M1); 06 open point 27.
+- **O-94** (side from `commodities_prices` instead of global flags; MAX INVENTORY check removed; "Out of Stock" ⇒ SCU 0 as a screen rule): R-VAL-3; 07 §1b, §2.5 item 4; 06 `/commodities` row.
+- **O-95** (staleness default from `commodity.ttl`, fallback 15 days after the follow-up decision): R-UI-11; 02 §2, §5; 07 §2.6; 06 `data_parameters`; O-48 note; design-system brief.
+- **O-96** (`displayname` in matching and search; repeats `Ambiguous`; refinery screens unsupported; prefix names): R-MAN-1, R-OCR-7, R-OCR-8; 02 §5; 07 §2.5 items 1–2; 06 `/terminals` row; 05 F32.
+- **O-97** (`email`, `discord_username` dropped at the ACL): R-SUB-12, R-NF-6; 02 §9 N1; 06 `/user` row; 11 §A7.
+- **O-98** (base64 length ≤ 10,000,000 bytes): R-SUB-7; 02 §6; 06 "Submitting", open point 10.
+- **O-99** (version order only from observation; `/game_versions_all` only for A17): R-CAP-3b, R-OCR-19, A17; 06 `game_versions_all`.
+- **O-100** (staff notification in the status area; `is_datacenter_enabled` = 0 is acceptance closed; A21 note): R-UI-8, R-SUB-5, R-SUB-11, A21; 02 §7; 06 `data_parameters`, open point 28.
+- **O-101** (Game.log as an opt-in, read-only local witness): new **R-OCR-20** and **A24**; R-VAL-2b, R-NF-6; 02 §2 (`GameLogSource`, settings), §9 G1 and L3; 07 §2.5 item 6, §2.7; 11 §A1, §A7; 04 M2 spike and implementation (moved from M4 by a follow-up decision), coverage.
+- **O-102** (no extra requirement; R-CAP-6's optional cleanup stays unchanged): register and 05 F36 only.
+- **O-103** (strictly serial sending, 90 s send timeout, one shared `HttpClient`, row mapping verified through `data_info`): R-SUB-2, R-SUB-9; 02 §6; 11 §A3 `SubmissionJob`; 05 F21 (dated note), F34; 06 open point 24.
+- **O-104** (parser edge cases, each verified on the corpus): R-OCR-5, R-OCR-7, R-L10N-2, R-API-5; 07 §2.4, §2.5 item 1; 11 §A7; 04 M2; 06 "Observed by third parties".
+- **Follow-up decisions (same day):** the staleness fallback is 15 days, never laxer than the last verified UEX value (O-95); R-CAP-6's optional cleanup stays unchanged (O-102); "Add commodity" in R-MAN-2 no longer filters by the global `is_buyable`/`is_sellable` flags; R-OCR-20 is implemented in M2 instead of M4; R-SUB-13 stays in M1. `CLAUDE.md` follows O-103 (row-to-ID mapping verified through `data_info`).

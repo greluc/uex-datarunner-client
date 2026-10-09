@@ -586,8 +586,8 @@ Sources: the project's planning documents (requirements, architecture, OCR conce
   - an environment selector: the environment of the user's last manual report is preselected and shown prominently, also in the release summary; on first use the user chooses. When the running game is on another channel, the selector is highlighted and release asks for an explicit confirmation of the environment;
   - an optional screenshot attachment, mandatory for some users (said in advance); the attachment needs the full-size preview confirmation before release.
 - **Session overview:** all Draft reports of the current session with their status; "Release all ready", which skips blocked reports and lists each with all its block reasons.
-- **History:** submitted reports with time, state, report IDs and a test/production marker; a link to the report on UEX; optionally the processing status at UEX. Actions:
-  - "Withdraw": the report keeps its state and shows a pending notice until UEX confirms, or a failure notice;
+- **History:** submitted reports with time, state, report IDs and a test/production marker; a link to the report on UEX; per row the UEX status (pending, under review, queued, approved, consolidated, declined, expired) with a manual refresh. Actions:
+  - "Withdraw", per row and only while UEX still allows it: each row shows a pending notice until UEX confirms, then its own result (withdrawn, failed, already consolidated), so a report can be partly withdrawn;
   - "Duplicate as new draft" and "Report a misread": disabled with "Evidence no longer available" once the working copies are purged;
   - resolving OutcomeUnknown, including the user's mark "Not received".
 - **Settings**, grouped:
@@ -675,7 +675,7 @@ Labels in quotes are the plan's wording or examples; where only a meaning is giv
     - major (confirmation required, even when read confidently; blocks release until confirmed);
     - no reference (new at this terminal). For a price, the commodity-wide average is shown as extra text; a price more than twice the tolerance away from that average is major, labelled "Reference: commodity average".
   - Container sizes are compared as a set: any difference is at most minor, never major.
-  - Modifier **reference outdated** (the UEX value is older than the staleness limit, 7 days by default): the field shows the reference-outdated icon and label. A minor deviation is then shown like equal, without a deviation background. A major deviation keeps its strong marking and its confirmation requirement. No reference and the commodity average are never outdated. The colour and the confirmation requirement never disagree.
+  - Modifier **reference outdated** (the UEX value is older than the staleness limit, by default UEX's own "outdated after" value, 15 days today, and 15 days while that value is unavailable): the field shows the reference-outdated icon and label. A minor deviation is then shown like equal, without a deviation background. A major deviation keeps its strong marking and its confirmation requirement. No reference and the commodity average are never outdated. The colour and the confirmation requirement never disagree.
   - **Deviation worsened:** if a confirmed field's deviation got worse by the time of release, the field shows its new marking and Δ and asks for a new confirmation; the report stays a Draft.
   - Channel: deviation is background plus deviation icon plus Δ badge (absolute and %) plus label, with the UEX value, its age and the crop visible; no reference is background plus icon plus the label "No reference", with no Δ. Hues: D7.
   - Compact cells: propose an icon-slot layout (for example, the deviation icon inside the Δ badge and the confidence icon at the leading edge), say where the labels appear, and mark it provisional; a later JavaFX spike confirms it.
@@ -708,7 +708,7 @@ Labels in quotes are the plan's wording or examples; where only a meaning is giv
   - A Draft older than the hard age limit shows "Offered for discard"; it is never discarded automatically.
   - Released; Queued; WaitingForCooldown (with remaining time and "Send the others now"); Submitted; PartiallyAccepted (with the per-row result); OutcomeUnknown (may carry the user's mark "Not received"); Rejected; Withdrawn; **Discarded** (final; always by the user, never automatically; the reason is the user's own choice, a game-version change, or the report being too old; no "Duplicate as new draft").
   - Rejected offers "Duplicate as new draft", except after an invalid game version: then the message is "UEX no longer accepts the game version valid at capture time", there is no duplicate action, and the report stays Rejected.
-  - "Cancel release" returns Released, Queued and WaitingForCooldown reports to Draft; while the job is sending it is disabled with its reason. A withdrawal shows a pending notice until UEX confirms it, or a failure notice; the report keeps its state until then.
+  - "Cancel release" returns Released, Queued and WaitingForCooldown reports to Draft; while the job is sending it is disabled with its reason. A withdrawal works per row: each row shows a pending notice until UEX confirms it, then its own result (withdrawn, failed, already consolidated); the report keeps its state until every accepted row is withdrawn, and a partly withdrawn report shows the per-row results.
   - Release warnings (non-blocking): UEX is not accepting reports right now (the job will be held); offline (sending waits for a connection).
 - **Game version** (per capture and report): certain; provisional; uncertain; unknown. The user is needed when the version is uncertain or unknown, and when it is no longer the newest observed version (a patch arrived before release or sending: "to be checked", report finding "game version changed"). "To be checked" offers three actions: keep the capture-time version; switch to a version observed around the capture time (uncertain only); discard. An unknown version (for example a test channel without a published version) blocks release. The version is read-only everywhere else.
 - **Submission job** (of a released report): queued; waiting for cooldown (ETA); sending; retrying with backoff; held – acceptance closed or no recent acceptance state could be fetched (with the next check), or retries used up (with "Retry now"); paused – re-authenticate. Final outcomes: succeeded, partially accepted, outcome unknown, rejected, returned (with reason), cancelled. There is no "failed".
@@ -817,7 +817,7 @@ Invented values for layout only, supplied by the owner and marked as sample data
 
 **Notification panel** (newest first): the file set aside at 21:20, the import result (21:15), and the 21:02 TEST submission from History.
 
-**Settings** (start values from the plan): send threshold 0.80; reference outdated after 7 days; observation age: confirmation per report above 60 min; hard limit 24 h (shown read-only, not a setting); clipboard monitoring off; import cutoff of [FOLDER]: [DATE]. AI model download: [MODEL NAME], 5.2 GB, 41 GB free (sample).
+**Settings** (start values from the plan): send threshold 0.80; reference outdated after 15 days (from UEX; 15 days while UEX's value is unavailable); observation age: confirmation per report above 60 min; hard limit 24 h (shown read-only, not a setting); clipboard monitoring off; import cutoff of [FOLDER]: [DATE]. AI model download: [MODEL NAME], 5.2 GB, 41 GB free (sample).
 
 **About** (sample; the app generates the real list from what it ships):
 
