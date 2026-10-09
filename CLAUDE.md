@@ -64,7 +64,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
   4. Ported code goes through TDD like new code, loses its comments, and Kotlin, Compose or Spring idioms are translated into this project's conventions.
 - The PP-OCR models are Apache-2.0 and may be bundled with their `NOTICE` entry, SHA-256 and the Apache-2.0 text.
 - SC-Datarunner-UEX is closed source: **do not decompile** it or copy from it.
-- No secrets (UEX secret key, app token) in code, tests, logs, fixtures or commits. No credential is compiled into a released binary; every user enters their own key and, if UEX requires one, their own app token (A2).
+- No secrets (UEX secret key, app token) in code, tests, logs, fixtures or commits. No credential is compiled into a released binary; every user enters their own secret key and their own UEX app token (A2, O-85).
 - Corpus screenshots: redact the balance ("CURRENT BALANCE") before they enter the repo. Public corpus in `corpus/public/` (rules in `corpus/README.md`); do not count entries with `"verified": false` as golden metrics. The images are Star Citizen game content, not under the GPL (`LicenseRef-Game-Screenshots`); their transcriptions are under the project licence.
 
 ### External writes (HARD RULE)

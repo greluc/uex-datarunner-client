@@ -1,12 +1,13 @@
 # Bug analysis of SC-Datarunner-UEX and fixes in our client
 
-> **Doc type:** Living reference — current. Last reviewed: 2026-10-08.
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-09.
 
 ## Sources – please note
 
 - SC-Datarunner-UEX is **closed source**. The repo contains only the README, images and Pages configuration; the binaries are under "Releases". There is no source code we could inspect. The binaries were deliberately **not** decompiled.
 - The basis is the public issues (#2–#38), the release notes (v0.5.1–v0.12.0) and the README.
-- Comments in the issues were not visible without logging in. A mapping "issue → fix version" is therefore often only **[inferred]**, by comparing dates.
+- Comments in the issues were not visible without logging in. A mapping "issue → fix version" is therefore often only **[inferred]**, by comparing dates. Corrected 2026-10-09: the comments are readable through the GitHub API (`gh issue view --comments`), and they were read for F31–F39.
+- Added 2026-10-09: **[observed-log]** marks behaviour read from the plain-text logs and data files of an installed copy (v0.12.0), without decompiling anything.
 - In addition there are **our own observations** on the Patch City screenshots supplied by the project owner and on the official app screenshot in the README. They are marked as **[observed]**.
 
 ## Overview: problem → cause → fix in our client
@@ -67,8 +68,24 @@ The "Req" column refers to requirements in [01-requirements.md](01-requirements.
 | F28 | **No installer / tray** ([#36](https://github.com/Shebuka/SC-Datarunner-UEX/issues/36), open) | – | MSI (Windows) and `.deb` plus portable archive (Linux); tray mode with notification "n new screenshots" as a later feature | R-NF-2, R-UI-9 |
 | F29 | **Commodities only** ([#20](https://github.com/Shebuka/SC-Datarunner-UEX/issues/20), open) | – | Data model from the start for `type` = `commodity`/`item`/`vehicle_buy`/`vehicle_rent`; items and vehicles follow after 1.0 | R-SCOPE-2 |
 
+### Observed in the predecessor's own logs (2026-10-09)
+
+Added 2026-10-09. Source **[observed-log]**: the plain-text logs and data files that an installed v0.12.0 wrote during one session on 2026-10-08 (83 `data_submit` attempts, 75 captures at four locations), read without decompiling anything; issue comments read with `gh`. Values that identify the user (key, username, balance, paths) are not recorded.
+
+| # | Problem (source) | Cause (known/suspected) | Our fix | Req |
+|---|---|---|---|---|
+| F31 | **A prior-driven "repair" deletes digits and keeps a high confidence**: ¤6,868 / ¤7,126 / ¤7,384 per SCU became 8, 6 and 87384 at 88–98 % confidence; 19 three-digit and 36 one-digit strips in one session [observed-log] | The wrapped name "Ship Ammunition – Size N" resolved to the generic "Ship Ammunition", whose terminal price (about 11) then drove a "leading-artifact" strip | A leading glyph is removed only for the one box classified as the currency glyph (07 §2.4 step 3); a candidate whose digit count differs from the raw read by more than that box is never generated; prior-only repairs are never applied automatically (R-VAL-2b); with an `Ambiguous` commodity no price prior is used. Regression test with the 6,868 → 8 case | R-OCR-5, R-VAL-2b |
+| F32 | **A name that is a prefix of another resolves to the shorter one**: "Ship Ammunition" (its own UEX commodity) instead of "Ship Ammunition – Size 1…7" in 29 cards; persists in v0.12.0 ([#30](https://github.com/Shebuka/SC-Datarunner-UEX/issues/30)) | Line-wise matching; the size line belongs to the next text row | A vocabulary name that is a word prefix of another is accepted only when the card's name block has no continuation line; otherwise `Ambiguous` (O-96) | R-OCR-7 |
+| F33 | **The same commodity appears two or three times in one report** (5 captures) [observed-log] | No invariant | Invariant I1 (one row per commodity and side, [11](11-ddd-and-tdd.md) §A3); acceptance test with three cards resolving to one ID | R-OCR-13 |
+| F34 | **A timeout is shown as "failed" and invites a resend**: 10 submissions hit the 15 s read timeout; all 10 later resends were answered `duplicated_report`, so UEX had stored them [observed-log] | Short timeout; timeout treated as "not sent"; five parallel sends during server slowness | Every failure after sending began is an unknown outcome, never retried automatically (R-SUB-9); a `duplicated_report` after it resolves to `PossiblyAlreadyReceived`; a longer, typed send timeout and lower parallelism (O-103) | R-SUB-2, R-SUB-9 |
+| F35 | **Full kiosk images including the balance are kept in the installation directory** (75 "corrected" images, about 60 MB, never cleaned) [observed-log] | Working files written next to the program | Only the redacted crops are stored, in the data directory, with retention (R-CAP-7); nothing is written into the installation directory | R-CAP-7, R-NF-5 |
+| F36 | **The app deletes the user's original game screenshots** after sending (setting, on by default; 63 deletions in one session), which lost a user's bug evidence ([#30](https://github.com/Shebuka/SC-Datarunner-UEX/issues/30)) | Feature | The app never deletes, moves or changes files in watched or imported folders (O-102) | R-CAP-1 |
+| F37 | **No stitching**: every scroll page is its own report; overlapping cards are dropped by name within about 2.5 minutes, keeping the earlier reading whatever its quality; rows are skipped ([#30](https://github.com/Shebuka/SC-Datarunner-UEX/issues/30)) | Per-image pipeline | Report grouping and stitching across captures with per-field fusion (R-OCR-13, 07 §2.3) | R-OCR-13 |
+| F38 | **Perspective correction depends on the 3D cargo-deck scene** in the kiosk centre (feature matching against a reference image; "Not enough matches … 0/40", [#38](https://github.com/Shebuka/SC-Datarunner-UEX/issues/38)); the terminal is guessed from the **absolute average panel colour** of 10 known terminals | Scene and colour, not UI structure | Locate by text anchors and frame edges, independent of the 3D scene (F7); no absolute colour thresholds (R-OCR-18); terminal by location field and assortment (F11) | R-OCR-2, R-OCR-8, R-OCR-18 |
+| F39 | **One app token for all users is shipped in the distribution**; users enter only their secret key [observed-log, locale keys] | Token distribution | No credential in the binary; the token question is O-85 | R-NF-4 |
+
 ### Privacy
 
 | # | Problem (source) | Cause (known/suspected) | Our fix | Req |
 |---|---|---|---|---|
-| F30 | **[observed] Balance in the upload screenshot.** "CURRENT BALANCE" is shown at the top right of the terminal; an uncropped screenshot would transmit it to UEX. Whether the original does this is unknown. | – | The upload screenshot contains only the shop-panel crop (from the panel's top edge, tab row included) plus the location-field crop. Nothing above the panel top edges, i.e. the header with the balance, is ever stored or transmitted; the rule is geometric and does not depend on reading the balance text. If the crop geometry was not established from located anchors, a full-size preview must be confirmed before release. Covered by tests. | R-SUB-7, R-CAP-7 |
+| F30 | **[observed] Balance in the upload screenshot.** "CURRENT BALANCE" is shown at the top right of the terminal; an uncropped screenshot would transmit it to UEX. Whether the original does this is unknown. Updated 2026-10-09: very likely – its README says the perspective-corrected screenshot is uploaded, and that image as written by v0.12.0 contains the CURRENT BALANCE header [observed-log]. | – | The upload screenshot contains only the shop-panel crop (from the panel's top edge, tab row included) plus the location-field crop. Nothing above the panel top edges, i.e. the header with the balance, is ever stored or transmitted; the rule is geometric and does not depend on reading the balance text. If the crop geometry was not established from located anchors, a full-size preview must be confirmed before release. Covered by tests. | R-SUB-7, R-CAP-7 |

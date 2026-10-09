@@ -1,6 +1,6 @@
 # Domain-Driven Design and Test-Driven Development
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
 
 How we model the domain (DDD) and how we let code come into being (TDD). Both complement [02-architecture.md](02-architecture.md) (Ports & Adapters) and [09-engineering-principles.md](09-engineering-principles.md) (enforcement).
 
@@ -164,7 +164,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 
 - **One repository per aggregate** (port in the owning context module, implementation in `adapter-storage`). There are no repositories for entities within an aggregate. Repository ports take the events of a command together with the new state (A6).
 - **ACL to UEX** (`adapter-uex`):
-  - UEX DTOs (snake_case, numbers as strings, 0/1 flags, status strings) are translated into value objects at the boundary.
+  - UEX DTOs (snake_case, JSON numbers with tolerance for numeric strings, 0/1 flags, status strings, 0 for an untraded side) are translated into value objects at the boundary; personal fields of `GET /user` (`email`, `discord_username`) are dropped there. Corrected 2026-10-09: the live API sends numbers, not strings ([06](06-uex-api.md) "Basics").
   - UEX error codes become sealed `SubmissionError` types.
   - No UEX term "leaks" into the core.
 - **ACL to the game:** `global.ini` and in-game texts are translated into domain terms via mapping tables (`InventoryStatus`, `TradeSide`).

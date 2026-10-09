@@ -1,6 +1,6 @@
 # Roadmap
 
-> **Doc type:** Living plan — active. Last reviewed: 2026-10-08.
+> **Doc type:** Living plan — active. Last reviewed: 2026-10-09.
 
 Order by risk and benefit: first the API uncertainties are clarified. Then follows **manual capture plus submission**; that is already a usable product without OCR. After that comes the OCR. Effort is deliberately not estimated in days, because the team's availability and experience are unknown.
 
@@ -26,7 +26,7 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
 - [ ] **ONNX Runtime telemetry spike** (R-NF-12, O-13): on Linux and Windows, create an ORT 1.30.0 session from a jlink image and run inference (a) without mitigation, (b) with `OrtEnvironment.setTelemetry(false)` before the first session, (c) on Linux also with `ORT_DISABLE_TELEMETRY=1` set before the JVM starts. Record every network connection of the process and, on Windows, the events of ORT's ETW provider in a trace session. Design how the Linux launcher sets the variable (jpackage launchers cannot set environment variables). Record the result in 02 §9 (row X1); if any telemetry remains with the mitigation, decide on an ORT build with `--no_telemetry` before M2.
 - [ ] **Windows ORT load test:** on a clean Windows machine (VM) without the Visual C++ redistributable, load ONNX Runtime from the jlink image and create a session. `onnxruntime.dll` imports `MSVCP140_1.dll` and `VCRUNTIME140_1.dll`, and the OpenJDK runtime ships no `MSVCP140_1.dll`; the test shows whether the copy in the JavaFX natives is found or the image needs the DLL explicitly (also a licence question, O-12). Decide which ORT natives ship (linux-x64, win-x64, with or without `onnxruntime_providers_shared.dll`).
 - [ ] **Notices in the app image** (R-DOC-3): a `build-logic` step exports the licence and notice files of the modular jars (jlink stores them inside `lib/modules`) and adds the OpenJFX legal files of tag `27-ga` (the Maven Central jars carry none), ONNX Runtime's MIT text, `ThirdPartyNotices.txt` and `Privacy.md`, and the LGPL-2.1 text with Logback's dual-licence statement; check that the runtime's `legal/` directory survives jpackage; fix the notices directory path (`NOTICE` proposes `legal/<component>/`); a build test fails if an entry of the reviewed list lacks its files. Pin one OpenJDK vendor that publishes the exact source archive of the bundled build (O-25).
-- [ ] **API spike** (small CLI in the module `adapter-uex`) against the live API with `is_production=0`; clarifies all open points from [06-uex-api.md](06-uex-api.md) (header, app token, `status_*`, `container_sizes`, `/user`)
+- [ ] **API spike** (small CLI in the module `adapter-uex`) against the live API with `is_production=0`; clarifies all open points from [06-uex-api.md](06-uex-api.md) (header, app token, `status_*`, `container_sizes`, `/user`). Status 2026-10-09: the documentation and read-only calls answered the header, the token requirement, `status_*`, the shape of `container_sizes` and `/user` (06 "Open points", 08 §N); the spike now covers the write-only points (24, 11, 18, 21, 9, 12, 29), needs an app token next to the test key, and every write call needs @greluc's approval per call
 - [ ] Clarify with UEX: app token for open-source clients, terms of use, assumptions A9–A12 (environment mapping, `scu_sell` vs. `scu_sell_stock`, composed screenshot, duplicate lock and its scope: side, user, test mode, live/PTU), which hosts UEX operates and which of them accept POSTs (06 open point 4), and a dedicated test account for the scheduled live-API job (M1)
 - [ ] Expand the corpus: first entry `corpus/public/pyro-gateway-stanton-01` available (transcription **to be verified by a human**); supply the Patch City screenshots as files; preferably **original screenshots** (lossless, original resolution) instead of chat uploads; a schema test (tagged R-QA-1) validates every `corpus/public/*/expected.json`
 
@@ -169,7 +169,7 @@ Every requirement group from [01-requirements.md](01-requirements.md) is assigne
 
 | Risk | Impact | Countermeasure / check |
 |---|---|---|
-| UEX requires an app token that an open-source client cannot distribute securely (A2) | **Project blocker** for submission | M0: clarify early with UEX; option "user enters their own app token" |
+| UEX requires an app token that an open-source client cannot distribute securely (A2) | **Project blocker** for submission | M0: clarify early with UEX; option "user enters their own app token". Verified 2026-10-09: the token is required; the distribution question stays (O-85) |
 | UEX terms of use exclude third-party clients or automated capture | Project blocker | M0: read the terms and obtain approval if necessary |
 | PP-OCR is too inaccurate as the primary reader for terminals | Lots of manual correction; core benefit drops | M2 measures early; countermeasures: fine-tuning the recognition model, VLM second reader (M5) |
 | Game patch changes the terminal layout | Recognition breaks | Data-driven layout profiles, crop dumps, corpus regression test; manual cropping as fallback |

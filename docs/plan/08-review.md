@@ -1,6 +1,6 @@
 # Review of the plan (2026-10-08)
 
-> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-08.
+> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-09.
 
 All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`. The criteria were completeness, factual errors, logic gaps and contradictions between the documents. The findings have been corrected directly in the documents. This list records **what** was wrong or incomplete, so that the changes remain traceable.
 
@@ -340,3 +340,86 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
   - The settings that are not user-editable.
 - One §K note was checked against 01 and corrected rather than applied as written: after `invalid_game_version` the report stays `Rejected` without "duplicate as new draft" (R-SUB-11); "discard" applies to Drafts only (11 §A3).
 - The design decisions are open points O-83 (Claude Design checkpoints) and O-84 (D10 of the handoff).
+
+## N. UEX API verification (2026-10-09)
+
+The plan was written in an environment that could not reach UEX, so 06 rested on search snippets and third-party clients. On 2026-10-09 the plan was checked against the official documentation (all 90 endpoint pages), the UEX dev notes, the terms of use and read-only GET calls on both API hosts, without any user key or app token. No write call was made. Three independent passes compared every UEX statement in 01, 02, 04, 05, 07, 08, 09, 10, 11, the open-points register, the release process, the corpus and the design-system prompt with the verified facts; their figures were recomputed from the live data before anything was written down.
+
+### Corrected or confirmed (applied)
+
+- 06 is rewritten on the verified facts, with source tags, the full `data_submit` code list, the new `data_info`/`data_edit`/`data_remove` section, the reference-data fields as they are served, the terms, and the status of every open point (points 1–26 keep their numbers; 27–29 are new).
+- The header is `secret-key`, not `secret_key` (A1, 10 S-26).
+- The app token is required for `data_submit`, `data_edit`, `data_remove` and `data_info` (A2; 04 risk row). The 403 answers were checked on `data_info`.
+- The sell-side number is sent as `scu_sell`; the matching prior is `scu_sell_stock`, because `scu_sell` in `commodities_prices` is a forecast demand (A10, 07 §1b). Comparing against `scu_sell` would have raised false major deviations.
+- `price_variation` is a percentage and `ttl` is in days; `scu_variation` stays without a unit (A15).
+- The `data_parameters` nesting is as the plan assumed, and `is_accepted` is per report type (06 point 22).
+- The API sends numbers, not numeric strings (11 §A7).
+- The global `is_buyable`/`is_sellable` flags contradict real terminal rows, and the MAX INVENTORY check has no data source; both are marked in 07 and wait for O-94.
+- The status names differ per side, and the in-game texts match neither UEX name field (07 §2.2, A5).
+- The design-system prompt's sample data named a terminal and three commodities that do not exist as written or are not sold at that terminal; they are replaced by real ones.
+- Confirmed as planned: the 120/min and 500-row limits, the 1000-reports-per-30-min budget counted per row, the 5-minute duplicate block on terminal and commodity, one side per row, the `commodities_prices` limit of 10 terminal IDs, the per-side status levels and colours, `/game_versions` with `live` and `ptu`, the corpus terminal (Admin - Pyro Gateway (Stanton), ID 252) and every corpus commodity resolving to exactly one UEX ID.
+
+### Findings that change the plan's design (owner decisions)
+
+Each is an open point in the register; the plan's normative text is unchanged until @greluc decides.
+
+- **Credentials:** the app token is a second user credential with its own error codes (O-85); the `X-Client-Version` lock (O-86).
+- **Error classes:** about 40 documented codes are not classified by R-SUB-11; `requests_limit_reached` is not documented as HTTP 200 and no `Retry-After` header was seen (O-87).
+- **One UEX report is one row** with its own ID and lifecycle (`pending` … `consolidated`, `declined`, `expired`). The history, R-SUB-9 "accepted" and the R-VAL-7 prior update do not model this (O-88). `ids_reports` is documented as a string, not an array, so the per-row mapping of R-SUB-9 waits for a write check (06 point 24). IDs repeat across UEX partitions.
+- **Withdrawal** is one call per row, only before consolidation, without a test mode; I4 and the release smoke test assume otherwise (O-89). `data_edit` exists (O-90).
+- **New report fields:** `date_added` (≤ 30 days old; O-91), `faction_affinity` (O-93); `container_sizes` is per report only (O-92).
+- **Validation and recognition:** O-94 (contradicted checks), O-95 (staleness 7 days vs. UEX `ttl` 15 days), O-96 (`displayname` is not unique, refinery terminals, commodity names that are prefixes of others), O-99 (version strings are not semver).
+- **Privacy:** `GET /user` returns e-mail and Discord name with the secret key (O-97).
+- **Screenshot:** the 10 MB limit is probably on the base64 length (O-98).
+- **Staff notification and `is_datacenter_enabled`** in `data_parameters` (O-100); the current commodity notice says to report the "Local Market" value, which bears on A21.
+
+### Still open after this check
+
+- Needs a write call with `is_production=0`, each approved by @greluc: the `ids_reports` format and partial acceptance (06 points 24), the duplicate-block scope (11), `date_added` semantics (18), acceptance of an older game version (21), `container_sizes` per row (9), `is_missing` fields (12), whether test submissions are stored and can be removed (29), whether UEX stores a reported sell SCU of 0 (8).
+- Needs UEX: token distribution (O-85), primary host and writes on both hosts (4), `scu_variation` unit and `is_datacenter_enabled` (6), terms for recorded responses (7, O-50), HOTFIX/EPTU/TECH-PREVIEW (13), budget scope (16), server-error codes before or after processing (25), `faction_affinity` (27).
+
+## O. Predecessor and third-party clients (2026-10-09)
+
+@greluc asked what the predecessor and other clients can teach us. Three read-only passes:
+
+- **The predecessor.** The installed copy of SC-Datarunner-UEX (v0.12.0) was examined only through what it writes and ships as plain data: its logs from one session on 2026-10-08, its data maps, the key list of its locale file and its working images. Its README, 19 release notes and 37 issues with comments were read as well. Nothing was decompiled; `CLAUDE.md` forbids it.
+- **Screen-reading tools:** oovz/uex-datarunner (MIT), EtienneLamoureux/sc-trade-companion (GPL-3.0 text, no version statement), Zamotic/UexCorpDataRunnerClient (same), BlueMystical/Courrier-UEX (MIT), dolejska-daniel/starcitizen-kioskprobe (no licence), ArkanisOverlay (PolyForm-Noncommercial), and smaller ones.
+- **API clients:** dolejska-daniel/uexcorp-openapi, Hybris95/UEX-Trader, ByteCollectiveIO/sc-nav, Garulf/uex-lib, the ShipBit Wingman AI skill, Sammmy1036/Quantum (MIT, the most complete open-source datarunner client), SC-Ravaxx/Bedrock (GPL-3.0).
+
+No code was copied and none is ported. Every finding is recorded in our own words, with its source.
+
+### Applied
+
+- 06 has a new section "Observed by third parties" with the production traffic the API documentation does not show:
+  - `ids_reports` is an array of numeric strings, one per row, and IDs interleave across parallel submissions.
+  - `date_added` is accepted in Unix seconds and echoed as a string.
+  - `duplicated_report` is HTTP 400 with an empty message.
+  - A 15 s timeout did not stop processing.
+  - `.space` is the proven write host.
+  - Some strings are HTML-escaped.
+  - Open points 4, 8, 9, 18, 24 and 25 carry the evidence.
+- 05 has F31–F39 from the logs and the issue comments. The most serious is F31, a prior-driven repair that cut 6,868 down to 8 at 88–98 % confidence. Next are F32 (a commodity name that is a prefix of another resolving to the shorter one, 29 cards in one session) and F34 (timeouts shown as failures, whose resends were all duplicates). F30 is upgraded from unknown to very likely.
+- The register gains O-101 to O-104, and O-85, O-87 and O-92 carry the new evidence.
+
+### What the plan already does better
+
+- No open-source tool has per-field confidence, an independent witness for repairs, a balance-free screenshot, or an unknown-outcome rule.
+- Three tools upload the full screenshot including the balance.
+- Two retry `data_submit` on any error.
+- Several take silent defaults: side becomes sell, an undetected status becomes 1, a decimal point is inserted until a price fits.
+- These confirm R-SUB-7, R-SUB-9 and "never guess silently"; they become negative test cases (O-104).
+
+### New ideas for @greluc's decision
+
+- **Game.log as a local, independent witness** for terminal, assortment, per-commodity container sizes and game version (O-101). This is the largest gap the survey found.
+- Never touch files in watched folders (O-102).
+- Robustness of submissions (O-103): longer timeout, fewer parallel sends, row-to-ID mapping verified through `data_info`.
+- Parser edge cases (O-104): cSCU/µSCU, `¤` read as "1", status labels in game languages.
+- **Mapping UEX IDs to the game's localisation keys** in `global.ini`, instead of matching names, as the predecessor does. It also yields the UI labels as anchors in every language. This fits R-L10N-2 and is worth a spike in M2.
+- **Removing the known UI labels before name matching**; their OCR variants seen in the logs go into the corpus confusion list.
+- **Onboarding:**
+  - trim pasted credentials;
+  - check the 40-character key shape as a hint;
+  - validate the token and the key before saving them (Quantum);
+  - link to the DataRunner sign-up (R-API-4).
+- **A post-alignment similarity check** before the crop geometry counts as established (sc-trade-companion). This is a candidate gate for R-SUB-7, implemented on `ImageRaster` without OpenCV.

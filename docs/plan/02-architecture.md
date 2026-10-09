@@ -1,6 +1,6 @@
 # System architecture
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
 
 ## 1. Overview
 
@@ -553,7 +553,7 @@ The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to lea
 
 | # | Destination | Data sent | When | Control | Ref. |
 |---|---|---|---|---|---|
-| N1 | UEX API, base host (`https` only) | the secret key header (and the user's app token if UEX requires one, A2); reference-data requests; reports with the redacted upload crops; `data_info`, `data_remove`, `/user` | reference refresh, key check, send attempts, withdrawal | the user's key; test mode (R-SUB-8) | R-API-1…7, R-SUB-1…12 |
+| N1 | UEX API, base host (`https` only) | the `secret-key` header and the user's app token as `Authorization: Bearer` (A2, O-85); reference-data requests; reports with the redacted upload crops; `data_info`, `data_remove`, `/user` | reference refresh, key check, send attempts, withdrawal | the user's key; test mode (R-SUB-8) | R-API-1…7, R-SUB-1…12 |
 | N2 | UEX mirror host from the built-in list | as N1 | only for failures that provably were not processed (R-SUB-9); the list stays empty until 06 open point 4 confirms the mirror | built-in list | R-API-3 |
 | N3 | custom UEX host (expert setting) | as N1, including the secret key | only after explicit confirmation | setting | R-API-3 |
 | N4 | GitHub Releases API | the request only (User-Agent with app name and version) | at most once a day | can be disabled | R-NF-7, 10 S-25 |

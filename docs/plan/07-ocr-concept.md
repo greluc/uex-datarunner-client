@@ -1,6 +1,6 @@
 # OCR concept
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-08.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
 
 ## 1. Observations on real screenshots (Patch City, Pyro)
 
@@ -35,8 +35,8 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 | Partial cards | At the bottom edge only the card header is visible (buy-1, buy-2); on the Sell side the price of HUMAN FOOD BARS is half cut off ("¤490/SCU") | A card only counts if it is complete: top and bottom edge inside the viewport (§2.3). A half-readable price must **not** be accepted. |
 | Nearly identical names | "SHIP AMMUNITION – SIZE 1" … "SIZE 7" differ only by one digit; names wrap onto two lines | Fuzzy matching alone is dangerous here (see §2.5, rule for near-duplicate names) |
 | Status colours | Buy: "VERY LOW INVENTORY" **red**; Sell: "VERY LOW INVENTORY" **green** | The colour is inverted between the sides (consistent with `commodities_status`). The status-bar witness must know the side. |
-| Sell side | Quantity without "SHOP QUANTITY", but with stock status (1,482 SCU, VERY LOW INVENTORY) | Indication that the number means the terminal's stock level (A10: rather `scu_sell_stock` than `scu_sell` – clarify with UEX) |
-| Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | Consistency check only (prior-based, never an independent witness under R-VAL-2b): "MAX INVENTORY" with an SCU below the highest SCU UEX has recorded for this terminal **and** commodity on this side gives `Inconsistent` (confirm); nothing is repaired. Active once the data source is verified ([06](06-uex-api.md) open point 26); the status mapping depends on A5. |
+| Sell side | Quantity without "SHOP QUANTITY", but with stock status (1,482 SCU, VERY LOW INVENTORY) | Indication that the number means the terminal's stock level (A10: rather `scu_sell_stock` than `scu_sell` – clarify with UEX). Verified 2026-10-09: the number is submitted as `scu_sell` and compared with the prior's `scu_sell_stock` (1,482 = UEX `scu_sell_stock`; [06](06-uex-api.md) open point 8) |
+| Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | Consistency check only (prior-based, never an independent witness under R-VAL-2b): "MAX INVENTORY" with an SCU below the highest SCU UEX has recorded for this terminal **and** commodity on this side gives `Inconsistent` (confirm); nothing is repaired. Active once the data source is verified ([06](06-uex-api.md) open point 26); the status mapping depends on A5. Verified 2026-10-09: UEX has no capacity field (`scu_*_max` are maxima of reported values) and level 7 covers 86–100 %, so an SCU below the recorded maximum is normal at that level; the check stays inactive until O-94 decides its replacement |
 
 ## 2. Pipeline in detail
 
@@ -164,7 +164,7 @@ The parsers get a **field-typed raw string** per card field. Deciding which toke
   - `333 SCU` → 333;
   - `3,237SCU` in the price position → price parser only;
   - `0lSCU` → {0, 1}, uncertain.
-- **Status:** against the status names from `commodities_status` and the localised names; the status-bar witness (R-OCR-10) is the bar (fill level ≈ percentage band) or the text colour; it is not a `Reader` and does not take part in fusion.
+- **Status:** against the status names from `commodities_status` and the localised names (verified 2026-10-09: names differ per side, sell 7 is "Maximum Inventory (No Demand)", and the in-game texts "MAX INVENTORY" and "OUT OF STOCK" equal neither `name` nor `name_short`, so an explicit mapping per side is needed, A5); the status-bar witness (R-OCR-10) is the bar (fill level ≈ percentage band) or the text colour; it is not a `Reader` and does not take part in fusion.
 - **Cargo sizes:** number of boxes plus OCR, matched against the ascending subsets of {1,2,4,8,16,24,32}.
   - A read set gets `Inconsistent` (below the send threshold) if it is not a contiguous run (assumption A22), if its box count does not match the read sizes, or – once the field meaning is verified ([06](06-uex-api.md) open point 26) – if its largest size exceeds the terminal's `max_container_size`.
   - Such a set is never forced onto a run.
@@ -227,7 +227,7 @@ The parsers get a **field-typed raw string** per card field. Deciding which toke
      - a clean read of 2850 with a prior of 2850 gives 0.95 and no `Ambiguous`;
      - the same read with the 0 below the digit threshold and abstaining topology gives at most 0.75;
      - a correct 7126 with a prior of 7120 gives 0.95 when the 6 is above the digit threshold and topology does not contradict it.
-4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`. Buy side, once A14 is confirmed: dimmed ⇔ SCU < smallest offered container size. A violation gives `Inconsistent` (confirm) and never changes a value. The rule is not used on the sell side (CHLORINE: 0 SCU, sizes 1–32, not dimmed). The cargo-size and MAX INVENTORY checks are defined in §2.4 and §1b.
+4. **Consistency:** "Out of Stock" ⇒ SCU 0; side ↔ section; `is_buyable`/`is_sellable`. Buy side, once A14 is confirmed: dimmed ⇔ SCU < smallest offered container size. A violation gives `Inconsistent` (confirm) and never changes a value. The rule is not used on the sell side (CHLORINE: 0 SCU, sizes 1–32, not dimmed). The cargo-size and MAX INVENTORY checks are defined in §2.4 and §1b. Verified 2026-10-09 ([06](06-uex-api.md) "Reference data"): the global `is_buyable`/`is_sellable` flags disagree with real terminal rows (56 buy rows belong to commodities with `is_buyable` 0, among them Hydrogen Fuel and Quantum Fuel at Pyro Gateway (Stanton) in the corpus), so this part of the rule would raise false `Inconsistent` findings; the side comes from the terminal's own `commodities_prices` row (the side with a price > 0). "Out of Stock" ⇒ SCU 0 holds on the corpus screens, but UEX level 1 covers 0–14 %, so it is a screen rule only and never checked against UEX values. Both are decided in O-94.
 5. **Glyph topology** (concept from basetool, reimplemented) judges the candidates of one digit position; it does not read the digit.
    - **Features**, measured on the tone-normalized crop (§2.1 item 7): the hole count (8 has two holes; 0, 6 and 9 have one) and, for one-hole glyphs, the vertical centre and height of the hole relative to the glyph box (lower → 6, upper → 9, tall and centred → 0). All measures are relative to the glyph box (R-OCR-17). The result is the set of digits that fit the glyph.
    - **Judgement** against the candidates of the position:
