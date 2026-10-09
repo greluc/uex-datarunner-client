@@ -1,6 +1,6 @@
 # Owner checklist: running the design brief in Claude Design
 
-> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-08.
+> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-09.
 
 For the owner only. **Never attach this file to Claude Design.** It replaces the "How to use" part that used to sit at the top of the brief.
 
@@ -81,4 +81,4 @@ The repository tracks these as open point O-83 (and the handoff's D10 as O-84) i
 - the proposals in Appendix A (Unknown game state, Session overview as a sidebar item, dark as the default theme, density, reduce motion, notification bell, detail strip, row markers, saved sort order, and the others marked *(proposal)*); the high-contrast theme and the text-size setting are required (R-UI-17), not proposals;
 - placeholders you may supply, or leave as placeholders: [UEX KEY PAGE URL], [GAME VERSION], [IDS], [MODEL NAME], [FOLDER].
 
-Orbitron and Electrolize were removed from the candidates. Legacy and fan sources of low confidence associate them with the older RSI look (the 2013 Fan Site Kit, the HangarXPLOR CSS, a 2019 fan-forum post; Appendix A O12 and O13 of the previous prompt, commit `07f7356`), and the brief keeps a visible distance from the official brand. Share Tech Mono, named only in that 2019 fan-forum post, stays as an accent-only candidate; drop it too if you prefer more distance.
+Orbitron and Electrolize were removed from the candidates. Legacy and fan sources of low confidence associate them with the older RSI look (the 2013 Fan Site Kit, the HangarXPLOR CSS, a 2019 fan-forum post; Appendix A O12 and O13 of the previous prompt, commit `1263435` (`07f7356` before the history was re-signed on 2026-10-09)), and the brief keeps a visible distance from the official brand. Share Tech Mono, named only in that 2019 fan-forum post, stays as an accent-only candidate; drop it too if you prefer more distance.

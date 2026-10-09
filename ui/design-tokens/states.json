@@ -1,0 +1,1120 @@
+{
+  "source": "Claude Design system Tallyline, version 1791537441-68f0",
+  "states": [
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "confidence-ok",
+      "label": "OK",
+      "icon": "none in cells",
+      "tokens": "`confidence-ok-fg` (detail strip only)",
+      "notes": "At or above the send threshold (start value 0.80)."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "confidence-confirm",
+      "label": "Confirm: below send threshold",
+      "icon": "`help`",
+      "tokens": "`confidence-confirm-fg`, `-border` (caution)",
+      "notes": "One candidate. Blocks release until confirmed."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "confidence-select",
+      "label": "Select: n candidates",
+      "icon": "`alt_route`",
+      "tokens": "`confidence-select-fg`, `-border` (caution)",
+      "notes": "Ambiguous; shows the candidates. Blocks release until selected."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "confidence-correct",
+      "label": "Correct: unreadable",
+      "icon": "`edit_square`",
+      "tokens": "`confidence-correct-fg`, `-border` (critical)",
+      "notes": "Unreadable or implausible. Blocks release until corrected."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "user-entered",
+      "label": "Entered by you",
+      "icon": "`edit`",
+      "tokens": "`user-entered-fg`, `-border` (neutral)",
+      "notes": "Typed, corrected or reference taken over by keystroke. No reading confidence."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "confirmed",
+      "label": "Confirmed",
+      "icon": "`check_circle`",
+      "tokens": "`confirmed-fg`, `-border` (success)",
+      "notes": "Applies to exactly that value; repeat after any change."
+    },
+    {
+      "group": "Recognition confidence (per field)",
+      "id": "double-confirmed",
+      "label": "OCR and AI agree",
+      "icon": "`done_all`",
+      "tokens": "`double-confirmed-fg`, `-border` (success)",
+      "notes": "Subtle: icon only, border at `width-hairline`."
+    },
+    {
+      "group": "Gate state (per field)",
+      "id": "needs-confirmation",
+      "label": "Needs confirmation",
+      "icon": "`flag`",
+      "tokens": "`needs-confirmation-fg`"
+    },
+    {
+      "group": "Gate state (per field)",
+      "id": "unreviewed",
+      "qualifier": "row marker and counter",
+      "label": "Unreviewed",
+      "icon": "`radio_button_unchecked`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Unreviewed\" after the commodity name"
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "deviation-equal",
+      "label": "Equal",
+      "icon": "none",
+      "tokens": "none",
+      "rules": "No marking."
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "deviation-minor",
+      "label": "Minor deviation – please cross-check",
+      "icon": "`compare_arrows`",
+      "tokens": "`deviation-minor-bg`, `-fg`, `-border`; outlined Δ badge",
+      "rules": "Does not block."
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "deviation-major",
+      "label": "Major deviation – confirmation required",
+      "icon": "`crisis_alert`",
+      "tokens": "`deviation-major-bg`, `-fg`; filled Δ badge `deviation-major-badge-bg` / `-badge-fg`",
+      "rules": "Always needs confirmation, even when read confidently and even against an outdated reference. Container sizes are never major."
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "no-reference",
+      "label": "No reference",
+      "icon": "`fiber_new`",
+      "tokens": "`no-reference-bg`, `-fg`, dashed `-border`",
+      "rules": "No Δ. For a price, show the commodity average as extra text; more than twice the tolerance away from it is major, labelled \"Reference: commodity average\"."
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "reference-outdated",
+      "qualifier": "modifier",
+      "label": "Reference outdated (18 days)",
+      "icon": "`history`",
+      "tokens": "`reference-outdated-fg`",
+      "rules": "A minor deviation is then shown like equal: icon and label only, no background. A major deviation keeps its full marking and its confirmation requirement. No reference and the commodity average are never outdated."
+    },
+    {
+      "group": "Deviation (per field)",
+      "id": "deviation-worsened",
+      "label": "Deviation worsened since your confirmation",
+      "icon": "`trending_up`",
+      "tokens": "deviation tokens of the new level",
+      "rules": "Shows the new marking and Δ, revokes the confirmation and asks for a new one, also when the field is now minor or has no reference; the report stays a Draft."
+    },
+    {
+      "group": "Superseded (per field)",
+      "id": "superseded-conflict",
+      "label": "New reading differs – Keep mine / Take new",
+      "icon": "`swap_horiz`",
+      "tokens": "`caution-fg`, `caution-border`; the confirmation shows as suspended in `text-muted`; confirm level, never critical"
+    },
+    {
+      "group": "Superseded (per field)",
+      "id": "superseded-later-reading",
+      "label": "Later reading proposed – confirm",
+      "icon": "`swap_horiz` + `help`",
+      "tokens": "`confidence-confirm-*`"
+    },
+    {
+      "group": "Superseded (per field)",
+      "id": "ai-hint",
+      "label": "AI read a different value",
+      "icon": "`lightbulb`",
+      "tokens": "`info-fg`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "row-excluded",
+      "label": "Excluded – not sent",
+      "icon": "`unpublished`",
+      "tokens": "`text-muted` row text, `neutral-*` chip"
+    },
+    {
+      "group": "Row and report level",
+      "id": "not-observed",
+      "label": "Not observed",
+      "icon": "`visibility_off`",
+      "tokens": "`neutral-*`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "marked-missing",
+      "label": "Marked missing – Unmark",
+      "icon": "`do_not_disturb_on`",
+      "tokens": "`neutral-*`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "unexpected-commodity",
+      "label": "Unexpected commodity – confirm",
+      "icon": "`contact_support`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "possibly-incomplete",
+      "label": "Possibly incomplete: [names]",
+      "icon": "`checklist`",
+      "tokens": "`info-*` (never critical)"
+    },
+    {
+      "group": "Row and report level",
+      "id": "section-not-visible",
+      "label": "Section not visible in this capture – no missing-commodity check",
+      "icon": "`hide_source`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "section-unsupported",
+      "label": "SELLABLE CARGO not supported yet – not sent",
+      "icon": "`extension_off`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Row and report level",
+      "id": "newer-observation-sent",
+      "qualifier": "row flag",
+      "label": "Newer observation already sent – Send older observation anyway",
+      "icon": "`upcoming`",
+      "tokens": "`caution-*`; sets the gate marker"
+    },
+    {
+      "group": "Row and report level",
+      "id": "field-not-sent",
+      "label": "Not sent – [reason]",
+      "icon": "`cancel_schedule_send`",
+      "tokens": "`neutral-*`; an optional value (container sizes) that failed its checks; does not block"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-draft",
+      "label": "Draft",
+      "icon": "`edit_note`",
+      "tokens": "`neutral-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-ready",
+      "label": "Ready",
+      "icon": "`task_alt`",
+      "tokens": "`success-bg-strong`, `text-on-success`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-blocked",
+      "label": "Blocked: [every reason]",
+      "icon": "`block`",
+      "tokens": "`critical-bg-strong`, `text-on-critical`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-with-findings",
+      "label": "Draft · findings",
+      "icon": "`warning`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-to-check",
+      "label": "To be checked (game version)",
+      "icon": "`help`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-returned",
+      "label": "Returned: [reason]",
+      "icon": "`assignment_return`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-offered-for-discard",
+      "label": "Offered for discard",
+      "icon": "`auto_delete`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-released",
+      "label": "Released",
+      "icon": "`send`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-queued",
+      "label": "Queued",
+      "icon": "`schedule`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-waiting-cooldown",
+      "label": "Waiting for cooldown · 3 min 40 s",
+      "icon": "`hourglass_top`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-submitted",
+      "label": "Submitted",
+      "icon": "`cloud_done`",
+      "tokens": "`success-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-partially-accepted",
+      "label": "Partially accepted · 8 of 9 rows",
+      "icon": "`rule`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-outcome-unknown",
+      "label": "Outcome unknown",
+      "icon": "`question_mark`",
+      "tokens": "`caution-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-rejected",
+      "label": "Rejected",
+      "icon": "`cancel`",
+      "tokens": "`critical-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-withdrawn",
+      "label": "Withdrawn",
+      "icon": "`undo`",
+      "tokens": "`neutral-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-partly-withdrawn",
+      "label": "3 of 9 rows withdrawn",
+      "icon": "`playlist_remove`",
+      "tokens": "`neutral-*`; the report keeps its state"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-split",
+      "label": "Part 2 of 3 (one report per container-size set)",
+      "icon": "`call_split`",
+      "tokens": "`info-*`"
+    },
+    {
+      "group": "Report state (chip + icon + label)",
+      "id": "report-discarded",
+      "label": "Discarded",
+      "icon": "`delete_forever`",
+      "tokens": "`neutral-*`"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-queued",
+      "label": "Queued"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-cooldown",
+      "label": "Waiting for cooldown · ETA"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-sending",
+      "label": "Sending; one attempt per send"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-retrying",
+      "label": "Retrying · next try in …"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-held",
+      "label": "Held – acceptance closed · next check …"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-held-retries",
+      "label": "Held – retries used up · Retry now"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-paused",
+      "label": "Paused – re-authenticate"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-succeeded"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-partially-accepted"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-outcome-unknown"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-rejected"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-returned"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Job",
+      "id": "job-cancelled"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-imported"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-environment-pending"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-scanned"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-failed",
+      "label": "with reason and Retry"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-panel-not-found"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-labels-not-recognised"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Capture",
+      "id": "capture-not-terminal"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-enabled"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-disabled"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-watched"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-not-watched"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-missing"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Folder",
+      "id": "folder-low-disk",
+      "label": "Import paused – low disk space"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Game",
+      "id": "game-running"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Game",
+      "id": "game-closed"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Game",
+      "id": "game-unknown",
+      "label": "Unknown – treated as running"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-off"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-automatic"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-always"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-not-installed"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-not-running"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-too-old"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-model-missing"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-ready"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-consent-pending"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-running",
+      "label": "static"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / AI",
+      "id": "ai-model-not-evaluated"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "online"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "offline"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "refreshing"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "no-reference-data"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "reference-data-outdated"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "uex-not-accepting"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "key-valid"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "key-invalid"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "key-not-allowed"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "key-disabled"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Connection",
+      "id": "key-banned"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Mode",
+      "id": "env-test",
+      "label": "TEST, `science`"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Mode",
+      "id": "env-production",
+      "label": "PRODUCTION, `public`"
+    },
+    {
+      "group": "Submission job, capture, folder, game, AI, connection / Mode",
+      "id": "env-other-channel",
+      "label": "Game runs on PTU – confirm at release, `sync_problem`"
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-pending",
+      "label": "UEX: pending",
+      "icon": "`hourglass_empty`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"UEX status: pending\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-under-review",
+      "label": "UEX: under review",
+      "icon": "`rate_review`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"UEX status: under review\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-queued",
+      "label": "UEX: queued (waits until that version goes live)",
+      "icon": "`pending_actions`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"UEX status: queued until the version goes live\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-approved",
+      "label": "UEX: approved · final",
+      "icon": "`verified`",
+      "tokens": "`success-*`",
+      "accessible-text": "\"UEX status: approved, final\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-consolidated",
+      "label": "UEX: consolidated · final",
+      "icon": "`merge`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"UEX status: consolidated, final\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-declined",
+      "label": "UEX: declined · final – no longer used as reference",
+      "icon": "`thumb_down`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"UEX status: declined, final. Your values are unchanged; this value is no longer used as reference\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-expired",
+      "label": "UEX: expired · final – no longer used as reference",
+      "icon": "`timer_off`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"UEX status: expired, final\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-no-longer-updated",
+      "label": "No longer updated (14 days)",
+      "icon": "`update_disabled`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Status no longer updated after 14 days\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-status-unavailable",
+      "label": "Status unavailable – test submissions may not be listed",
+      "icon": "`question_mark`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"UEX status unavailable\""
+    },
+    {
+      "group": "UEX row lifecycle (per sent row; History, HistoryRow detail, Queue)",
+      "id": "uex-refresh-limited",
+      "label": "Refresh – available again in 40 s",
+      "icon": "`refresh` (disabled button)",
+      "tokens": "`text-muted`",
+      "accessible-text": "\"Refresh status, unavailable for 40 seconds: at most once a minute\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "mapping-verified",
+      "label": "ID verified",
+      "icon": "`link`",
+      "tokens": "`success-fg`",
+      "accessible-text": "\"Report ID verified\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "mapping-unverified",
+      "label": "ID not verified",
+      "icon": "`pending`",
+      "tokens": "`caution-fg`",
+      "accessible-text": "\"Report ID not verified; cannot be withdrawn\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "mapping-not-accepted",
+      "label": "Not accepted",
+      "icon": "`remove_done`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Row not accepted by UEX\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "mapping-unmapped",
+      "label": "No ID mapped",
+      "icon": "`link_off`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"No report ID mapped; cannot be withdrawn\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "row-withdrawing",
+      "label": "Withdrawing…",
+      "icon": "`hourglass_top` (static)",
+      "tokens": "`info-fg`",
+      "accessible-text": "\"Withdrawing this row\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "row-withdrawn",
+      "label": "Withdrawn",
+      "icon": "`undo`",
+      "tokens": "`neutral-fg`",
+      "accessible-text": "\"Row withdrawn\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "row-withdraw-failed",
+      "label": "Withdrawal failed – [reason] · Retry",
+      "icon": "`error`",
+      "tokens": "`critical-fg`",
+      "accessible-text": "\"Withdrawal failed: [reason]. Retry available\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "row-already-consolidated",
+      "label": "Already consolidated – can no longer be withdrawn",
+      "icon": "`merge`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Already consolidated; cannot be withdrawn\""
+    },
+    {
+      "group": "Report ID mapping and per-row withdrawal (History detail)",
+      "id": "row-withdraw-unknown",
+      "label": "Withdrawal outcome unknown",
+      "icon": "`question_mark`",
+      "tokens": "`caution-fg`",
+      "accessible-text": "\"Withdrawal outcome unknown\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "queue-paused-app-token",
+      "label": "Queue paused – app token missing or invalid",
+      "icon": "`no_encryption`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Queue paused: app token missing or invalid\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "queue-paused-key-unconfirmed",
+      "label": "Queue paused – key error not confirmed by a re-check · Retry now",
+      "icon": "`vpn_key_alert`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"Queue paused: key error not confirmed. Retry now\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "queue-held-api-changed",
+      "label": "Queue held – UEX API changed; waiting for an app update",
+      "icon": "`api`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"Queue held: UEX API changed\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "queue-held-stale-acceptance",
+      "label": "Held – no fresh acceptance state (UEX status older than 15 min)",
+      "icon": "`update`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"Held: no fresh acceptance state\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "queue-held-not-accepting",
+      "label": "Held – UEX not accepting reports [for LIVE / data centre disabled]",
+      "icon": "`pause_circle`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"Held: UEX not accepting reports\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "job-waiting-row-budget",
+      "label": "Waiting for the row budget · 2 min",
+      "icon": "`hourglass_bottom`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"Waiting for the row budget, about 2 minutes\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "job-waiting-retry-time",
+      "label": "Waiting for UEX's retry time · 45 s",
+      "icon": "`timer`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"Waiting for UEX's retry time, 45 seconds\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "job-next",
+      "label": "Next · position 1",
+      "icon": "`next_plan`",
+      "tokens": "`info-*`",
+      "accessible-text": "\"Next to send, position 1\"",
+      "summary-group": "Submission job, capture, folder, game, AI, connection / Job"
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-key-missing",
+      "label": "Secret key missing",
+      "icon": "`key_off`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Secret key missing\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-key-invalid",
+      "label": "Key invalid",
+      "icon": "`vpn_key_off`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Key invalid\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-not-allowed",
+      "label": "Not allowed",
+      "icon": "`block`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Account not allowed to submit\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-disabled",
+      "label": "Account disabled",
+      "icon": "`person_off`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Account disabled\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-banned",
+      "label": "Account banned",
+      "icon": "`gpp_bad`",
+      "tokens": "`critical-*`",
+      "accessible-text": "\"Account banned\""
+    },
+    {
+      "group": "Queue, account and sending (StatusBar, TopBar, Banner, Queue, Settings, Onboarding)",
+      "id": "account-not-verified",
+      "label": "Not verified with RSI",
+      "icon": "`how_to_reg`",
+      "tokens": "`caution-*`",
+      "accessible-text": "\"Account not verified with RSI\""
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "release-split",
+      "label": "Will be sent as 3 reports, one per container-size set",
+      "icon": "`call_split`",
+      "tokens": "`info-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "returned-date-rejected",
+      "label": "Returned: report date rejected by UEX",
+      "icon": "`event_busy`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "returned-screenshot-too-large",
+      "label": "Returned: screenshot too large",
+      "icon": "`photo_size_select_large`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "capture-ready",
+      "label": "Ready",
+      "icon": "`check`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "\"Capture ready to scan\""
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "capture-refinery",
+      "label": "Refinery terminal – not supported",
+      "icon": "`factory`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-hdr",
+      "label": "HDR or unsupported colour format – use an SDR copy",
+      "icon": "`hdr_on`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-hdr-container",
+      "label": "HDR screenshot format (JPEG XR/AVIF/EXR) – not supported · Import the SDR copy",
+      "icon": "`hdr_off`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-sdr-copy-used",
+      "label": "HDR original – SDR copy used",
+      "icon": "`published_with_changes`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-decode-failed",
+      "label": "Decode failed after retries",
+      "icon": "`broken_image`",
+      "tokens": "`critical-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-too-large",
+      "label": "Image too large",
+      "icon": "`aspect_ratio`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Release split, returns, capture intake",
+      "id": "intake-skipped-after-crash",
+      "label": "Skipped after a crash – import again",
+      "icon": "`restart_alt`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "game-version-certain",
+      "label": "Certain",
+      "icon": "`task_alt`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Game version certain\""
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "game-version-provisional",
+      "label": "Provisional",
+      "icon": "`pending`",
+      "tokens": "`info-fg`",
+      "accessible-text": "\"Game version provisional\""
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "game-version-uncertain",
+      "label": "Uncertain – to be checked",
+      "icon": "`help`",
+      "tokens": "`caution-fg`",
+      "accessible-text": "\"Game version uncertain, to be checked\""
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "game-version-unknown",
+      "label": "Unknown – blocks release",
+      "icon": "`question_mark`",
+      "tokens": "`critical-fg`",
+      "accessible-text": "\"Game version unknown\""
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-off",
+      "label": "Game log witness off",
+      "icon": "`toggle_off`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-on",
+      "label": "Game log witness on",
+      "icon": "`receipt_long`",
+      "tokens": "`success-fg`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-not-available",
+      "label": "Not available for this game version (format not validated yet)",
+      "icon": "`history_toggle_off`",
+      "tokens": "`text-secondary`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-terminal-disagrees",
+      "label": "Terminal ambiguous – game log disagrees",
+      "icon": "`sync_problem`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-sizes-confirmed",
+      "label": "Container sizes confirmed by the game log",
+      "icon": "`fact_check`",
+      "tokens": "`success-fg`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "gamelog-sizes-inconsistent",
+      "label": "Container sizes inconsistent with the game log – needs confirmation",
+      "icon": "`difference`",
+      "tokens": "`caution-*`; sets the gate marker",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "affinity-empty",
+      "label": "Faction affinity (optional) – not sent",
+      "icon": "none",
+      "tokens": "`text-secondary`",
+      "accessible-text": "\"Faction affinity, optional, empty\""
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "affinity-invalid",
+      "label": "Enter a whole number from −100 to 100",
+      "icon": "`error`",
+      "tokens": "`critical-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Game version, game log, faction affinity, staff notice",
+      "id": "staff-notice",
+      "label": "UEX notice: [text, plain, at most 280 characters]",
+      "icon": "`campaign`",
+      "tokens": "`info-*` banner",
+      "accessible-text": "\"Notice from UEX staff: [text]\""
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-pending",
+      "label": "Pending · Interrupted – game started",
+      "icon": "`pause_circle`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-running",
+      "label": "Running · image 2 of 5",
+      "icon": "`memory` (static)",
+      "tokens": "`info-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-done",
+      "label": "Done",
+      "icon": "`task_alt`",
+      "tokens": "`success-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-failed",
+      "label": "Failed – output cut off / unreadable answer / crop no longer available · Retry",
+      "icon": "`error`",
+      "tokens": "`critical-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-obsolete",
+      "label": "Obsolete – report no longer a Draft",
+      "icon": "`history_toggle_off`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-job-cancelled",
+      "label": "Cancelled",
+      "icon": "`cancel`",
+      "tokens": "`neutral-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-queue-paused",
+      "label": "AI queue paused – [reason]",
+      "icon": "`pause`",
+      "tokens": "`caution-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-remote-host",
+      "label": "Response came from a remote host – AI queue stopped",
+      "icon": "`wifi_tethering_error`",
+      "tokens": "`critical-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "AI jobs",
+      "id": "ai-pull-progress",
+      "label": "Downloading model · 2.1 of 5.2 GB (40 %)",
+      "icon": "`download`",
+      "tokens": "`info-*`",
+      "accessible-text": "same as label"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-success"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-info"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-warning"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-danger"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-neutral"
+    },
+    {
+      "group": "Generic feedback",
+      "id": "feedback-update"
+    }
+  ]
+}

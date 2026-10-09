@@ -1,0 +1,83 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -tl-surface-0: #12202d;
+    -tl-surface-1: #172635;
+    -tl-text-primary: #e8eef4;
+    -tl-confidence-confirm-border: #e5c25c;
+    -tl-confidence-correct-border: #ff8078;
+    -tl-confirmed-border: #52cfb2;
+    -tl-deviation-minor-bg: #2a2913;
+    -tl-deviation-major-bg: #62300c;
+    -tl-no-reference-bg: #262d37;
+    -tl-focus-ring: #b4e0fa;
+    -tl-selection-row-bg: #1f3a52;
+    -fx-background-color: -tl-surface-0;
+}
+
+.table-view {
+    -fx-fixed-cell-size: 36px;
+    -fx-background-color: -tl-surface-0;
+}
+
+.table-row-cell {
+    -fx-background-color: -tl-surface-0;
+}
+
+.table-cell {
+    -fx-background-color: -tl-surface-1;
+    -fx-border-color: transparent;
+    -fx-border-width: 2px;
+    -fx-border-insets: 0;
+    -fx-text-fill: -tl-text-primary;
+    -fx-padding: 0 12px;
+}
+
+.table-cell:confidence-confirm {
+    -fx-border-color: -tl-confidence-confirm-border;
+}
+
+.table-cell:confidence-correct {
+    -fx-border-color: -tl-confidence-correct-border;
+}
+
+.table-cell:confirmed {
+    -fx-border-color: -tl-confirmed-border;
+}
+
+.table-cell:deviation-minor {
+    -fx-background-color: -tl-deviation-minor-bg;
+}
+
+.table-cell:deviation-major {
+    -fx-background-color: -tl-deviation-major-bg;
+}
+
+.table-cell:no-reference {
+    -fx-background-color: -tl-no-reference-bg;
+}
+
+.table-view .table-cell:focused {
+    -fx-effect: dropshadow(gaussian, -tl-focus-ring, 6, 0.3, 0, 0);
+}
+
+.no-effect .table-cell:focused {
+    -fx-effect: null;
+}
+
+.effect-all .table-cell:confidence-confirm,
+.effect-all .table-cell:confidence-correct,
+.effect-all .table-cell:confirmed {
+    -fx-effect: dropshadow(gaussian, -tl-focus-ring, 6, 0.3, 0, 0);
+}
+
+@media not (prefers-reduced-motion) {
+    .table-cell {
+        transition: -fx-background-color 150ms ease, -fx-border-color 150ms ease;
+    }
+}
+
+.unguarded .table-cell {
+    transition: -fx-background-color 150ms ease;
+}

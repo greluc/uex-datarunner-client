@@ -1,0 +1,5 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+@import "sp2-dark.css" (prefers-color-scheme: dark);
+@import "sp2-light.css" (prefers-color-scheme: light);

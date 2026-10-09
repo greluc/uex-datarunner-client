@@ -1,0 +1,16 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+@media (prefers-color-scheme: dark) {
+    .root {
+        -tl-surface: #12202d;
+        -tl-text: #e8eef4;
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .root {
+        -tl-surface: #f5f8fb;
+        -tl-text: #12202d;
+    }
+}

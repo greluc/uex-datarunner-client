@@ -17,7 +17,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 |---|---|
 | `docs/plan/01-requirements.md` | Requirements with IDs (`R-…`) and **assumptions A1–A23** (unverified!) |
 | `docs/plan/02-architecture.md` | Modules (bounded contexts + adapters), context map, domain model, threading, data-flow inventory (§9) |
-| `docs/adr/` | Decision records: `0000-open-points.md` (the register of open owner decisions and verifications, `O-…`), ADR-0002 modules by bounded context, ADR-0003 licence and contributions |
+| `docs/adr/` | Decision records: `0000-open-points.md` (the register of open owner decisions and verifications, `O-…`), ADR-0002 modules by bounded context, ADR-0003 licence and contributions, ADR-0004 design system (Proposed) |
 | `docs/release-process.md` | Versioning, release checklist, upgrade/downgrade, SC patch-day and UEX API-change procedures |
 | `docs/plan/03-language-decision.md` | ADR-0001 Java vs. Rust; its §5 licence question is answered by ADR-0003 |
 | `docs/plan/04-roadmap.md` | Milestones M0–M5 with acceptance criteria, **requirement coverage** (R-ID → milestone, qualified tags, checks outside JUnit; drives the traceability build check in 11 §B4), risks |
@@ -31,6 +31,7 @@ Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal d
 | `CONTRIBUTING.md`, `CLA.md` | Contribution process: Conventional Commits, DCO sign-off, CLA and its roster, merge rules |
 | `NOTICE`, `REUSE.toml` | Every shipped third-party component and the licence of every file |
 | `docs/dependency-pins.md` | Tags of SHA-pinned actions, versions and checksums of CI tools |
+| `docs/design-system/` | The design system Tallyline: tokens (`ui/design-tokens/`), states, accessibility report; read before any UI or theme change |
 
 ## The documentation is the project (HARD RULE)
 

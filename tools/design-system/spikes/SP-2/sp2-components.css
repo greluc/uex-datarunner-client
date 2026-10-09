@@ -1,0 +1,22 @@
+/* SPDX-FileCopyrightText: 2026 Lucas Greuloch */
+/* SPDX-License-Identifier: GPL-3.0-or-later */
+
+.root {
+    -tl-surface: #ff00ff;
+    -tl-text: #00ff00;
+}
+
+.root,
+.tooltip,
+.context-menu,
+.combo-box-popup > .list-view,
+.popup-panel,
+.dialog-pane,
+.header-bar {
+    -fx-background-color: -tl-surface;
+}
+
+.label,
+.tooltip {
+    -fx-text-fill: -tl-text;
+}

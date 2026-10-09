@@ -1,6 +1,6 @@
 # Task: Turn the Claude Design system into the JavaFX 27 theme of UEX Datarunner Client
 
-> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-08.
+> **Doc type:** Prompt — stage 1 run 2026-10-09 (checkpoint A passed); stage 2 in progress. Last reviewed: 2026-10-09.
 
 You are Claude Code, working in the repository `uex-datarunner-client`.
 
@@ -103,17 +103,17 @@ The project owner may write in German. Reply in the owner's language; everything
 
 ## 4. JavaFX 27 facts (re-verify before you build on them)
 
-**Sources:** the cssref at tag `27-ga` (`modules/javafx.graphics/src/main/docs/javafx/scene/doc-files/cssref.html`; SHA-256 `29b9b7a9f35f619980b14bcae23503e2089a036f65c9f828c46d797af5eeefa2` as fetched on 2026-10-08), the release notes 22–27 in `openjdk/jfx` `doc-files/`, and the named source files at `27-ga`.
+**Sources:** the cssref at tag `27-ga` (`modules/javafx.graphics/src/main/docs/javafx/scene/doc-files/cssref.html`; SHA-256 `29b9b7a9f35f619980b14bcae23503e2089a036f65c9f828c46d797af5eeefa2` as fetched on 2026-10-08), the release notes 22–27 in `openjdk/jfx` `doc-files/`, and the named source files at `27-ga`. Corrected 2026-10-09: the release notes for 27 are not in the `27-ga` tree; they were added afterwards (commit `88ad997176`) and are read from `openjdk/jfx27u` master. Re-verified 2026-10-09: the cssref SHA-256 above matches.
 
 | # | Fact | Confidence |
 |---|---|---|
 | J1 | JavaFX 27 is GA on Maven Central and requires JDK 25+. | high |
 | J2 | No `var()`, `calc()`, `color-mix()` or `alpha()`; only looked-up colours. Colour functions: rgb/rgba, hsb/hsba, `derive()`, `ladder()`, gradients, image patterns. **Hex:** cssref documents `#rgb` and `#rrggbb`, but `CssParser` passes hex tokens to `Color.web`, whose `CssColorParser` accepts 3, 4, 6 and 8 digits, so `#rgba` and `#rrggbbaa` work in 27-ga, undocumented. `hsl()` in a stylesheet is an "Unexpected function". `derive()` is non-linear (`Utils.deriveColor`); do not use it or `ladder()` for contrast-relevant colours unless the scripts reproduce them. | high |
-| J3 | Size, radius and duration lookups are undocumented and reportedly do not work; RFE JDK-8231646 status unverified. | medium |
+| J3 | Size, radius and duration lookups are undocumented; corrected 2026-10-09: the 27-ga parser creates lookups for identifiers in size and duration positions (`CssParser.parseSize`, `parseTime`) and `CssStyleHelper` resolves any lookup, so whether they apply per property is a spike question (SP-1); the RFE for font and font-size lookups, JDK-8231646, is open. SP-1 (2026-10-09): single-value sizes and tooltip durations work; insets, radii, border widths, `-fx-font-size`, `transition` and `transition-duration` fail. | high |
 | J4 | `@font-face` honours only `src`; the family name comes from the file; `-fx-font-family` takes no fallback list; the font shorthand has no line-height; no font-variant equivalent. | high |
 | J5 | TTF, OTF-CFF, TTC and WOFF 1.0 load; no WOFF2; no variable-font axes. | high (axes: inference) |
-| J6 | Fonts from `jar:` URLs or streams are copied to `+JXF*.tmp` in `java.io.tmpdir`; only `file:` URLs are used in place (compare 02 §8, S-24). | high |
-| J7 | `-fx-font-weight` picks only the regular or bold face; other weights need their own family or face name. | high |
+| J6 | Fonts from `jar:` URLs or streams are copied to `+JXF*.tmp` in `java.io.tmpdir`; only `file:` URLs are used in place (compare 02 §8, S-24). Re-verified 2026-10-09: module resources in a jlink image resolve to `jrt:` URLs and are copied too, and WOFF files are always decoded into a second temp file, even from `file:` URLs. | high |
+| J7 | `-fx-font-weight` picks only the regular or bold face; other weights need their own family or face name. Re-verified 2026-10-09: only 700 and above select bold (`PrismFontLoader`), so 600 renders regular. | high |
 | J8 | No letter-spacing, text-transform, font-feature-settings or font-variant: no `tnum`, no CSS uppercase. | high |
 | J9 | Default font size: a fixed 13 px on Linux, the system font on Windows. Modena sizes in em. | high |
 | J10 | Custom pseudo-classes via `PseudoClass` and `pseudoClassStateChanged`; styleable properties via `CssMetaData` and `StyleablePropertyFactory`. | high |
@@ -121,7 +121,7 @@ The project owner may write in German. Reply in the owner's language; everything
 | J12 | Radii are round or elliptical only. Chamfer routes: `-fx-shape` (scaled non-uniformly), a custom Region, a clip (cannot be stroked), a border image (no tokens). | high |
 | J13 | CSS effects: only `dropshadow` and `innershadow`, **one per node**; costly on `-Dprism.order=sw`. | medium |
 | J14 | CSS transitions since 23; Background/Border interpolation since 24; `linear()` easing since 26. | high |
-| J15 | Transitions are not disabled for reduced motion automatically; ProgressBar and ProgressIndicator ignore it. | high |
+| J15 | Transitions are not disabled for reduced motion automatically; ProgressBar and ProgressIndicator ignore it. Corrected 2026-10-09: since 27 (JDK-8385459) the animations of Chart, Pagination, TabPane, TitledPane and TableRow follow `Scene.Preferences.reducedMotion`; CSS transitions still do not. | high |
 | J16 | `Platform.getPreferences()`: colour scheme, accent, reduced motion/transparency/data; Windows keys such as `Windows.SPI.HighContrast`; no typed high-contrast property. `Scene.getPreferences()` (25+) overrides per Scene and falls back to the platform, not the owner window (popup inheritance unverified). The title bar follows the scene's colour scheme since 26. | high |
 | J17 | Media features: `prefers-color-scheme`, `prefers-reduced-motion`, `prefers-reduced-transparency`, `prefers-reduced-data`, `-fx-prefers-persistent-scrollbars` (25); `width`, `height`, `aspect-ratio`, `orientation`, `display-mode` (26); `-fx-supports-conditional-feature`, `-fx-platform`, conditional `@import` (27). No `prefers-contrast` or `forced-colors`. Other @-rules are ignored, so there is no `@keyframes`. | high |
 | J18 | Modena 27 has no dark variant; its Windows high-contrast sheets are overridden by author sheets. | high |
@@ -240,7 +240,7 @@ Each spike states its question and the evidence it expects. Record the result in
 
 - Trademark conflict searches for the D1 name (EUIPO, USPTO, GitHub), or listing them as owner tasks.
 - The real Fan Kit logo in the FanKitUnit (Claude Design drew a placeholder), and the open Fan Kit points of the register: the acceptance date (O-26), the logo variant per theme (O-27) and whether the two placements satisfy the kit's placement rules (O-79). Never decide them yourself.
-- **Legal open points for the owner** (details in §2 of the previous prompt, commit `07f7356`): the fan-content rule that domains and URLs must not contain game or publisher names; whether UEX has brand guidelines. Check first whether the register already tracks them; add only what is missing.
+- **Legal open points for the owner** (details in §2 of the previous prompt, commit `1263435` (`07f7356` before the history was re-signed on 2026-10-09)): the fan-content rule that domains and URLs must not contain game or publisher names; whether UEX has brand guidelines. Check first whether the register already tracks them; add only what is missing.
 - **The app, window and tray icon (R-UI-9):** an owner task if no concept was approved.
 - Licence, version and hash checks of the fonts and icons at the source.
 - Authoritative contrast and CVD results on the JavaFX sheets, including Modena-derived colours.
@@ -262,7 +262,7 @@ Each spike states its question and the evidence it expects. Record the result in
 
 - `docs/design-system/README.md`, `tokens.md`, `components.md`, `states.md` and `accessibility-report.md` (with a generated results section: date, tool commit, inputs), derived from the system's README, sections and component READMEs.
 - `components.md`, per component: anatomy; tokens; sizes in em; density variants; every interaction state (default, hover, focus, pressed, selected, disabled, error/invalid, read-only, loading); keyboard behaviour and focus order; `accessibleRole`, `accessibleText`/`accessibleHelp` and their bundle keys; the JavaFX control, style classes and pseudo-classes (a custom control as spike code before M0); a gallery example.
-- `references.md`: the Claude Design artifact URLs and dates; the provenance tags from Claude Design's replies; from the previous prompt at commit `07f7356` ("Add Claude Code prompt for the design system"), Appendix A (RSI/Spectrum observations O1–O15), Appendix C (font versions, Reserved Font Names, the static upstream source for Oxanium), Appendix D (icon candidates: Remix Icon's licence change, Carbon's `telemetry.yml`, Ikonli) and the §2 legal notes; blocked hosts; the original FAQ wording.
+- `references.md`: the Claude Design artifact URLs and dates; the provenance tags from Claude Design's replies; from the previous prompt at commit `1263435` (`07f7356` before the history was re-signed on 2026-10-09) ("Add Claude Code prompt for the design system"), Appendix A (RSI/Spectrum observations O1–O15), Appendix C (font versions, Reserved Font Names, the static upstream source for Oxanium), Appendix D (icon candidates: Remix Icon's licence change, Carbon's `telemetry.yml`, Ikonli) and the §2 legal notes; blocked hosts; the original FAQ wording.
 - New domain terms from the design (for example "unreviewed") go into 11 §A1 first, as 11 §A1 requires, before code or bundle keys use them.
 - The design-system ADR (Proposed), with the next free number (ADR-0004 as of 2026-10-08):
   - decisions D1–D11 as the owner made them;

@@ -322,7 +322,7 @@ Six reviewers read the whole plan, each along one dimension: cross-document cons
 
 ## M. Design-system prompt rewritten for Claude Design (2026-10-08)
 
-- The prompt that §K "Deferred" left open is replaced. @greluc asked for a brief for Claude Design instead of a Claude Code prompt, written within Claude Design's limits. `docs/prompts/` now holds the brief (`design-system.md`), the stage messages, the owner checklist and the JavaFX handoff for Claude Code. The previous Claude Code prompt stays in the history (commit `07f7356`).
+- The prompt that §K "Deferred" left open is replaced. @greluc asked for a brief for Claude Design instead of a Claude Code prompt, written within Claude Design's limits. `docs/prompts/` now holds the brief (`design-system.md`), the stage messages, the owner checklist and the JavaFX handoff for Claude Code. The previous Claude Code prompt stays in the history (commit `1263435` (`07f7356` before the history was re-signed on 2026-10-09)).
 - The §K prompt notes are applied:
   - The state inventory follows 02 §3, §4b and §7 and 11 §A3: report states with `Discarded`, job phases without "failed", the Capture and AI job states, the `BlockReason` set and the `ReportFinding` list.
   - The stale-reference rule of 07 §2.6 is applied: a major deviation is never lowered.
