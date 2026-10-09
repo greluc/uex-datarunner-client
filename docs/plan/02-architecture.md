@@ -516,9 +516,12 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - `reporting` builds each `Field` from a `FieldReading` (origin `RECOGNIZED`) or from user input (origin `USER`) and computes its `FieldAssessment(confidence, level, deviation, referenceOutdated, reference, referenceAge, delta)` with `DeviationAssessor`. The function is pure and property-tested; `level` follows the rule in 07 §2.6, `referenceOutdated` the stale-reference rule there.
   - Whether a field currently blocks release under I2 is computed once in `reporting` (e.g. `SubmissionGate.blockingFields`), never in the ViewModel; it also drives F8 navigation and the R-UI-12 counters.
   - The ViewModel maps `Field` (assessment, confirmation, origin) 1:1 to CSS pseudo-classes, without thresholds or findings logic:
-    - confidence channel (icon and border): `:confidence-confirm`, `:confidence-select`, `:confidence-correct` (level OK has none), `:user-entered`, `:confirmed`;
-    - deviation channel (background and Δ badge): `:deviation-minor`, `:deviation-major`, `:no-reference`, `:reference-outdated`;
-    - gate state: `:needs-confirmation` = the field blocks release under I2 (level other than OK and not resolved by confirmation or correction, or an unconfirmed `MAJOR` deviation).
+    - confidence channel (icon and border): `:confidence-confirm`, `:confidence-select`, `:confidence-correct` (level OK has none), `:user-entered`, `:confirmed`, `:double-confirmed` (OCR and AI agree, 07 §2.7), `:confirmation-suspended` (I7);
+    - deviation channel (background and Δ badge): `:deviation-minor`, `:deviation-major`, `:no-reference`, `:reference-outdated`, `:deviation-worsened` (I6);
+    - other field states: `:ai-hint` (a differing AI reading that never overwrites, 07 §2.7), `:not-sent` (an optional value that failed its checks, 11 §A1 "Mandatory field");
+    - gate state: `:needs-confirmation` = the field or its row needs a user decision before release: the I2 cases (level other than OK and not resolved by confirmation or correction, or an unconfirmed `MAJOR` deviation), a confirmation revoked by a worsened deviation (I6), a confirmation suspended by a conflicting reading (I7), an unexpected commodity (R-UI-12) and a row flagged `NewerObservationSent` (R-VAL-8). All of them already block release; the pseudo-class shows them alike (decided 2026-10-09 by @greluc, checkpoint B of the JavaFX handoff);
+    - row level: `:unreviewed` (11 §A1), `:newer-observation-sent` (R-VAL-8), `:row-selected` (set from the selection model, because the review table runs in cell-selection mode and JavaFX gives selected rows no `:selected` there; ADR-0004, SP-9).
+  - All other states (report, job, capture, folder, game, AI, connection, account, UEX row lifecycle, withdrawal, mode) are style classes `tl-state-<id>` on their components ([docs/design-system/states.md](../design-system/states.md)).
   - The view contains no comparison logic; this guarantees the same assessment in OCR and manual capture.
 
 ## 8. Platform integration
