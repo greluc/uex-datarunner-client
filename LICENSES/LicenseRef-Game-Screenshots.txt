@@ -5,7 +5,7 @@ game Star Citizen. The game content they show is copyright Cloud Imperium
 Rights LLC and Cloud Imperium Rights Ltd.
 
 These files are not covered by the GNU General Public License or by any other
-licence of the UEX Datarunner Client project.
+licence of the Tallyline project.
 
 They are in this repository only as test data for the project's text
 recognition. They are added under the rules in corpus/README.md (redaction,

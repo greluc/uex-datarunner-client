@@ -16,7 +16,7 @@ The design tokens of the app's design system, Tallyline, live in [`ui/design-tok
 | `pairings.json` | The declared foreground/ground pairs with their required ratio per theme (575) and the co-occurrence list, from the system's "Accessibility pairings" section |
 | `states.json` | The state ids with label, icon, tokens and accessible text (179), from the system's "State language" section; their mapping is [states.md](states.md) |
 
-The three DTCG modules are Final Community Group Reports of 28 October 2025 (checked on designtokens.org on 2026-10-09). Our own data sits under the `$extensions` key `space.uexdatarunner` (placeholder until the package name is decided, O-8).
+The three DTCG modules are Final Community Group Reports of 28 October 2025 (checked on designtokens.org on 2026-10-09). Our own data sits under the `$extensions` key `tallyline` (the product name, O-8).
 
 ## Conversion rules
 

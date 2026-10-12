@@ -117,8 +117,8 @@ Approach: **Test-Driven Development** and outside-in; rules, exceptions and tool
 | Architecture | Rules from §2/§3/§5/§6/§7 | `xtask` tests over `cargo metadata` and the sources, Clippy `disallowed_*`, `cargo-deny` |
 | Adapter integration | SQLite (real file DB in the temp folder), UEX client against `wiremock`, folder watcher against a real temp directory | `cargo test`, `wiremock` |
 | Contract | UEX responses against our DTOs: written against the documented schema; recorded responses only anonymised and only once UEX's terms allow it ([06](06-uex-api.md) open point 7) | `cargo test` |
-| Live API drift (opt-in) | field names and error codes against the recorded contracts, always `is_production=0` | weekly scheduled CI job (04 M1, 10 S-14) or locally via `UEXDR_LIVE_TEST=1`; skipped otherwise |
-| Golden/corpus | OCR and pipeline result against expected values, metric "silently wrong" | `tools/ocr-eval`, opt-in via `UEXDR_CORPUS_DIR` |
+| Live API drift (opt-in) | field names and error codes against the recorded contracts, always `is_production=0` | weekly scheduled CI job (04 M1, 10 S-14) or locally via `TALLYLINE_LIVE_TEST=1`; skipped otherwise |
+| Golden/corpus | OCR and pipeline result against expected values, metric "silently wrong" | `tools/ocr-eval`, opt-in via `TALLYLINE_CORPUS_DIR` |
 | UI (few) | Onboarding, submission lock, deviation confirmation, no dialog or focus change on background events (§7), the Fan Kit unit in both placements (R-UI-19) | egui UI test harness (candidate `egui_kittest`, unverified, O-114) |
 
 Further test rules:

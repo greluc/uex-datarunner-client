@@ -1,9 +1,9 @@
-# UEX Datarunner Client — CLA signatures
+# Tallyline — CLA signatures
 
-> **Doc type:** Living reference — current. Last reviewed: 2026-10-08.
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-12.
 
 This file is the public roster of Contributors who have signed the
-[UEX Datarunner Client Individual Contributor Licence Agreement](../CLA.md).
+[Tallyline Individual Contributor Licence Agreement](../CLA.md).
 
 If You are signing for the first time, follow the procedure in
 [§ 11 of the CLA](../CLA.md#11-how-to-sign): open a pull request titled
