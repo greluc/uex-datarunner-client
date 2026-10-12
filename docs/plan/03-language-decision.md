@@ -3,7 +3,7 @@
 > **Doc type:** Decision record (ADR-0001) — Superseded by ADR-0005 (2026-10-12); §5 answered by ADR-0003 (2026-10-08). Last reviewed: 2026-10-12.
 
 - **Status:** Superseded by [ADR-0005](../adr/0005-rust-and-egui.md) (2026-10-12); was Accepted (2026-10-08); §5 answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08)
-- **Decision:** **Java 27 + JavaFX 27**, build with Gradle 9.8.1 (Kotlin DSL)
+- **Decision:** ~~Java 27 + JavaFX 27, build with Gradle 9.8.1 (Kotlin DSL)~~ — **superseded 2026-10-12: Rust with egui, built with Cargo, native code only by registered exception ([ADR-0005](../adr/0005-rust-and-egui.md))**. Corrected 2026-10-12: the line recorded the 2026-10-08 choice as current after ADR-0005 had replaced it. The evaluation below is kept unchanged as the record of that choice.
 - **Context:** Desktop client for Windows and Linux that reads Star Citizen terminal screenshots via OCR or allows manual input, validates against UEX reference data and submits to the UEX API.
 
 ## 1. What the app needs technically (weighted)
@@ -79,6 +79,8 @@ Calculation Rust: (10–15)+20+12+10+15+15+9+10+12 = 113–118.
 The exact score is less important than the two criteria with the highest weight: **GUI (K1)** and **OCR runtime (K2)**.
 
 ## 4. Decision and honest assessment
+
+> **Superseded 2026-10-12 ([ADR-0005](../adr/0005-rust-and-egui.md)):** the implementation language is Rust with egui, not Java. Everything below, including the rating in §3 and "Chosen: Java", is the record of the 2026-10-08 decision and no longer applies. The 2026-10-12 review that reversed it is in ADR-0005 (Context, Alternatives considered).
 
 **Chosen: Java.** The implementation is easiest in Java, because
 
