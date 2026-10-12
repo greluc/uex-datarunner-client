@@ -4,29 +4,30 @@ Cross-platform desktop client (Windows + Linux) for Star Citizen DataRunners. It
 
 While the game is running, a lightweight local OCR does the work. Optionally, a local AI model (via Ollama) re-checks the results once the game is closed.
 
-> Status: **planning**. There is no runnable code yet.
+> Status: **planning**. There is no runnable code yet. The client will be written in Rust with the egui toolkit; native code is allowed only in registered exceptions ([ADR-0005](docs/adr/0005-rust-and-egui.md)).
 
 ## Plan
 
 | Document | Contents |
 |---|---|
 | [01 – Requirements](docs/plan/01-requirements.md) | Functional and non-functional requirements, assumptions |
-| [02 – Architecture](docs/plan/02-architecture.md) | Modules, data flow, domain model, platform integration, data-flow inventory |
-| [03 – Language decision (ADR-0001)](docs/plan/03-language-decision.md) | Java vs. Rust, evaluation, decision: Java 27 + JavaFX 27 |
+| [02 – Architecture](docs/plan/02-architecture.md) | Crates, data flow, domain model, platform integration, data-flow inventory |
+| [03 – Language decision (ADR-0001)](docs/plan/03-language-decision.md) | Java vs. Rust, evaluation; superseded by ADR-0005 (kept as the record of the evaluation) |
 | [04 – Roadmap](docs/plan/04-roadmap.md) | Milestones M0–M5 with acceptance criteria, requirement coverage, risks |
 | [05 – SC-Datarunner-UEX bug analysis](docs/plan/05-datarunner-bug-analysis.md) | Known bugs of the predecessor and our fixes |
 | [06 – UEX API](docs/plan/06-uex-api.md) | Endpoints, payload, open verification points |
 | [07 – OCR concept](docs/plan/07-ocr-concept.md) | Pipeline, screenshot observations, lessons from basetool-sc-extractor |
 | [08 – Review](docs/plan/08-review.md) | Plan review: corrected errors, closed gaps, open points |
-| [09 – Engineering principles](docs/plan/09-engineering-principles.md) | Modularisation, clean code, tests, definition of done – with enforcement |
+| [09 – Engineering principles](docs/plan/09-engineering-principles.md) | Modularisation, clean code, tests, definition of done, the native-code exception register – with enforcement |
 | [10 – Supply-chain security](docs/plan/10-supply-chain-security.md) | Threat model, securing dependencies, build, CI and releases, licence gates |
 | [11 – DDD and TDD](docs/plan/11-ddd-and-tdd.md) | Ubiquitous language, bounded contexts, aggregates and invariants; test-driven approach |
 | [Release process](docs/release-process.md) | Versioning, release checklist, licence compliance, upgrade/downgrade, patch-day and API-change procedures |
-| [ADR-0002 – Modules by bounded context](docs/adr/0002-modules-by-bounded-context.md) | Why the core is cut by bounded context and adapters by technology |
+| [ADR-0002 – Modules by bounded context](docs/adr/0002-modules-by-bounded-context.md) | Why the core is cut by bounded context and adapters by technology (in Rust: Cargo workspace crates) |
+| [ADR-0005 – Rust and egui](docs/adr/0005-rust-and-egui.md) | Implementation in Rust with egui; native code only by registered exception (`ort`, bundled SQLite, the TLS provider); supply chain, licence allowlist and packaging for Rust |
 | [ADR-0003 – Licence and contributions](docs/adr/0003-licence-and-contributions.md) | GPL-3.0-or-later, DCO and CLA, the Star Citizen Fan Kit unit, notice and source duties, licence gate |
 | [Open points](docs/adr/0000-open-points.md) | The single register of open owner decisions and open verifications |
 | [Dependency pins](docs/dependency-pins.md) | Tags of SHA-pinned GitHub Actions; versions and checksums of CI tools |
-| [Design-system brief](docs/prompts/design-system.md) | Staged brief for Claude Design: an original design system and a screens canvas, at genre level close to the current Star Citizen website and forum, with the Fan Kit unit and the About dialog; with its [stage messages](docs/prompts/design-system-kickoff.md), the [owner checklist](docs/prompts/design-system-owner-checklist.md) and the [JavaFX handoff](docs/prompts/design-system-javafx-handoff.md) for Claude Code (not yet run) |
+| [Design-system brief](docs/prompts/design-system.md) | Staged brief for Claude Design: an original design system and a screens canvas, at genre level close to the current Star Citizen website and forum, with the Fan Kit unit and the About dialog; with its [stage messages](docs/prompts/design-system-kickoff.md), the [owner checklist](docs/prompts/design-system-owner-checklist.md) and the [JavaFX handoff](docs/prompts/design-system-javafx-handoff.md) for Claude Code (historical since ADR-0005; the egui rendition replaces it, O-112) |
 
 ## Contributing
 
@@ -55,9 +56,10 @@ Decisions and checks that are still open are tracked in [docs/adr/0000-open-poin
 - the final project and package name (O-8);
 - the acceptance date of the Fankit Agreement (O-26), and which logo variant goes on light and on dark backgrounds (O-27; this README follows basetool's mapping until the project owner has checked the kit);
 - whether Cloud Imperium's terms allow the game screenshots in this public repository (O-28);
-- a legal review of the Microsoft C/C++ runtime in the Windows packages before the first release (O-12);
+- a legal review of the Microsoft C/C++ runtime DLLs that ONNX Runtime needs in the Windows packages before the first release (O-12);
 - how ONNX Runtime's built-in telemetry is switched off reliably (O-13; an M0 measurement decides);
-- the WiX version for the Windows installer (O-11), and the JDK vendor whose exact source archives are attached to releases (O-25).
+- how the ONNX Runtime library reaches the build and is pinned (O-108), which TLS provider the registered native-code exception covers (O-110), whether and how the `tallyline-egui` crate is adopted (O-112), the egui UI test harness (O-114) and the crate, package and binary names (O-122);
+- the M1 spike for the installers (`cargo-packager` with a pre-installed, pinned WiX 3.11.2, decided in O-116): offline build, `.deb` and archive formats.
 
 ## Star Citizen fan content
 

@@ -10,12 +10,14 @@ path = [
   ".github/**",
   "corpus/public/**/expected.json",
   "ui/design-tokens/*.json",
-  "gradle.properties",
-  "gradle/libs.versions.toml",
-  "gradle/verification-metadata.xml",
-  "gradle/verification-keyring.keys",
-  "gradle/wrapper/gradle-wrapper.properties",
-  "**/*.lockfile",
+  "**/Cargo.toml",
+  "Cargo.lock",
+  "rust-toolchain.toml",
+  "deny.toml",
+  "clippy.toml",
+  "rustfmt.toml",
+  ".cargo/**",
+  "supply-chain/**",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "Lucas Greuloch"
@@ -41,16 +43,6 @@ path = "CODE_OF_CONDUCT.md"
 precedence = "override"
 SPDX-FileCopyrightText = "Organization for Ethical Source"
 SPDX-License-Identifier = "CC-BY-SA-4.0"
-
-[[annotations]]
-path = [
-  "gradlew",
-  "gradlew.bat",
-  "gradle/wrapper/gradle-wrapper.jar",
-]
-precedence = "override"
-SPDX-FileCopyrightText = "2015 the original authors"
-SPDX-License-Identifier = "Apache-2.0"
 
 [[annotations]]
 path = [

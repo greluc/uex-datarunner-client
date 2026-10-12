@@ -1,6 +1,8 @@
 # Messages for Claude Design, one per stage
 
-> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-08.
+> **Doc type:** Prompt — Historical: the stage messages for building the design system Tallyline, which exists as version `1791542897-a5d3` (see `docs/design-system/README.md`). Last reviewed: 2026-10-12.
+
+> See [ADR-0005](../adr/0005-rust-and-egui.md) (2026-10-12): the app is now built in Rust with egui, not JavaFX. These messages name JavaFX as the target and are kept unchanged as the record of the design round.
 
 For the owner. Paste one message per stage, fill in the `<…>` fields, and wait for the reply and your checkpoint before the next. Lines starting with "Owner note" are for you, not for the message.
 

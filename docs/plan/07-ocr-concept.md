@@ -1,6 +1,6 @@
 # OCR concept
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
 
 ## 1. Observations on real screenshots (Patch City, Pyro)
 
@@ -96,11 +96,11 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
   - Number of dictionary classes against the model's output shape (plausibility check; it does not detect a reordered dictionary)
   - Hash of every OCR asset (det, rec, dictionary) on load – the protection against a wrong or reordered dictionary
 - **Runtime** (typed `OcrRuntimeSettings` in `adapter-ocr`; ORT's defaults, one intra-op thread per physical core, affinitized and spinning, are never used):
-  - `intraOpThreads`: start value 1, set per session (`SessionOptions.setIntraOpNumThreads`). Sequential execution mode, so there is no inter-op pool. `session.intra_op.allow_spinning` = `0` (it only takes effect if `intraOpThreads` is raised above 1). Det and rec run one after the other on the OCR worker thread, so OCR uses at most *OCR pool size × `intraOpThreads`* cores (02 §7). That ORT then creates no extra threads is confirmed in M2.
-  - Sessions are created lazily and closed after `idleCloseAfter` (start value 5 min). Because the CPU memory arena keeps its peak until the session is closed, the arena and memory-pattern settings (`setCPUArenaAllocator`, `setMemoryPatternOptimization`) are decided together with `idleCloseAfter` from the M2 process-memory measurement (R-NF-3).
-  - Input tensors come from a direct, native-order buffer that is reused per OCR worker and sized from the detector tile limit, because ORT copies every non-direct buffer into a new direct buffer.
-  - A global ORT thread pool (environment-level threading options plus `disablePerSessionThreads()`) is only an M4 alternative, if measurement shows that R-OCR-12 needs more than one intra-op thread; it replaces the per-session settings and is never combined with them.
-  - Method and key names were checked against the ORT 1.30.0 Java source on 2026-10-08.
+  - `intraOpThreads`: start value 1, set per session (the session option for the intra-op thread count). Sequential execution mode, so there is no inter-op pool. `session.intra_op.allow_spinning` = `0` (it only takes effect if `intraOpThreads` is raised above 1). Det and rec run one after the other on the OCR worker thread, so OCR uses at most *OCR pool size × `intraOpThreads`* cores (02 §7). That ORT then creates no extra threads is confirmed in M2.
+  - Sessions are created lazily and closed after `idleCloseAfter` (start value 5 min). Because the CPU memory arena keeps its peak until the session is closed, the arena and memory-pattern session options are decided together with `idleCloseAfter` from the M2 process-memory measurement (R-NF-3).
+  - Input tensors are built in a buffer that is reused per OCR worker and sized from the detector tile limit, so each inference does not allocate a new input buffer; how the `ort` binding takes ownership of the buffer is verified in M0.
+  - A global ORT thread pool (environment-level threading options with per-session threads disabled) is only an M4 alternative, if measurement shows that R-OCR-12 needs more than one intra-op thread; it replaces the per-session settings and is never combined with them.
+  - Amended 2026-10-12 (ADR-0005): the method and key names above were checked against the ORT 1.30.0 Java source on 2026-10-08 and no longer apply by name. The session options are used through the `ort` crate (ADR-0005 D2); the option names and the ONNX Runtime version that the pin brings are verified at source in M0.
 - **Later option** (not 1.0): our own recognition model fine-tuned to the SC HUD font, if the corpus shows a need.
 
 ### 2.3 Layout
@@ -156,7 +156,7 @@ The parsers get a **field-typed raw string** per card field. Deciding which toke
 
   VLM cells of the `scu` column carry no unit and go to step 4 directly.
 
-  Unit tests (red first) plus jqwik properties:
+  Unit tests (red first) plus `proptest` properties:
   - `Compos0iSCU` and `COMPOS0ISCU` → raw 0 with candidate 1, below the send threshold, never 501;
   - `Compos0 SCUite` → 0;
   - separate boxes "SIZE 1" and "12,000 SCU" → 12000;
@@ -213,7 +213,7 @@ The parsers get a **field-typed raw string** per card field. Deciding which toke
      - While the terminal is still ambiguous, no assortment preference is applied; the candidate terminals' assortments are shown only as hints. No prior-based repair takes place (`NO_REFERENCE`) until the terminal is resolved. Resolving it is a key change ([02](02-architecture.md) §3) that re-runs stages 4–6.
    - **Tests** (red first):
      - a single-terminal location whose page shows commodities mostly unknown at that terminal gives terminal `Ambiguous`, and `release()` is refused (`@Tag("R-OCR-16")`);
-     - jqwik property: a candidate missing a recognised commodity never outranks one that contains all of R, whatever the assortment sizes;
+     - `proptest` property: a candidate missing a recognised commodity never outranks one that contains all of R, whatever the assortment sizes;
      - golden test on `pyro-gateway-stanton-01`: expects Pyro Gateway (Stanton) or a mandatory selection, never the twin terminal;
      - a name that is not in the assortment never resolves to an assortment neighbour.
 3. **Price prior:**
@@ -315,7 +315,7 @@ Both are computed separately (`Deviation`: `EQUAL`, `MINOR`, `MAJOR`, `NO_REFERE
 
 **Container sizes and prices without a terminal prior** (R-UI-10, R-VAL-2a): container sizes compare as a set – no prior set `NO_REFERENCE`, same set `EQUAL`, any difference `MINOR`, never `MAJOR`; they are assessed only if `container_sizes` is sent ([06](06-uex-api.md) open points 3 and 9). A price without a terminal prior is compared with the commodity-wide average where R-VAL-2a allows it: more than twice the effective tolerance away is `MAJOR` (the reference is shown as "commodity average"), otherwise `NO_REFERENCE`. The stale-reference rule does not apply to the average, which has no per-terminal age.
 
-**Worsening** (R-VAL-7) is an explicit method `Deviation.isWorseThan(previous)`, never an ordinal or `compareTo` comparison: `EQUAL` < `MINOR` < `MAJOR`; `NO_REFERENCE` → `MINOR` or `MAJOR` is worse; `NO_REFERENCE` → `EQUAL` and any level → `NO_REFERENCE` (the prior disappeared) are not worse. It compares unlowered levels and is property-tested (jqwik).
+**Worsening** (R-VAL-7) is an explicit method `Deviation.isWorseThan(previous)`, never an ordinal or `compareTo` comparison: `EQUAL` < `MINOR` < `MAJOR`; `NO_REFERENCE` → `MINOR` or `MAJOR` is worse; `NO_REFERENCE` → `EQUAL` and any level → `NO_REFERENCE` (the prior disappeared) are not worse. It compares unlowered levels and is property-tested (`proptest`).
 
 The report confidence equals the worst mandatory field of the sent rows ([11](11-ddd-and-tdd.md) §A1), not the mean, so that individual errors are not "averaged away"; fields that are not sent do not count.
 
@@ -472,7 +472,7 @@ Corrected 2026-10-08: basetool-sc-extractor is GPL-3.0-or-later. Since [ADR-0003
 - **A16 decision from the pairs (M2):** for each capture method and renderer, the eval reports panel black point, white point, mid-tone median and the share of panel pixels at the maximum code value, for each HDR step against the Windows-HDR-off base. Each method is classified as `identical`, `tone-mapped`, `lifted` (washed out), `clipped` or `HDR container`; the result goes into A16 and the HDR advice of R-DOC-1. Until a method is classified, R-DOC-1 makes no recommendation for it.
 - **Decode fixtures** (`adapter-files`; generated inside the test, no committed binary blobs):
   1. an 8-bit and a 16-bit PNG generated from the same public corpus image yield `ImageRaster`s that differ by at most 1 code value;
-  2. a 16-bit PNG with a linear-RGB `iCCP` profile decodes to the same sRGB values as the plain PNG within 2 code values (this fails with `ImageIO.read` and with the JDK PNG reader alone, which only store `iCCP` as metadata);
+  2. a 16-bit PNG with a linear-RGB `iCCP` profile decodes to the same sRGB values as the plain PNG within 2 code values (a decoder that only exposes `iCCP` as metadata, without applying it, fails this fixture; the decoder crate is chosen in M0 and must pass it);
   3. a 16-bit PNG with `cICP` 9/16/0/1 (PQ) is never read as sRGB: it is set aside with the R-CAP-8 reason;
   4. a JPEG with an APP2 ICC profile, a progressive JPEG and baseline JPEGs with 4:4:4 and 4:2:0 subsampling, all generated from the same source, decode to the source's sRGB values within a stated tolerance (start value: 3 code values mean absolute error);
   5. header-only stubs of JPEG XR, AVIF and OpenEXR are detected by magic bytes regardless of the file extension and get the R-CAP-8 "HDR format" message; JPEG data in a file named `.png` is decoded as JPEG;

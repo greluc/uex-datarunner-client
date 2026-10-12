@@ -4,7 +4,6 @@ Developer tools that are never shipped with the app. Each subdirectory says what
 
 | Path | What belongs there |
 |---|---|
-| [`design-system/`](design-system/) | Scripts that convert, validate and check the design tokens, and the JavaFX spikes of the design-system handoff (ADR-0004) |
 | `ocr-eval/` | The OCR evaluation harness, from M2 ([04](../docs/plan/04-roadmap.md)) |
 
-Before the Gradle build exists (M0), tools are single-entry Java programs run with the JDK's source launcher; they use only the JDK and, for the spikes, JavaFX jars from a scratch directory outside the repository. Nothing they generate is committed unless a document says so.
+New repository tooling is Rust ([ADR-0005](../docs/adr/0005-rust-and-egui.md) D12): checks and generators are tasks of an `xtask` crate once the workspace exists (M0). The Java programs and JavaFX spikes that converted, validated and contrast-checked the design tokens were removed on 2026-10-12; they stay in the Git history, and their `xtask` replacement is part of open point O-112. Nothing a tool generates is committed unless a document says so.

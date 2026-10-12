@@ -134,16 +134,21 @@ behaviour is a finding.
   (R-NF-10). It does not access the game process beyond reading the process
   list ([`docs/plan/02-architecture.md`](../docs/plan/02-architecture.md)
   §9). In scope: any other outbound connection, including telemetry from a
-  bundled library, any listening socket, and any other access to the game.
+  bundled library or native component (ONNX Runtime ships telemetry that the
+  client switches off; whether that is complete is an open verification, O-13),
+  any listening socket, and any other access to the game.
 - **Supply chain.** Anything that would let an attacker bring code onto
   users' machines unnoticed through this project's build and release
-  pipeline: dependency resolution and verification (S-1 to S-6), the Gradle
-  wrapper (S-10), the pinned build JDK and installer tools (S-11), the GitHub
-  Actions workflows, their pins and permissions (S-13 to S-15), the release
-  artefacts with their checksums, SBOM and build attestations (S-16 to S-18),
-  the integrity check of the bundled OCR models at build time and at load
-  time (S-22, R-SEC-7), and the loading of native libraries from an
-  app-specific instead of a shared directory (S-24, R-SEC-8).
+  pipeline: dependency resolution, the lockfile, the vendored crate sources and
+  their verification (S-1 to S-6), the pinned Rust toolchain and build tooling
+  (S-10), the installer tools (S-11), the GitHub Actions workflows, their pins
+  and permissions (S-13 to S-15), the release artefacts with their checksums,
+  SBOM and build attestations (S-16 to S-18), the integrity check of the
+  bundled OCR models at build time and at load time (S-22, R-SEC-7), and the
+  loading of native libraries (ONNX Runtime) from an app-specific instead of a
+  shared directory (S-24, R-SEC-8). Native code inside a dependency is allowed
+  only as a registered exception; a native part that is not registered is a
+  finding.
 - **Update notice.** The client checks GitHub Releases at most once a day,
   the check can be disabled, and it only shows a "new version available"
   notice with a link to the GitHub release page; it downloads and starts

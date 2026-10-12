@@ -34,13 +34,13 @@ A change that contradicts a requirement or an accepted ADR needs @greluc's appro
 - [ ] `docs/`
 - [ ] `corpus/`
 - [ ] `shared-kernel`
-- [ ] Context modules: `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`
+- [ ] Context crates: `game`, `reference-data`, `capture`, `recognition`, `reporting`, `submission`
 - [ ] `workflows`
 - [ ] Adapters: `adapter-uex`, `adapter-storage`, `adapter-ocr`, `adapter-vlm`, `adapter-files`, `adapter-platform`
 - [ ] `ui`
 - [ ] `app` or packaging
 - [ ] `tools/ocr-eval`
-- [ ] `build-logic`, Gradle files, `.github/`
+- [ ] `xtask`, Cargo files (`Cargo.toml`, `Cargo.lock`, vendor directory, `deny.toml`, `rust-toolchain.toml`), `.github/`
 - [ ] Governance and licensing files (`LICENSE`, `LICENSES/`, `NOTICE`, `REUSE.toml`, `CLA.md`, `CONTRIBUTING.md`, `CLAUDE.md`)
 
 ## How was this tested?
@@ -68,13 +68,14 @@ If something could not be tested, say so explicitly. "Tests pass" is not a descr
 
 ### Code (if affected)
 
-- [ ] `./gradlew check` passes for every commit, because merges keep every commit (no squash merges); CI is green on Windows and Linux.
-- [ ] Core modules: the test came first (red, green, refactor); a new use case has an acceptance test tagged with its requirement ID; a bug fix starts with a reproducing test.
+- [ ] `cargo xtask check` passes for every commit, because merges keep every commit (no squash merges); CI is green on Windows and Linux.
+- [ ] Core crates: the test came first (red, green, refactor); a new use case has an acceptance test tagged with its requirement ID; a bug fix starts with a reproducing test.
 - [ ] Domain terms follow the ubiquitous language (11 §A1); aggregate invariants are covered by tests.
-- [ ] The code sits in the right module and package; no new module dependency outside the context map (02 §2); no technology types cross a module boundary.
-- [ ] No new ArchUnit, Error Prone or NullAway finding; a suppression has its row in the suppression register (09 §3a) and its reason in the commit message and this pull request.
-- [ ] No comments besides Javadoc, also none in configuration files; Javadoc describes the actual contract.
-- [ ] No magic numbers, boolean control parameters, `null` returns or swallowed exceptions; error cases and cancellation are handled and tested.
+- [ ] The code sits in the right crate and module; no new crate dependency outside the context map (02 §2); no technology types cross a crate boundary.
+- [ ] No new Clippy, rustdoc, `cargo-deny` or architecture-test finding; a lint suppression is `#[expect(lint, reason = "…")]` (or `allow`) with one short sentence, has its row in the suppression register (09 §3a) and its longer reasoning in the commit message and this pull request.
+- [ ] No `unsafe` outside the platform adapter; every `unsafe` site is registered in 09 §3a; no native code in a new dependency unless it has a row in the native-code exception register (09 §3b) and @greluc approved it.
+- [ ] No comments besides rustdoc, also none in configuration files; rustdoc describes the actual contract.
+- [ ] No magic numbers, boolean control parameters, `unwrap`/`expect`/`panic!` in non-test code or swallowed errors; error cases and cancellation are handled and tested.
 
 ### Recognition (if affected)
 
@@ -82,7 +83,7 @@ If something could not be tested, say so explicitly. "Tests pass" is not a descr
 - [ ] A change to locate, anchors or crop geometry: I looked at the crop dumps of the whole corpus.
 - [ ] No absolute pixel or RGB thresholds (R-OCR-17, R-OCR-18).
 - [ ] No `expected.json` was regenerated from a recognition run; `verified` was set only by a human who checked the values.
-- [ ] A model or runtime change updates the OCR digest deliberately (R-QA-4); revision and SHA-256 of every OCR asset are recorded in its checksum file and in `NOTICE` (S-22).
+- [ ] A model or runtime change (including the `ort` pin) updates the OCR digest deliberately (R-QA-4); revision and SHA-256 of every OCR asset are recorded in its checksum file and in `NOTICE` (S-22).
 
 ### UEX API (if affected)
 
@@ -92,7 +93,7 @@ If something could not be tested, say so explicitly. "Tests pass" is not a descr
 
 ### UI (if affected)
 
-- [ ] All texts come from ResourceBundles; colours only from CSS theme variables.
+- [ ] All texts come from the message catalogue; colours only from the theme tokens, never as literals in view code.
 - [ ] Deviations from the UEX value are shown with colour, icon and text (R-UI-10 to R-UI-12).
 - [ ] I launched the app and saw the change working.
 - [ ] The upload screenshot still never contains the balance (test).
@@ -104,21 +105,21 @@ If something could not be tested, say so explicitly. "Tests pass" is not a descr
 
 ### Dependencies (if affected)
 
-- [ ] Every new dependency is justified under "Dependencies and keys": purpose, SPDX licence ID and its source, maintenance status (S-29).
-- [ ] Changelog of the update read; new transitive dependencies checked in the lockfile diff (S-9).
-- [ ] Lockfiles and `gradle/verification-metadata.xml` are updated in this pull request as a separate commit (S-3, S-5); new signing-key fingerprints and the source they were checked against are listed under "Dependencies and keys".
-- [ ] Repositories, versions and licences follow the "Stack rules" and supply-chain rules in `CLAUDE.md` (S-1, S-2); any exception is recorded in 10 and named below.
+- [ ] Every new dependency is justified under "Dependencies and keys": purpose, SPDX licence ID and its source, maintenance status (S-29), native code or build script.
+- [ ] Changelog of the update read; new transitive crates checked in the `Cargo.lock` and vendor diff, including their `build.rs`, procedural macros and native parts (S-9).
+- [ ] `Cargo.lock`, the vendor directory and the `cargo-vet` records are updated in this pull request, the lockfile and vendor update as a separate commit (S-3, S-5); `cargo-deny` and `cargo-audit` pass without a new exception, or the exception has its justification and expiry date.
+- [ ] Source (crates.io only, no git dependencies), versions and licences follow the "Stack rules" and supply-chain rules in `CLAUDE.md` (S-1, S-2); any exception is recorded in 10 and named below.
 
 ### Build and CI (if affected)
 
 - [ ] GitHub Actions are pinned by full commit SHA without a trailing comment, and `docs/dependency-pins.md` records the tag each SHA resolves to.
 - [ ] Workflow `permissions` are minimal.
-- [ ] Every `gradle/actions` step sets `cache-provider: basic` or `cache-disabled: true`.
-- [ ] A CI tool a workflow downloads is pinned by version and SHA-256, or installed from a hash-locked requirements file (S-36), and has its row in `docs/dependency-pins.md`.
+- [ ] No action step runs a proprietary default component (S-37).
+- [ ] A CI tool a workflow downloads or installs (including WiX and `cargo-packager`) is pinned by version and SHA-256, or installed with `--locked` at a pinned version or from a hash-locked requirements file (S-36), and has its row in `docs/dependency-pins.md`.
 
 ## Dependencies and keys (if affected)
 
-<!-- Per new or updated dependency: name, version, purpose, SPDX licence ID and where you read it, maintenance status. Per new signing key: fingerprint and the page you checked it against. Otherwise "None". -->
+<!-- Per new or updated dependency: name, version, purpose, SPDX licence ID and where you read it, maintenance status, and whether it brings native code, a build script or `unsafe`. Per new `cargo-vet` audit or import: who audited and where it is recorded. Otherwise "None". -->
 
 ## Upgrade notes (if affected)
 

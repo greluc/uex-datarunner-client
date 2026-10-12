@@ -1,8 +1,8 @@
 # ADR-002: Cut the core modules by bounded context, keep adapters by technology
 
-> **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-08.
+> **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-12.
 
-- **Status:** Accepted (2026-10-08)
+- **Status:** Accepted (2026-10-08). Amended by ADR-0005 (2026-10-12): technology terms only
 - **Supersedes:** the layer-based core modules (`domain`, `pipeline`, `application`) in `docs/plan/02-architecture.md` §2
 - **Related:** [ADR-001 language decision](../plan/03-language-decision.md), [11-ddd-and-tdd.md](../plan/11-ddd-and-tdd.md)
 
