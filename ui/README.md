@@ -1,3 +1,5 @@
 # ui
 
+> **Superseded in part, 2026-10-12 ([ADR-0005](../docs/adr/0005-rust-and-egui.md)):** the UI is built with egui, not JavaFX, so "JavaFX `ui` module" below reads as the `ui` crate, and the CSS-oriented parts (user-agent sheets, pseudo-classes, JavaFX font and icon loading) described in the design-system documents no longer apply. The Java tools under `tools/design-system/` are replaced by an `xtask` task and the Tallyline egui crate once open point O-112 is settled. `design-tokens/` remains the current source of the token values until O-112 decides.
+
 The future JavaFX `ui` module (02 §2). Until the Gradle build exists (M0), it holds only [`design-tokens/`](design-tokens/): the design tokens of the design system in the DTCG 2025.10 format, converted and validated by the scripts in [`tools/design-system/`](../tools/design-system/) and described in [`docs/design-system/tokens.md`](../docs/design-system/tokens.md). Once the module exists, its purpose lives in its `module-info.java` Javadoc and this file goes.

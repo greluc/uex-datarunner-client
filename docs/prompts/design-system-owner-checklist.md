@@ -1,6 +1,8 @@
 # Owner checklist: running the design brief in Claude Design
 
-> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-09.
+> **Doc type:** Prompt — not yet run. Last reviewed: 2026-10-12.
+
+> See [ADR-0005](../adr/0005-rust-and-egui.md) (2026-10-12): the app is now built in Rust with egui, not JavaFX; the JavaFX handoff this checklist points to is superseded. The text below is unchanged.
 
 For the owner only. **Never attach this file to Claude Design.** It replaces the "How to use" part that used to sit at the top of the brief.
 

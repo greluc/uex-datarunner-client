@@ -1,6 +1,8 @@
 # Design tokens
 
-> **Doc type:** Living spec — draft (JavaFX handoff stage 2, ADR-0004 Proposed). Last reviewed: 2026-10-09.
+> **Doc type:** Living spec — draft (JavaFX handoff stage 2; ADR-0004 partly superseded by ADR-0005). Last reviewed: 2026-10-12.
+
+> **Note 2026-10-12:** [ADR-0005](../adr/0005-rust-and-egui.md) replaces JavaFX with egui. The token files, their schema, the conversion rules and the values below stand until open point O-112 (adoption of the `tallyline-egui` crate) says otherwise. The section "JavaFX mapping" and the Java scripts under "Regenerating" describe a superseded mechanism: the egui rendition maps the same tokens to `egui::Style`, `TextStyle` and per-face font families, and an `xtask` task replaces the Java scripts once O-112 is settled. See [README.md](README.md), "egui rendition (ADR-0005)".
 
 The design tokens of the app's design system, Tallyline, live in [`ui/design-tokens/`](../../ui/design-tokens/). They were converted from the Claude Design system Tallyline, version `1791542897-a5d3` (2026-10-09), by [`tools/design-system/ConvertTokens.java`](../../tools/design-system/ConvertTokens.java). The token files are the repository's source of truth; the Claude Design artifact is a reference and is never read at build or run time. Why this schema and these rules: [ADR-0004](../adr/0004-design-system.md).
 
@@ -28,6 +30,8 @@ The three DTCG modules are Final Community Group Reports of 28 October 2025 (che
 - **Validation:** [`tools/design-system/ValidateTokens.java`](../../tools/design-system/ValidateTokens.java) fails loudly and fixes nothing. It checks that every colour and shadow token has a value in every theme, that aliases resolve without cycles, that every name matches `[a-z0-9-]`, that colours are sRGB objects or aliases whose components agree with their `hex`, that high contrast has no translucent colour and no shadow, that shadows have one layer and no spread, that type styles have no letter spacing and use a listed face for their weight, that rows and in-cell targets are at least 24 px, and that every pairing and state names known tokens and unique ids. Last run: passed on version `1791542897-a5d3` (2026-10-09); two conversion runs gave byte-identical files.
 
 ## JavaFX mapping
+
+> Superseded 2026-10-12 by ADR-0005 D6 (the mapping to egui replaces it; kept as the record of the JavaFX handoff). The SP-n findings it cites are JavaFX spike results.
 
 | Token | JavaFX 27 CSS |
 |---|---|
@@ -71,11 +75,13 @@ Root font size = max(`Font.getDefault().getSize()`, 14 px) × the user's text-si
 
 **Size:** rows 28 px (compact) and 36 px (comfortable); controls 32 px, small controls and in-cell controls 24 px; icons 16 and 20 px; rail 48, sidebar 232, top bar 40, status bar 28 px; minimum window 1280 × 720 px; Fan Kit logo frame 96 px. `size-crop-thumb-compact` (20 px) and `size-crop-thumb-comfortable` (28 px) are deprecated together with the CropThumbnail component (retired 2026-10-09): no view shows a small fixed-height crop.
 
-**Readable crop** (R-UI-3, R-UI-11; a rule, not a token): the crop of the focused field in the DetailStrip and in the deviation-confirmation dialog is scaled up by the smallest whole-number factor, with nearest-neighbour sampling, at which the cap height of its digits is at least twice the cap height of the body text. IBM Plex Sans has a cap height of 0.698 em, so at the 14 px base the target is about 19.5 px; digits about 7 px high in the capture get factor 3. The crop is never blurred by interpolation and never cut; the strip grows when the crop is taller. The bounds that replaced `size-crop-detail-min-height` and `size-crop-detail-max-height` (32 and 96 px, removed in version `1791541897-0513`) are this rule. Unverified until the JavaFX spike: that `ImageView` with `smooth = false` scales a crop without interpolation at every HiDPI scale, and the source of the digit cap height (the R-OCR-17 measurement of the price digits).
+**Readable crop** (R-UI-3, R-UI-11; a rule, not a token): the crop of the focused field in the DetailStrip and in the deviation-confirmation dialog is scaled up by the smallest whole-number factor, with nearest-neighbour sampling, at which the cap height of its digits is at least twice the cap height of the body text. IBM Plex Sans has a cap height of 0.698 em, so at the 14 px base the target is about 19.5 px; digits about 7 px high in the capture get factor 3. The crop is never blurred by interpolation and never cut; the strip grows when the crop is taller. The bounds that replaced `size-crop-detail-min-height` and `size-crop-detail-max-height` (32 and 96 px, removed in version `1791541897-0513`) are this rule. Unverified until the toolkit spike (written for JavaFX; under ADR-0005 the same question is asked of egui's nearest-neighbour texture filtering): that `ImageView` with `smooth = false` scales a crop without interpolation at every HiDPI scale, and the source of the digit cap height (the R-OCR-17 measurement of the price digits).
 
 The colour values per theme are in the theme files; their contrast results are in [accessibility-report.md](accessibility-report.md).
 
 ## Regenerating
+
+> Superseded 2026-10-12 by ADR-0005 D12: the Java scripts below are replaced by an `xtask` task once O-112 is settled. Until then they remain the way to regenerate and check the token files.
 
 ```bash
 java tools/design-system/ConvertTokens.java <export>/design-system ui/design-tokens "Claude Design system Tallyline, version <version>"

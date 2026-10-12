@@ -1,5 +1,7 @@
 # Design-system tools
 
+> **Superseded 2026-10-12 by [ADR-0005](../../docs/adr/0005-rust-and-egui.md):** the app is built in Rust with egui. These Java programs and the JavaFX spikes are historical; they are replaced by an `xtask` task and the Tallyline egui crate once open point O-112 is settled. Nothing here is deleted or changed in the meantime, and the DTCG token files in [`ui/design-tokens/`](../../ui/design-tokens/) remain the current source until O-112 decides.
+
 Scripts for the design tokens in [`ui/design-tokens/`](../../ui/design-tokens/) and the spikes of the JavaFX design-system handoff ([`docs/prompts/design-system-javafx-handoff.md`](../../docs/prompts/design-system-javafx-handoff.md), [ADR-0004](../../docs/adr/0004-design-system.md)). The documentation they serve is in [`docs/design-system/`](../../docs/design-system/).
 
 | File | Purpose |

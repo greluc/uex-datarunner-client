@@ -1,6 +1,8 @@
 # Tallyline update for the plan decisions of 2026-10-09: brief for Claude Design
 
-> **Doc type:** Prompt — run 2026-10-09 (stages A and B; Design System version 1791537441-68f0, canvas version 1791537461-94bf). Last reviewed: 2026-10-09.
+> **Doc type:** Prompt — Historical: run 2026-10-09 (stages A and B; Design System version 1791537441-68f0, canvas version 1791537461-94bf). Last reviewed: 2026-10-12.
+
+> See [ADR-0005](../adr/0005-rust-and-egui.md) (2026-10-12): the app is now built in Rust with egui, not JavaFX. This brief was written for the JavaFX plan and is kept unchanged as the record of the design round.
 
 For the owner. Paste the message below into a **new Claude Design chat** with **Output > Design** selected. Every value is given; there is nothing to fill in. Lines starting with "Owner note" are for you, not for the message.
 

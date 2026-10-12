@@ -1,6 +1,8 @@
 # System architecture
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
+
+> Amended 2026-10-12 (ADR-0005): the implementation language is Rust with egui, native code only by registered exception. The context cut, the ports, the data flow and all behavioural rules of this document are unchanged; §2, §3, §4a, §4b, §7, §8, §9 (wording) and §10 name the Rust technology instead of Java, JavaFX and Gradle. Crates, versions and tools not named in ADR-0005 are chosen and verified at source in M0.
 
 ## 1. Overview
 
@@ -52,26 +54,28 @@ Guiding principles:
 3. **Pure domain logic and I/O are separated.** Pipeline stages are pure functions on immutable records. This makes them testable with golden data, without UI and without network.
 4. **Language-neutral cut.** The module boundaries allow individual parts (e.g. the OCR core) to be replaced later.
 
-## 2. Modules (Gradle multi-project, JPMS modules) – bounded contexts + ports & adapters
+## 2. Modules (Cargo workspace, one crate per context) – bounded contexts + ports & adapters
 
-The cut combines **DDD bounded contexts** with **ports & adapters** (decision and trade-offs: [ADR-002](../adr/0002-modules-by-bounded-context.md)):
+The cut combines **DDD bounded contexts** with **ports & adapters** (decision and trade-offs: [ADR-0002](../adr/0002-modules-by-bounded-context.md), technology terms amended by [ADR-0005](../adr/0005-rust-and-egui.md)). Below, "module" means a Cargo workspace crate:
 
-- **Core** = one module per bounded context ([11 §A2](11-ddd-and-tdd.md)), plus `shared-kernel` and `workflows`.
-  - Each context module contains its domain model **and** its application services (use cases).
-  - The core knows no technology: no JavaFX, no AWT/ImageIO, no HTTP or sockets, no SQL, no ONNX, no file system (`java.nio.file`, `java.io` file streams), no processes or native access (FFM), no clock except via `java.time.Clock` (enforcement in 09 §2).
-  - Images enter the core as an own immutable raster type (`ImageRaster`: width, height, ARGB `int[]`), file locations as a value object (`FolderLocation`); both live in `shared-kernel`. Decoding (ImageIO), encoding (JPEG/PNG for the upload) and file-system access happen only in adapters.
-- **Adapters** are cut by **technology** and implement the **ports** of the context modules. Inside an adapter there is one package per context.
-- **`ui`** uses only the public application API of the context modules and `workflows`.
+- **Core** = one crate per bounded context ([11 §A2](11-ddd-and-tdd.md)), plus `shared-kernel` and `workflows`.
+  - Each context crate contains its domain model **and** its application services (use cases).
+  - The core knows no technology: no egui, no image codecs, no HTTP or sockets, no SQL, no ONNX, no file system (`std::fs`, `std::net`, `std::process`), no native access or `unsafe` (`#![forbid(unsafe_code)]`), no clock except through an injected `Clock` trait (enforcement in 09 §2, ADR-0005 D13).
+  - Images enter the core as an own immutable raster type (`ImageRaster`: width, height, ARGB `u32` pixels), file locations as a value object (`FolderLocation`); both live in `shared-kernel`. Decoding, encoding (JPEG/PNG for the upload) and file-system access happen only in adapters; the image codec crates are chosen in M0.
+- **Adapters** are cut by **technology** and implement the **ports** (traits) of the context crates. Inside an adapter there is one module per context.
+- **`ui`** uses only the public application API of the context crates and `workflows`.
 - **`app`** is exclusively composition root and packaging.
+- **Visibility:** a context crate exposes two public modules, `api` and `api::model`; everything else is `pub(crate)` (the former `internal` package). A crate that is not a dependency in the context map cannot be named at all, so `Cargo.toml` replaces the JPMS `requires`.
 
 Detailed rules and their enforcement are in [09-engineering-principles.md](09-engineering-principles.md).
 
 ```
 uex-datarunner-client/
-├── build-logic/            Convention plugins (toolchain, Error Prone/NullAway, Spotless, tests, JaCoCo, ArchUnit, PIT)
+├── Cargo.toml              Workspace manifest (members, shared lint table, shared dependency versions); Cargo.lock; rust-toolchain.toml
+├── xtask/                  Repository checks and generators in Rust (English check, header check, token and icon generation, architecture rules over cargo metadata, packaging); replaces build-logic
 │
 │   ── Core: bounded contexts (pure) ──
-├── shared-kernel/          IDs, money/quantity value objects, ImageRaster, FolderLocation, Outcome, domain-event base, LogContext scoped-value key, DDD marker annotations
+├── shared-kernel/          IDs, money/quantity value objects, ImageRaster, FolderLocation, Outcome, domain-event base, LogContext key (tracing span field), DDD marker traits
 ├── game/                   Game Environment: environment, version (incl. observed version history per UEX environment, R-CAP-3b), game state with the running channel, localisation mapping model, Game.log witness facts (R-OCR-20); ports GameStateProbe, GameLocalizationSource, GameObservationRepository, GameLogSource
 ├── reference-data/         Reference Data: ReferenceSnapshot per environment, vocabulary indexes, fuzzy matcher, refresh/TTL logic; ports ReferenceDataFetcher, ReferenceDataCache
 ├── capture/                Capture: Capture, WatchedFolder, import use cases; ports CaptureSource, CaptureImageLoader, CaptureRepository
@@ -80,21 +84,21 @@ uex-datarunner-client/
 ├── submission/             Submission: SubmissionJob, Cooldown, queue use cases; ports SubmissionGateway, SubmissionJobRepository, CooldownRepository
 ├── workflows/              Process managers across contexts: capture→recognition→reporting, reporting→submission, AI re-read (RecognitionPolicy, AI queue); event dispatch from the transactional outbox (11 §A6); ports AiJobRepository, EventOutbox, WorkingCopyStore, UpdateCheck
 │
-│   ── Adapters (by technology, one package per context inside) ──
-├── adapter-uex/            UEX HTTP client, DTO mapping (anti-corruption layer), envelope, error codes, rate limiter, host fallback
-├── adapter-storage/        SQLite: connection, migrations, repositories for all contexts, reference-data cache
-├── adapter-ocr/            ONNX Runtime, DB detection, CTC recognition → implements Reader, TextDetector
+│   ── Adapters (by technology, one module per context inside) ──
+├── adapter-uex/            UEX HTTP client (reqwest), DTO mapping (anti-corruption layer), envelope, error codes, rate limiter, host fallback
+├── adapter-storage/        SQLite (rusqlite, bundled SQLite; registered exception, ADR-0005 D2): connection, migrations, repositories for all contexts, reference-data cache
+├── adapter-ocr/            ONNX Runtime (ort; registered exception, ADR-0005 D2), DB detection, CTC recognition → implements Reader, TextDetector
 ├── adapter-vlm/            Optional: Ollama client, prompt resources, answer parser → implements Reader
-├── adapter-files/          Folder scan/watch, stable-file gate, clipboard, image decoding/encoding (ImageIO); game files (global.ini, user.cfg, RSI launcher log, Game.log read-only for R-OCR-20); config file (ConfigFile and all *SettingsStore), WorkingCopyStore
-├── adapter-platform/       OS integration: secret store (FFM), game process monitor, paths, truststore, worker thread priority (FFM), clipboard change detection (FFM)
+├── adapter-files/          Folder scan/watch, stable-file gate, clipboard image read, image decoding/encoding (codec crates chosen in M0); game files (global.ini, user.cfg, RSI launcher log, Game.log read-only for R-OCR-20); config file (ConfigFile and all *SettingsStore), WorkingCopyStore
+├── adapter-platform/       OS integration and the only crate with `unsafe` (ADR-0005 D1): secret store, game process monitor, paths, worker thread priority, clipboard change detection, ORT telemetry environment variable
 │
 │   ── Presentation & startup ──
-├── ui/                     JavaFX (MVVM): views, ViewModels, resources/CSS/messages – talks only to application APIs and workflows
-├── app/                    main(), composition root (wiring), bootstrap (data directory, portable marker), jlink/jpackage
+├── ui/                     egui/eframe: views as state + update, Tallyline widgets, resources/messages – talks only to application APIs and workflows
+├── app/                    main(), composition root (wiring), bootstrap (data directory, portable marker), packaging entry
 └── tools/ocr-eval/         CLI: golden corpus evaluation, crop dumps, digest
 ```
 
-**Context map / dependencies** (only in arrow direction, **cycle-free**, enforced by Gradle + JPMS + ArchUnit):
+**Context map / dependencies** (only in arrow direction, **cycle-free**, enforced by Cargo's dependency graph, the `xtask` rule over `cargo metadata`, Clippy `disallowed_*` and `cargo-deny` `bans`; ADR-0005 D13):
 
 ```
 shared-kernel  ← every module
@@ -111,8 +115,8 @@ app            → all                                  (wires; contains no logi
 tools/ocr-eval → recognition, reference-data, adapter-ocr, adapter-vlm, adapter-files, adapter-uex   (a second composition root – the only other module allowed to depend on adapters; adapter-uex only replays the corpus' recorded reference data, never HTTP, 07 §4)
 ```
 
-- Each context module exports exactly two packages: `…<context>.api` (application services, commands, read models, events, ports) and `…<context>.api.model` (aggregates and value objects that ports and other contexts must name, e.g. `Report` for `ReportRepository`). Domain services, policies and helpers stay in `internal`. (An earlier version hid the whole model in `internal`; then adapters could not implement repository ports – they cannot name non-exported types.)
-- **Protecting aggregates that are exported:** the compact constructor of an aggregate record validates all state-local invariants (e.g. I1); ArchUnit allows calls of the canonical constructor only from the aggregate itself and from the persistence mapper in `adapter-storage` (reconstitution). Transitions (I3, I4, I7) are only possible through the command methods (I7: `applyScan`; the merge use case applies the same rule).
+- Each context crate has exactly two public modules: `api` (application services, commands, read models, events, ports as traits) and `api::model` (aggregates and value objects that ports and other contexts must name, e.g. `Report` for `ReportRepository`). Domain services, policies and helpers stay in `pub(crate)` modules. (An earlier version hid the whole model in `internal`; then adapters could not implement repository ports – they cannot name non-exported types.)
+- **Protecting aggregates that are exported:** an aggregate is a struct with private fields; its constructor validates all state-local invariants (e.g. I1) and returns a `Result`. The only way to build a value from stored state without the command path is a dedicated reconstitution function that the persistence mapper in `adapter-storage` calls (reconstitution); an `xtask` or Clippy rule allows calls to it only from there. Transitions (I3, I4, I7) are only possible through the command methods (I7: `applyScan`; the merge use case applies the same rule).
 - `submission` never references `reporting`. `workflows` converts a released `Report` into a `SubmissionRequest`. This is a `submission` type; it also carries `observedAt`, the age confirmation, the report's game version together with the newest version its R-CAP-3b choice was confirmed against, if any (I5), and the row keys that the send-time checks need. `workflows` applies the submission events back to the report as state changes: `SubmissionDeferred`, `SubmissionSucceeded`, `SubmissionPartiallyAccepted`, `SubmissionOutcomeUnknown`, `SubmissionRejected`, `SubmissionReturned`, `SubmissionCancelled`, `WithdrawalSucceeded`, `WithdrawalFailed` (both per row), `UexReportStatusChanged`, all published by `submission` (mapping in §6). This keeps the context map acyclic.
 
 **Ports** (excerpt, each defined in the context module that owns it):
@@ -124,7 +128,7 @@ tools/ocr-eval → recognition, reference-data, adapter-ocr, adapter-vlm, adapte
 | `ReferenceDataFetcher` | reference-data | fetch raw reference data from UEX | adapter-uex |
 | `ReferenceDataCache` | reference-data | persist/load cached reference data with fetch time | adapter-storage |
 | `SubmissionGateway` | submission | send to UEX, withdraw, query status | adapter-uex |
-| `CaptureSource` | capture | captures from folders and clipboard monitoring; drag & drop and Ctrl+V arrive as JavaFX events in `ui`, which passes file paths or image bytes to the capture application API | adapter-files (clipboard change detection: adapter-platform) |
+| `CaptureSource` | capture | captures from folders and clipboard monitoring; drag & drop and Ctrl+V arrive as egui input events in `ui`, which passes file paths or image bytes to the capture application API | adapter-files (clipboard change detection: adapter-platform) |
 | `CaptureImageLoader` | capture | decode a Capture's file into an `ImageRaster` when its OCR job starts (R-CAP-8 decoding, pixel budget R-OCR-17) | adapter-files |
 | `CaptureRepository` / `ScanRepository` / `ReportRepository` / `SubmissionJobRepository`, `CooldownRepository` / `GameObservationRepository` | capture / recognition / reporting / submission / game | persistence (one repository per aggregate); `save(newState, expectedVersion, events)` writes state and outbox rows in one transaction (11 §A6); `ScanRepository` keeps the scans for re-stitching and AI fusion; `GameObservationRepository` holds the observed version history per UEX environment and the observed running channels | adapter-storage |
 | `GameLocalizationSource` | game | localised names from `global.ini` | adapter-files |
@@ -136,7 +140,7 @@ tools/ocr-eval → recognition, reference-data, adapter-ocr, adapter-vlm, adapte
 | `AiJobRepository`, `EventOutbox` | workflows | AI queue persistence; `EventOutbox`: read pending outbox entries, mark them delivered, after-commit notification (11 §A6) | adapter-storage |
 | `SecretStore` | submission | store/read the secret key and the user's app token (R-NF-4, O-85) | adapter-platform |
 | `GameStateProbe` | game | is Star Citizen running, and from which channel folder? | adapter-platform |
-| `java.time.Clock` | all | time (cooldown, hysteresis, grouping) | JDK, fixed in tests |
+| `Clock` (trait in `shared-kernel`) | all | time (cooldown, hysteresis, grouping) | system clock in `app`, fixed in tests |
 
 **Settings catalogue** (user-editable settings; the defaults are defined in the cited requirement):
 
@@ -148,185 +152,352 @@ tools/ocr-eval → recognition, reference-data, adapter-ocr, adapter-vlm, adapte
 | AI mode and re-check scope (R-VLM-1, R-VLM-4), Ollama host and its non-loopback/remote-model consent (R-VLM-6), AI model choice (R-VLM-7; compared with the evaluated-model list, S-27), digit threshold (07 §2.6), per-source notice count and "Don't show again" per source (R-OCR-18) | workflows, `RecognitionSettingsStore` | new captures and the next AI job; a non-loopback Ollama host or a remote model only after the consent is recorded |
 | UEX base host: a built-in UEX-confirmed host or a confirmed expert custom host (R-API-3; the fallback list is built in, not a setting), update check on/off (R-NF-7), retention per category (R-CAP-7), theme and text size (R-UI-7, R-UI-17) | workflows, `AppSettingsStore` | hosts: new requests only, never an in-flight POST or an `OutcomeUnknown` job (R-SUB-9); retention: next cleanup; theme and text size: live |
 
-Safety thresholds can only be made stricter (R-NF-5): the send threshold, the digit threshold and the staleness limit can only be raised, tolerance overrides can only tighten, and `maxObservationAge` can only be lowered. Release-calibrated values are not user-editable (the same list as R-NF-5 and 09 §3): the confidence ladder (07 §2.6), the R-OCR-17 text-size limits (confirm limit and lower limit), the R-OCR-18 tone thresholds and the R-VAL-6 hard limit. The only exception is the session-only lift of the R-OCR-19 cap, which is never persisted (R-NF-5). The loader replaces an unparsable or out-of-range value with its default, reports it visibly and never uses it (R-NF-5). These release-calibrated values and the other thresholds that are not user-editable (queue parallelism, backoff, rate budgets, hysteresis, polling intervals, the R-OCR-17 pixel budget, which bounds memory per R-NF-3, and the §9 header-check limits) live in the owning module's typed settings record with documented defaults, not in the config file. The `*Wiring` classes in `app` read the stores and pass values to the adapters that need them (`adapter-uex`, `adapter-vlm`, `adapter-files`, `adapter-platform`) as a `Supplier<…>` backed by the store, so a change applies to the next request without a restart. All `*SettingsStore` implementations in `adapter-files` share one `ConfigFile` component. It is the single writer (serialised read-modify-write, temp file plus `ATOMIC_MOVE`, F17), owns the one schema version and migration ([release-process.md](../release-process.md)) and gives each store its own section.
+Safety thresholds can only be made stricter (R-NF-5): the send threshold, the digit threshold and the staleness limit can only be raised, tolerance overrides can only tighten, and `maxObservationAge` can only be lowered. Release-calibrated values are not user-editable (the same list as R-NF-5 and 09 §3): the confidence ladder (07 §2.6), the R-OCR-17 text-size limits (confirm limit and lower limit), the R-OCR-18 tone thresholds and the R-VAL-6 hard limit. The only exception is the session-only lift of the R-OCR-19 cap, which is never persisted (R-NF-5). The loader replaces an unparsable or out-of-range value with its default, reports it visibly and never uses it (R-NF-5). These release-calibrated values and the other thresholds that are not user-editable (queue parallelism, backoff, rate budgets, hysteresis, polling intervals, the R-OCR-17 pixel budget, which bounds memory per R-NF-3, and the §9 header-check limits) live in the owning module's typed settings record with documented defaults, not in the config file. The `*Wiring` modules in `app` read the stores and pass values to the adapters that need them (`adapter-uex`, `adapter-vlm`, `adapter-files`, `adapter-platform`) as a closure or shared handle backed by the store (for example a `Fn() -> T` or a `tokio::sync::watch` receiver), so a change applies to the next request without a restart. All `*SettingsStore` implementations in `adapter-files` share one `ConfigFile` component. It is the single writer (serialised read-modify-write, temp file plus atomic rename, F17), owns the one schema version and migration ([release-process.md](../release-process.md)) and gives each store its own section.
 
 **Why this split?**
 
-- Bounded-context boundaries are enforced by the compiler (JPMS), not only by ArchUnit.
-- Everything about one context, model and use cases, is in one module.
+- Bounded-context boundaries are enforced by the compiler (a crate cannot name a crate it does not depend on, and `pub(crate)` hides internals), not only by the `xtask` rule and Clippy.
+- Everything about one context, model and use cases, is in one crate.
 - A change stays local: an SC UI patch touches `recognition` and `adapter-ocr`; a UEX API change touches `adapter-uex`.
-- Use cases are **testable without JavaFX, network and database**, using fakes of the ports.
+- Use cases are **testable without egui, network and database**, using fakes of the ports.
 - A technology change (OCR model, secret store, UI) affects exactly one adapter.
-- The disadvantages (more modules, explicit translation between contexts, more expensive re-cuts, shared-kernel growth) and their handling are documented in ADR-002.
+- The disadvantages (more crates, explicit translation between contexts, more expensive re-cuts, shared-kernel growth) and their handling are documented in ADR-0002.
 
-Package root: `space.uexdatarunner.<module>` (placeholder – project name and reverse domain are to be determined by the project owner).
+Crate names: the workspace members carry the directory names above; the package, binary and crate prefix are decided with the project name (O-122, waiting for O-8).
 
-## 3. Domain model (excerpt, context modules)
+## 3. Domain model (excerpt, context crates)
 
-```java
-public enum GameEnvironment { LIVE, PTU, EPTU, HOTFIX, TECH_PREVIEW }
+`game`, `reference-data` and `shared-kernel` identifiers (excerpt):
 
-public enum TradeSide { BUY, SELL }                 // Buy tab / "Local Market Value" tab
-public enum SubmissionMode { TEST, PRODUCTION }    // is_production, fixed at release (R-SUB-8); shared-kernel (used by reporting and submission)
+```rust
+pub enum GameEnvironment { Live, Ptu, Eptu, Hotfix, TechPreview }
 
-public record TerminalId(int value) {}
-public record CommodityId(int value) {}
+/// Buy tab or "Local Market Value" tab.
+pub enum TradeSide { Buy, Sell }
 
-/** UEX status level; valid codes and names come from commodities_status (ReferenceSnapshot), not from constants. */
-public record InventoryStatus(int code) {
-    public InventoryStatus { if (code < 1) throw new IllegalArgumentException("status " + code); }
-}
-// Check against the loaded levels: ReferenceSnapshot.statusLevels(side).contains(code)
+/// `is_production`, fixed at release (R-SUB-8); lives in `shared-kernel` because `reporting` and `submission` both use it.
+pub enum SubmissionMode { Test, Production }
 
-/** Immutable state of the UEX reference data of one mapped UEX environment for one pipeline run (R-API-6); Commodity carries the commodity-wide average price used as the R-VAL-2a substitute. */
-public record ReferenceSnapshot(Instant fetchedAt, Map<CommodityId, Commodity> commodities,
-                                Map<TerminalId, Terminal> terminals, StatusLevels statusLevels,
-                                DataParameters parameters, Map<TerminalId, List<PricePrior>> priors) {}
+pub struct TerminalId(pub u32);
+pub struct CommodityId(pub u32);
 
-// ── recognition.api.model ──
-/** What Recognition read for one field; the rows of a StitchedScan carry these. */
-public record FieldReading<T>(@Nullable T value, Confidence confidence, List<Finding> findings,
-                              @Nullable Region source) {}
+/// UEX status level; valid codes and names come from `commodities_status` (`ReferenceSnapshot`), not from constants.
+pub struct InventoryStatus(u8);
 
-public sealed interface Finding permits Finding.Ambiguous, Finding.OutOfTolerance, Finding.NoReference,
-        Finding.Repaired, Finding.Inconsistent, Finding.Unreadable, Finding.PartialCard,
-        Finding.Superseded, Finding.UnvalidatedGameVersion, Finding.LowContrastCapture, Finding.ClippedHighlights,
-        Finding.SmallText, Finding.TextTooSmall, Finding.LocationAssortmentMismatch, Finding.UnexpectedCommodity,
-        Finding.SectionUnknown, Finding.UnevaluatedModel, Finding.Downscaled { … }   // Downscaled is info only
-
-// ── reporting.api.model ──
-public enum FieldOrigin { RECOGNIZED, USER }   // RECOGNIZED: from a reader (OCR, VLM or fused); USER: typed, corrected or taken over by keystroke
-public enum ConfidenceLevel { OK, CONFIRM, SELECT, CORRECT }  // R-UI-4; derived from the cause (07 §2.6)
-
-/** Computed by DeviationAssessor (pure), recomputed at release (R-VAL-7); confidence is null for USER values. */
-public record FieldAssessment(@Nullable Confidence confidence, ConfidenceLevel level, Deviation deviation,
-                              boolean referenceOutdated, @Nullable PricePrior reference,
-                              @Nullable Duration referenceAge, @Nullable Delta delta) {}
-
-/** A field value with its origin and assessment – core of the "guess nothing silently" principle. */
-@ValueObject
-public record Field<T>(@Nullable T value, FieldOrigin origin, List<Finding> findings, @Nullable Region source,
-                       FieldAssessment assessment, @Nullable Confirmation<T> confirmation) {}
-
-/** User approval of exactly one value, with the unlowered deviation level it was given against (R-VAL-7). */
-@ValueObject
-public record Confirmation<T>(T value, Deviation deviationAtConfirmation) {}
-
-/** A row of a Report: observed on screen, or marked missing by the user (R-VAL-5). Same module, so sealed is allowed. */
-public sealed interface ReportRow permits ObservedRow, MissingRow { RowId id(); }
-
-@ValueObject
-public record ObservedRow(RowId id, Field<CommodityId> commodity,   // unresolved: candidates in Finding.Ambiguous
-                          Field<PricePerScu> price, Field<ScuQuantity> scu,
-                          Field<InventoryStatus> status, Field<ContainerSizes> containerSizes,
-                          int screenOrder) implements ReportRow {}
-
-/** No values and no screen order; created only by Report.markMissing, which is the explicit user decision (R-VAL-5). */
-@ValueObject
-public record MissingRow(RowId id, CommodityId commodity) implements ReportRow {}
-
-/** R-CAP-3b classes; game context (published language), decided by GameVersionHistory. */
-public enum VersionCertainty { CERTAIN, PROVISIONAL, UNCERTAIN, UNKNOWN }
-
-/** Game version at capture time (R-CAP-3b, I5); version is null only for UNKNOWN; the user's choice is bound to (version, newest observed version). */
-public record VersionAtCapture(@Nullable GameVersion version, VersionCertainty certainty, @Nullable GameVersion confirmedAgainst) {}
-
-/** R-VAL-6: bound to observedAt; valid for maxObservationAge after it was given. */
-public record AgeConfirmation(Instant observedAt, Instant givenAt) {}
-
-/** R-CAP-10 (manual reports, from M4): the Report's environment confirmed against this running channel, at givenAt.
- *  Report-level and value-bound (I3): it counts only for the same running channel; changeEnvironment revokes it. */
-public record EnvironmentConfirmation(GameEnvironment runningChannel, Instant givenAt) {}
-
-/** Release inputs from outside reporting, filled by the workflows release use case (§6); AccountStanding and
- *  ScreenshotPolicy are reporting's own enums (no reporting → submission dependency).
- *  runningChannel: the environment of the running game's channel from game's API; null if the game is closed or the
- *  channel is unknown, which never counts as a mismatch (R-CAP-10). */
-public record ReleaseContext(AccountStanding account, ScreenshotPolicy screenshotPolicy,
-                             @Nullable GameEnvironment runningChannel) {}
-
-/** User-selected upload region of a manual report (R-MAN-5, R-SUB-7); a new image replaces it, so the preview confirmation is bound to the hash. */
-public record ManualAttachment(ImageHash image, boolean previewConfirmed) {}
-
-/** Report-level findings (capture time, observation age, return reasons). Owned by reporting: a sealed type only
- *  allows subtypes in its own module, and recognition's Finding stays free of reporting and submission concepts. */
-public sealed interface ReportFinding permits ReportFinding.CaptureTimeUncertain, ReportFinding.ObservationAgeUnconfirmed,
-        ReportFinding.ObservationTooOld, ReportFinding.NewerObservationSent, ReportFinding.GameVersionChanged,
-        ReportFinding.PossiblyAlreadyReceived, ReportFinding.ReturnedForFix { … }   // ReturnedForFix(FixableReason)
-public enum FixableReason { SCREENSHOT_REQUIRED, SCREENSHOT_TOO_LARGE, TOO_MANY_ROWS, TERMINAL_NOT_FOUND, DATE_REJECTED, RESTART }   // invalid_game_version is permanent (R-SUB-11)
-
-/** Per-row result of a withdrawal (R-SUB-4, O-89); a Report may hold a mix of them. */
-public sealed interface RowWithdrawal permits RowWithdrawal.Withdrawn, RowWithdrawal.Failed, RowWithdrawal.AlreadyConsolidated {}
-
-/** Aggregate root (context Reporting). Immutable: commands return a new state plus events. */
-@AggregateRoot
-public record Report(ReportId id, long version, Field<TerminalId> terminal, Field<TradeSide> side, GameEnvironment env,
-                     @Nullable EnvironmentConfirmation environmentConfirmation,
-                     Instant observedAt, @Nullable AgeConfirmation ageConfirmation, SubmissionMode mode,
-                     VersionAtCapture versionAtCapture, @Nullable ManualAttachment attachment,
-                     @Nullable FactionAffinity factionAffinity,
-                     List<ReportRow> rows, Map<RowId, RowWithdrawal> withdrawals, Coverage coverage, List<CaptureId> captures,
-                     List<ReportFinding> findings, ReportState state) {
-    // factionAffinity: R-SUB-13, user-entered only (−100..100); never inferred
-    // withdrawals: per-row withdrawal results of a submitted Report (R-SUB-4, I4)
-    // version: optimistic concurrency (user edit vs. AI re-read)
-    // observedAt: oldest capture time; manual reports at most the Draft creation time; only ever moved earlier (R-VAL-6)
-    // coverage: per-section coverage from the StitchedScan (R-VAL-5); findings: report-level findings (capture time, age, return reasons)
-    // environmentConfirmation: R-CAP-10 confirmation of a manual report (default, owner question; rule below the code)
-    public Outcome<Report> confirm(RowId row, FieldKind field) { … }
-    public Outcome<Report> correct(RowId row, FieldKind field, Object newValue) { … } // revokes confirmation, sets origin USER (I3)
-    public Outcome<Report> applyScan(StitchedScan scan) { … }               // a new capture joins this Draft; never changes USER or confirmed fields (I7)
-    public Outcome<Report> selectCommodity(RowId row, CommodityId commodity) { … }
-    public Outcome<Report> excludeRow(RowId row) { … }
-    public Outcome<Report> markMissing(CommodityId commodity) { … }          // R-VAL-5 preconditions; unmarkMissing reverses it
-    public Outcome<Report> selectTerminal(TerminalId terminal) { … }         // key change
-    public Outcome<Report> changeSide(TradeSide side) { … }                  // key change
-    public Outcome<Report> changeEnvironment(GameEnvironment env, VersionAtCapture versionInThatEnvironment) { … }  // key change; revokes the EnvironmentConfirmation
-    public Outcome<Report> confirmEnvironment(GameEnvironment runningChannel, Instant now) { … }  // R-CAP-10, manual reports: sets EnvironmentConfirmation(runningChannel, now)
-    public Outcome<Report> confirmGameVersion(GameVersion current) { … }     // I5
-    public Outcome<Report> correctGameVersion(GameVersion chosen) { … }      // R-CAP-3b: chosen from the version history
-    public Outcome<Report> reclassifyVersion(VersionAtCapture reclassified) { … }  // after a successful game_versions fetch (§5): PROVISIONAL → CERTAIN or UNCERTAIN
-    public Outcome<Report> correctObservedAt(Instant earlierOrSame, VersionAtCapture versionAtThatTime) { … }
-        // confirms an uncertain time; revokes the age confirmation; workflows derives the version valid at that time from GameVersionHistory (R-CAP-3b)
-    public Outcome<Report> confirmObservationAge(Instant now) { … }          // R-VAL-6, I6
-    public Outcome<Report> confirmAttachmentPreview(ImageHash image) { … }   // R-SUB-7
-    public Outcome<Report> release(SubmissionGate gate) { … }                // checks I1, I2, I5, I6
-    public Outcome<Report> returnToDraft(ReportFinding reason) { … }         // job returned (§6)
-    public Outcome<Report> cancel() { … }                                    // Released → Draft; Queued/WaitingForCooldown → Draft only after SubmissionCancelled(USER) (§6)
-    public Outcome<Report> discard(DiscardReason reason) { … }               // Draft only, by the user only
-    public Outcome<ReportSplit> splitOffCooldownRows(Set<RowId> rows) { … }  // "send the others now" (R-SUB-4); after SubmissionCancelled(SPLIT) (§6)
-    public Outcome<List<Report>> splitByContainerSizes() { … }               // at release: one Released Report per distinct sent container-size set (R-OCR-9, O-92)
-    public Outcome<Report> setFactionAffinity(@Nullable FactionAffinity value) { … }  // R-SUB-13, Draft only
-    public Outcome<Report> applyWithdrawal(RowId row, RowWithdrawal result) { … }     // I4: per row; Withdrawn once every accepted row is withdrawn
-    public Outcome<Report> duplicateAsDraft(ReportId newId) { … }            // I4
+impl InventoryStatus {
+    /// Errors with `InvalidStatus` when `code` is below 1; membership in the loaded levels is checked against `ReferenceSnapshot::status_levels`.
+    pub fn new(code: u8) -> Result<Self, InvalidStatus>;
 }
 
-public sealed interface ReportState permits Draft, Released, Queued, WaitingForCooldown, Submitted,
-        PartiallyAccepted, OutcomeUnknown, Rejected, Withdrawn, Discarded {}
-public record Discarded(DiscardReason reason) implements ReportState {}   // terminal; reached only by the user
+/// Immutable state of the UEX reference data of one mapped UEX environment for one pipeline run (R-API-6); `Commodity` carries the commodity-wide average price used as the R-VAL-2a substitute.
+pub struct ReferenceSnapshot {
+    pub fetched_at: Timestamp,
+    pub commodities: HashMap<CommodityId, Commodity>,
+    pub terminals: HashMap<TerminalId, Terminal>,
+    pub status_levels: StatusLevels,
+    pub parameters: DataParameters,
+    pub priors: HashMap<TerminalId, Vec<PricePrior>>,
+}
+```
 
-/** SubmissionGate.evaluate(report): side-effect free; the gate is built per release attempt with the snapshot, settings,
- *  now and the ReleaseContext (11 §A5); also used by "release all ready" (R-UI-14). */
-public sealed interface GateVerdict permits GateVerdict.Ready, GateVerdict.Blocked {}  // Blocked(List<BlockReason>)
-public sealed interface BlockReason permits TerminalUnresolved, SideUnresolved, CommodityUnresolved,
-        FieldsBelowThreshold, MajorDeviationUnconfirmed, DeviationWorsened, EnvironmentUnmapped,
-        EnvironmentUnconfirmed, GameVersionUnknown, GameVersionUnconfirmed, CaptureTimeUnconfirmed,
-        ObservationAgeUnconfirmed, ObservationTooOld, NewerObservationSent, ScreenshotMissing, PreviewUnconfirmed,
-        AccountNotReady {}   // closed acceptance is a warning, not a block reason (I2, R-SUB-5)
-// EnvironmentUnconfirmed(GameEnvironment runningChannel): R-CAP-10 mismatch without a confirmation for that channel
+`recognition::api::model` (excerpt):
 
-// ── shared-kernel ──
-/** Result of a command: new state + domain events, or domain error (no exception). */
-public sealed interface Outcome<T> permits Outcome.Ok, Outcome.Refused {}
+```rust
+/// What Recognition read for one field; the rows of a `StitchedScan` carry these.
+pub struct FieldReading<T> {
+    pub value: Option<T>,
+    pub confidence: Confidence,
+    pub findings: Vec<Finding>,
+    pub source: Option<Region>,
+}
+
+/// Closed set of reasons for uncertainty; every variant carries its reason payload.
+pub enum Finding {
+    Ambiguous,
+    OutOfTolerance,
+    NoReference,
+    Repaired,
+    Inconsistent,
+    Unreadable,
+    PartialCard,
+    Superseded,
+    UnvalidatedGameVersion,
+    LowContrastCapture,
+    ClippedHighlights,
+    SmallText,
+    TextTooSmall,
+    LocationAssortmentMismatch,
+    UnexpectedCommodity,
+    SectionUnknown,
+    UnevaluatedModel,
+    /// Info only.
+    Downscaled,
+}
+```
+
+`reporting::api::model` (excerpt; the version types belong to the `game` context as published language and are shown here because `Report` uses them):
+
+```rust
+/// `Recognized` comes from a reader (OCR, VLM or fused); `User` is typed, corrected or taken over by keystroke.
+pub enum FieldOrigin { Recognized, User }
+
+/// R-UI-4; derived from the cause (07 §2.6).
+pub enum ConfidenceLevel { Ok, Confirm, Select, Correct }
+
+/// Computed by `DeviationAssessor` (pure), recomputed at release (R-VAL-7); `confidence` is `None` for `User` values.
+pub struct FieldAssessment {
+    pub confidence: Option<Confidence>,
+    pub level: ConfidenceLevel,
+    pub deviation: Deviation,
+    pub reference_outdated: bool,
+    pub reference: Option<PricePrior>,
+    pub reference_age: Option<Duration>,
+    pub delta: Option<Delta>,
+}
+
+/// A field value with its origin and assessment; core of the "guess nothing silently" principle.
+pub struct Field<T> {
+    pub value: Option<T>,
+    pub origin: FieldOrigin,
+    pub findings: Vec<Finding>,
+    pub source: Option<Region>,
+    pub assessment: FieldAssessment,
+    pub confirmation: Option<Confirmation<T>>,
+}
+
+/// User approval of exactly one value, with the unlowered deviation level it was given against (R-VAL-7).
+pub struct Confirmation<T> {
+    pub value: T,
+    pub deviation_at_confirmation: Deviation,
+}
+
+/// A row of a `Report`: observed on screen, or marked missing by the user (R-VAL-5).
+pub enum ReportRow {
+    Observed(ObservedRow),
+    Missing(MissingRow),
+}
+
+impl ReportRow {
+    pub fn id(&self) -> RowId;
+}
+
+/// An unresolved commodity carries its candidates in `Finding::Ambiguous`.
+pub struct ObservedRow {
+    pub id: RowId,
+    pub commodity: Field<CommodityId>,
+    pub price: Field<PricePerScu>,
+    pub scu: Field<ScuQuantity>,
+    pub status: Field<InventoryStatus>,
+    pub container_sizes: Field<ContainerSizes>,
+    pub screen_order: u32,
+}
+
+/// No values and no screen order; created only by `Report::mark_missing`, the explicit user decision (R-VAL-5).
+pub struct MissingRow {
+    pub id: RowId,
+    pub commodity: CommodityId,
+}
+
+/// R-CAP-3b classes; owned by the `game` context (published language), decided by `GameVersionHistory`.
+pub enum VersionCertainty { Certain, Provisional, Uncertain, Unknown }
+
+/// Game version at capture time (R-CAP-3b, I5); `version` is `None` only for `Unknown`; the user's choice is bound to (version, newest observed version).
+pub struct VersionAtCapture {
+    pub version: Option<GameVersion>,
+    pub certainty: VersionCertainty,
+    pub confirmed_against: Option<GameVersion>,
+}
+
+/// R-VAL-6: bound to `observed_at`; valid for `maxObservationAge` after it was given.
+pub struct AgeConfirmation {
+    pub observed_at: Timestamp,
+    pub given_at: Timestamp,
+}
+
+/// R-CAP-10 (manual reports, from M4): the Report's environment confirmed against this running channel at `given_at`; report-level and value-bound (I3): it counts only for the same running channel, and `change_environment` revokes it.
+pub struct EnvironmentConfirmation {
+    pub running_channel: GameEnvironment,
+    pub given_at: Timestamp,
+}
+
+/// Release inputs from outside `reporting`, filled by the `workflows` release use case (§6); `AccountStanding` and `ScreenshotPolicy` are reporting's own enums (no `reporting` to `submission` dependency). `running_channel` is the environment of the running game's channel from `game`'s API; `None` if the game is closed or the channel is unknown, which never counts as a mismatch (R-CAP-10).
+pub struct ReleaseContext {
+    pub account: AccountStanding,
+    pub screenshot_policy: ScreenshotPolicy,
+    pub running_channel: Option<GameEnvironment>,
+}
+
+/// User-selected upload region of a manual report (R-MAN-5, R-SUB-7); a new image replaces it, so the preview confirmation is bound to the hash.
+pub struct ManualAttachment {
+    pub image: ImageHash,
+    pub preview_confirmed: bool,
+}
+
+/// Report-level findings (capture time, observation age, return reasons), owned by `reporting` so that recognition's `Finding` stays free of reporting and submission concepts.
+pub enum ReportFinding {
+    CaptureTimeUncertain,
+    ObservationAgeUnconfirmed,
+    ObservationTooOld,
+    NewerObservationSent,
+    GameVersionChanged,
+    PossiblyAlreadyReceived,
+    ReturnedForFix(FixableReason),
+}
+
+/// `invalid_game_version` is permanent (R-SUB-11) and therefore not listed.
+pub enum FixableReason {
+    ScreenshotRequired,
+    ScreenshotTooLarge,
+    TooManyRows,
+    TerminalNotFound,
+    DateRejected,
+    Restart,
+}
+
+/// Per-row result of a withdrawal (R-SUB-4, O-89); a `Report` may hold a mix of them.
+pub enum RowWithdrawal {
+    Withdrawn,
+    Failed(WithdrawalFailure),
+    AlreadyConsolidated,
+}
+
+/// Aggregate root (context Reporting). Immutable: every command takes `&self` and returns a new state plus events; the fields are private and the constructor validates the state-local invariants.
+pub struct Report {
+    id: ReportId,
+    version: u64,
+    terminal: Field<TerminalId>,
+    side: Field<TradeSide>,
+    env: GameEnvironment,
+    environment_confirmation: Option<EnvironmentConfirmation>,
+    observed_at: Timestamp,
+    age_confirmation: Option<AgeConfirmation>,
+    mode: SubmissionMode,
+    version_at_capture: VersionAtCapture,
+    attachment: Option<ManualAttachment>,
+    faction_affinity: Option<FactionAffinity>,
+    rows: Vec<ReportRow>,
+    withdrawals: HashMap<RowId, RowWithdrawal>,
+    coverage: Coverage,
+    captures: Vec<CaptureId>,
+    findings: Vec<ReportFinding>,
+    state: ReportState,
+}
+
+/// Result of a `Report` command: new state plus events, or a refusal reason; no panic, no error value.
+pub type ReportOutcome<T> = Outcome<T, ReportRefusal>;
+
+impl Report {
+    /// Approves the current value of one field (I3).
+    pub fn confirm(&self, row: RowId, field: FieldKind) -> ReportOutcome<Report>;
+    /// Revokes the confirmation and sets the origin to `User` (I3).
+    pub fn correct(&self, row: RowId, field: FieldKind, new_value: FieldValue) -> ReportOutcome<Report>;
+    /// A new capture joins this Draft; never changes `User` or confirmed fields (I7).
+    pub fn apply_scan(&self, scan: &StitchedScan) -> ReportOutcome<Report>;
+    pub fn select_commodity(&self, row: RowId, commodity: CommodityId) -> ReportOutcome<Report>;
+    pub fn exclude_row(&self, row: RowId) -> ReportOutcome<Report>;
+    /// R-VAL-5 preconditions; `unmark_missing` reverses it.
+    pub fn mark_missing(&self, commodity: CommodityId) -> ReportOutcome<Report>;
+    /// Key change.
+    pub fn select_terminal(&self, terminal: TerminalId) -> ReportOutcome<Report>;
+    /// Key change.
+    pub fn change_side(&self, side: TradeSide) -> ReportOutcome<Report>;
+    /// Key change; revokes the `EnvironmentConfirmation`.
+    pub fn change_environment(&self, env: GameEnvironment, version_in_that_environment: VersionAtCapture) -> ReportOutcome<Report>;
+    /// R-CAP-10, manual reports: sets `EnvironmentConfirmation { running_channel, given_at: now }`.
+    pub fn confirm_environment(&self, running_channel: GameEnvironment, now: Timestamp) -> ReportOutcome<Report>;
+    /// I5.
+    pub fn confirm_game_version(&self, current: GameVersion) -> ReportOutcome<Report>;
+    /// R-CAP-3b: chosen from the version history.
+    pub fn correct_game_version(&self, chosen: GameVersion) -> ReportOutcome<Report>;
+    /// After a successful `game_versions` fetch (§5): `Provisional` to `Certain` or `Uncertain`.
+    pub fn reclassify_version(&self, reclassified: VersionAtCapture) -> ReportOutcome<Report>;
+    /// Confirms an uncertain time and revokes the age confirmation; `workflows` derives the version valid at that time from `GameVersionHistory` (R-CAP-3b).
+    pub fn correct_observed_at(&self, earlier_or_same: Timestamp, version_at_that_time: VersionAtCapture) -> ReportOutcome<Report>;
+    /// R-VAL-6, I6.
+    pub fn confirm_observation_age(&self, now: Timestamp) -> ReportOutcome<Report>;
+    /// R-SUB-7.
+    pub fn confirm_attachment_preview(&self, image: ImageHash) -> ReportOutcome<Report>;
+    /// Checks I1, I2, I5, I6.
+    pub fn release(&self, gate: &SubmissionGate) -> ReportOutcome<Report>;
+    /// Job returned (§6).
+    pub fn return_to_draft(&self, reason: ReportFinding) -> ReportOutcome<Report>;
+    /// `Released` to `Draft`; `Queued` or `WaitingForCooldown` to `Draft` only after `SubmissionCancelled(User)` (§6).
+    pub fn cancel(&self) -> ReportOutcome<Report>;
+    /// `Draft` only, by the user only.
+    pub fn discard(&self, reason: DiscardReason) -> ReportOutcome<Report>;
+    /// "Send the others now" (R-SUB-4); after `SubmissionCancelled(Split)` (§6).
+    pub fn split_off_cooldown_rows(&self, rows: &HashSet<RowId>) -> ReportOutcome<ReportSplit>;
+    /// At release: one Released Report per distinct sent container-size set (R-OCR-9, O-92).
+    pub fn split_by_container_sizes(&self) -> ReportOutcome<Vec<Report>>;
+    /// R-SUB-13, user-entered only (-100..100), never inferred; `Draft` only.
+    pub fn set_faction_affinity(&self, value: Option<FactionAffinity>) -> ReportOutcome<Report>;
+    /// I4: per row; `Withdrawn` once every accepted row is withdrawn.
+    pub fn apply_withdrawal(&self, row: RowId, result: RowWithdrawal) -> ReportOutcome<Report>;
+    /// I4.
+    pub fn duplicate_as_draft(&self, new_id: ReportId) -> ReportOutcome<Report>;
+}
+
+/// `Discarded` is terminal and reached only by the user.
+pub enum ReportState {
+    Draft,
+    Released,
+    Queued,
+    WaitingForCooldown,
+    Submitted,
+    PartiallyAccepted,
+    OutcomeUnknown,
+    Rejected,
+    Withdrawn,
+    Discarded(DiscardReason),
+}
+
+/// `SubmissionGate::evaluate(&Report)` is side-effect free; the gate is built per release attempt with the snapshot, settings, `now` and the `ReleaseContext` (11 §A5), and is also used by "release all ready" (R-UI-14).
+pub enum GateVerdict {
+    Ready,
+    Blocked(Vec<BlockReason>),
+}
+
+/// Closed acceptance is a warning, not a block reason (I2, R-SUB-5).
+pub enum BlockReason {
+    TerminalUnresolved,
+    SideUnresolved,
+    CommodityUnresolved,
+    FieldsBelowThreshold,
+    MajorDeviationUnconfirmed,
+    DeviationWorsened,
+    EnvironmentUnmapped,
+    /// R-CAP-10 mismatch without a confirmation for that running channel.
+    EnvironmentUnconfirmed(GameEnvironment),
+    GameVersionUnknown,
+    GameVersionUnconfirmed,
+    CaptureTimeUnconfirmed,
+    ObservationAgeUnconfirmed,
+    ObservationTooOld,
+    NewerObservationSent,
+    ScreenshotMissing,
+    PreviewUnconfirmed,
+    AccountNotReady,
+}
+```
+
+`shared-kernel`:
+
+```rust
+/// Result of a command: new state plus domain events, or a domain refusal (`R` is the refusing context's closed reason-code type).
+pub enum Outcome<T, R> {
+    Ok { state: T, events: Vec<DomainEvent> },
+    Refused(R),
+}
 ```
 
 The domain model (Bounded Contexts, aggregates, invariants I1–I7, events, Ubiquitous Language) is in [11-ddd-and-tdd.md](11-ddd-and-tdd.md). This section only shows its form in code.
 
-- **Money:** `BigDecimal`, never `double`. Since SC 4.7 the game shows whole aUEC; the API accepts float.
-- **`ImageRaster`** is a final class (not a record): defensive copy of the `int[]` on construction, no raw-array accessor, explicit `equals`/`hashCode` over the pixels. It is the one documented exemption from the "domain model classes are records" rule. It lives in `shared-kernel`, because `capture`, `recognition` and `reporting` all use it.
+- **Naming:** the prose of the documents keeps the domain spelling of command and type names (`applyScan`, `markMissing`); in Rust code the same names are `snake_case` functions (`apply_scan`, `mark_missing`) and `CamelCase` types. The excerpt above is a signature sketch, not final code: the `Timestamp` instant type, the decimal type behind `PricePerScu`, `HashMap`/`HashSet` imports and the derive lists are chosen in M0. A closed set is a plain `enum` (variants may carry data), matched exhaustively without a wildcard arm; `#[non_exhaustive]` is used only on types that cross the workspace boundary into a public API, and there are none in the plan.
+- **Money:** a decimal type (crate chosen in M0), never `f64`. Since SC 4.7 the game shows whole aUEC; the API accepts float.
+- **`ImageRaster`** is the one value type that is not a plain data struct: the pixel buffer is private and immutable after construction (shared by reference counting, so clones are cheap), there is no mutable accessor, and equality and hash run over the dimensions and the pixels. It lives in `shared-kernel`, because `capture`, `recognition` and `reporting` all use it.
 - **Decoding is not recognition:** format detection by magic bytes, colour conversion to sRGB and the decode-time reduction above the pixel budget (R-CAP-8, R-OCR-17) happen in `adapter-files` while decoding; together with upload encoding they are the only pixel operations outside the core. HDR-encoded files never become an `ImageRaster` (they are set aside).
-- **Pattern matching:** Pipeline results are `sealed` (`ScanResult.Located | NotLocated | WrongScreen`; decision rule in 07 §2.1 item 3) and are evaluated with `switch` and record patterns.
-- **Report-level and row commands** are allowed only in `Draft`; in any other state they return `Outcome.Refused`. The exceptions are the lifecycle commands `release`, `splitByContainerSizes` (in `Released`, before the job is created), `returnToDraft`, `cancel`, `splitOffCooldownRows` (in `WaitingForCooldown`), `applyWithdrawal` and `duplicateAsDraft`, and the transitions that apply submission events (§6 table) or the user's `OutcomeUnknown` resolution (11 §A3).
+- **Pattern matching:** Pipeline results are enums with data (`ScanResult::Located | NotLocated | WrongScreen`; decision rule in 07 §2.1 item 3) and are evaluated with an exhaustive `match`.
+- **Report-level and row commands** are allowed only in `Draft`; in any other state they return `Outcome::Refused`. The exceptions are the lifecycle commands `release`, `splitByContainerSizes` (in `Released`, before the job is created), `returnToDraft`, `cancel`, `splitOffCooldownRows` (in `WaitingForCooldown`), `applyWithdrawal` and `duplicateAsDraft`, and the transitions that apply submission events (§6 table) or the user's `OutcomeUnknown` resolution (11 §A3).
 - **Key change** (terminal, side or environment = the grouping key, R-OCR-13): the aggregate records the new key, drops the confirmations of rows whose commodity changes and emits `ReportKeyChanged`. For an environment change, `workflows` passes the version valid at the capture time in that environment's history (R-CAP-3b). `workflows` then re-runs recognition stages 4–6 on the report's stored scans with the chosen terminal fixed and the reference data of the chosen side and environment (R-API-6); for a manual report only validation and deviation are re-run. Other rows keep their confirmations under the R-VAL-7 rule (kept unless the deviation level gets worse). If a Draft with the same key exists within the grouping window, the app offers a merge (R-OCR-13, R-UI-14) and never merges silently; duplicate commodities are resolved by the stitching rule (07 §2.5b) and shown to the user.
 - **Return from submission:** `workflows` maps `SubmissionReturned(reason)` to a `ReportFinding` and calls `returnToDraft`. A report-fixable `SubmissionError` of `submission` (R-SUB-11) becomes `ReturnedForFix(FixableReason)`, so no UEX code enters `reporting`; a version change at the send attempt becomes `GameVersionChanged`, and the report is "to be checked" (I5).
 - **Report-level findings** (`ReportFinding`): `CaptureTimeUncertain` comes from the capture-time rule (R-CAP-5) and is resolved by `correctObservedAt`; while it is open, stitching and grouping do not decide by capture time (R-OCR-11, R-OCR-13), and `workflows` passes that uncertainty with the scans. The other findings record why a job came back (§6).
@@ -345,47 +516,62 @@ Locate needs a coarse OCR for the text anchors. So that `recognition` does not d
 | Stage | Input → output | Key techniques |
 |---|---|---|
 | 1 Locate | `ImageRaster` → panel quad(s), text-size and tone assessment | Box-filter downscale (factor ≤ 1, native-resolution retry, tiling for very wide frames; 07 §2.1 item 1); text anchors from a coarse OCR pass ("SHOP INVENTORY", "YOUR INVENTORIES"); luma-gradient frame edges with relative thresholds (no theme colour); homography to a working size set by the reference glyph height; text-size gate (R-OCR-17); per-panel tone analysis and normalisation (R-OCR-18); manual fallback |
-| 2 OCR | Normalised image → `List<TextBox>` (polygon, text, line score, and per character the probability and the x-span of the CTC frames that emitted it) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime 1.30.0, full dictionary |
-| 3 Layout | TextBoxes → `List<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; card completeness from geometry (07 §2.3); field roles by position and suffix, relative to the card (07 §2.3); section headers and side text read only inside the shop panel, section per card (07 §2.3); tab recognition by comparing the tab fills (relative luminance and saturation) with the shop-panel text as witness – disagreement gives side `Inconsistent`, both abstaining gives `Ambiguous` (07 §2.1 item 7) |
-| 4 Parsing + resolution (per reader) | Cards → parsed field candidates (price/SCU as `BigDecimal` candidates incl. currency-prefix and confusable variants at uncertain positions, status, cargo sizes) + commodity and terminal candidates | Field parsers per 07 §2.4 (shared number parser; unit and currency-glyph handling only for OCR tokens); normalisation (upper/lower case, whitespace, ligatures) plus weighted Levenshtein/Jaro-Winkler against the global vocabulary of the environment; terminal candidates from the location field with the assortment check per candidate; assortment pass for unexpected commodities (07 §2.5 items 1–2) |
+| 2 OCR | Normalised image → `Vec<TextBox>` (polygon, text, line score, and per character the probability and the x-span of the CTC frames that emitted it) | PP-OCRv6 small det (DBNet) + rec (CTC) via ONNX Runtime through the `ort` crate (ADR-0005 D2; the runtime version follows the `ort` pin, fixed in M0), full dictionary |
+| 3 Layout | TextBoxes → `Vec<Card>` + header | Cards via borders/spacing and the label "AVAILABLE CARGO SIZE"; card completeness from geometry (07 §2.3); field roles by position and suffix, relative to the card (07 §2.3); section headers and side text read only inside the shop panel, section per card (07 §2.3); tab recognition by comparing the tab fills (relative luminance and saturation) with the shop-panel text as witness – disagreement gives side `Inconsistent`, both abstaining gives `Ambiguous` (07 §2.1 item 7) |
+| 4 Parsing + resolution (per reader) | Cards → parsed field candidates (price/SCU as decimal candidates incl. currency-prefix and confusable variants at uncertain positions, status, cargo sizes) + commodity and terminal candidates | Field parsers per 07 §2.4 (shared number parser; unit and currency-glyph handling only for OCR tokens); normalisation (upper/lower case, whitespace, ligatures) plus weighted Levenshtein/Jaro-Winkler against the global vocabulary of the environment; terminal candidates from the location field with the assortment check per candidate; assortment pass for unexpected commodities (07 §2.5 items 1–2) |
 | 4b Fusion (only if a VLM reading is present) | Per-reader candidates → fused candidates per field | Rules over the per-reader candidate sets, only for cards that Layout marked complete (07 §2.7) |
 | 5 Validation (once, on the fused result) | Fused candidates → `FieldReading<T>` (value, confidence, findings, source region) | Candidate scoring with UEX prior and effective tolerances (R-VAL-2), confusable repair with the witness rule (R-VAL-2b), glyph-topology witness and veto, status↔SCU and other consistency rules, confidence (07 §2.5, §2.6) |
-| 6 Stitching | Scans of one report group → `StitchedScan` (a `recognition` type whose rows carry `FieldReading`s) | **Grouping comes first:** `ReportGrouper` (`reporting`) assigns each scan to a report group from its grouping data (resolved or unresolved terminal, side, environment, capture time; R-OCR-13). `workflows` builds that data from the capture and its scan, because `reporting` does not depend on `capture`. `workflows` then loads the group's scans (`ScanRepository`), calls `StitchingService.stitch(List<Scan>)` and hands the `StitchedScan` to `reporting`, which creates or updates the Draft (optimistic `version` check; fields with origin `USER` or a confirmation are never replaced, I7). Merge via `CommodityId` (simpler than in basetool thanks to resolution); edge card rule; conflicting readings per 07 §2.5b item 5 (`Ambiguous`, or `Superseded` at confirm). The `StitchedScan` also carries the per-section coverage (expanded, gap-free) that R-VAL-5 needs; `reporting` keeps it as the Report's `Coverage`. Re-stitch triggers: a capture joins a Draft, a scan's terminal is resolved later (regrouping), a user split or merge, a key change (§3), an AI fusion that stored a new scan. |
+| 6 Stitching | Scans of one report group → `StitchedScan` (a `recognition` type whose rows carry `FieldReading`s) | **Grouping comes first:** `ReportGrouper` (`reporting`) assigns each scan to a report group from its grouping data (resolved or unresolved terminal, side, environment, capture time; R-OCR-13). `workflows` builds that data from the capture and its scan, because `reporting` does not depend on `capture`. `workflows` then loads the group's scans (`ScanRepository`), calls `StitchingService::stitch(&[Scan])` and hands the `StitchedScan` to `reporting`, which creates or updates the Draft (optimistic `version` check; fields with origin `USER` or a confirmation are never replaced, I7). Merge via `CommodityId` (simpler than in basetool thanks to resolution); edge card rule; conflicting readings per 07 §2.5b item 5 (`Ambiguous`, or `Superseded` at confirm). The `StitchedScan` also carries the per-section coverage (expanded, gap-free) that R-VAL-5 needs; `reporting` keeps it as the Report's `Coverage`. Re-stitch triggers: a capture joins a Draft, a scan's terminal is resolved later (regrouping), a user split or merge, a key change (§3), an AI fusion that stored a new scan. |
 
 ## 4a. Image input (`capture`, technology in `adapter-files`)
 
-```java
-public record WatchedFolder(FolderLocation location, boolean enabled, ImportMode mode, boolean recursive,
-                            Set<String> extensions, EnvironmentChoice environment,
-                            @Nullable Instant onlyNewerThan) {}
-public enum ImportMode { MANUAL, AUTOMATIC }
+```rust
+pub struct WatchedFolder {
+    pub location: FolderLocation,
+    pub enabled: bool,
+    pub mode: ImportMode,
+    pub recursive: bool,
+    pub extensions: HashSet<String>,
+    pub environment: EnvironmentChoice,
+    pub only_newer_than: Option<Timestamp>,
+}
+
+pub enum ImportMode { Manual, Automatic }
 ```
 
-- **`onlyNewerThan`** is set when a folder is added (default: time of adding minus the R-VAL-6 hard limit, R-CAP-1) and is `null` only after the explicit "Also import older files" choice. `FolderScanner` applies it to the capture time (R-CAP-5) before the register match, for the Import button, the watcher and the catch-up scan; skipped files are not written to the register.
-- **Working copies** (R-CAP-7): after locate, the perspective-corrected panel crops are stored at about 1:1 source scale (not at the working size, so re-reads keep the source legibility; 07 §2.1 item 4). They are **redacted before anything is persisted**: a pure `ImageRaster` function in `recognition` applies the crop extent of R-SUB-7 and fills any part of a crop quad that reaches into the terminal header band, using relative geometry only (R-OCR-17). `workflows` stores them through the `WorkingCopyStore` port (`adapter-files`, data directory per §8). All later steps (review, VLM, upload and the R-QA-5/R-NF-6 exports) work only on these crops. Enforced by type: the crop step returns its own redacted-crop type, the only type that the working-copy store, the VLM request, `ImageEncoder` and the export use cases accept for panel crops; ArchUnit allows its constructor only in the crop step. (The user-selected attachment region of a manual report is the one exception; it is guarded by the confirmed full-size preview of R-SUB-7.) `workflows` also runs the R-CAP-7 retention and the R-NF-9 deletion, because only it knows both capture and report states. Retention (R-CAP-7) is decided by an exhaustive `switch` over the sealed `ReportState` (no `default`), so a new state cannot be added without a retention rule; a purge test covers every state.
+- **`onlyNewerThan`** (`only_newer_than`) is set when a folder is added (default: time of adding minus the R-VAL-6 hard limit, R-CAP-1) and is `None` only after the explicit "Also import older files" choice. `FolderScanner` applies it to the capture time (R-CAP-5) before the register match, for the Import button, the watcher and the catch-up scan; skipped files are not written to the register.
+- **Working copies** (R-CAP-7): after locate, the perspective-corrected panel crops are stored at about 1:1 source scale (not at the working size, so re-reads keep the source legibility; 07 §2.1 item 4). They are **redacted before anything is persisted**: a pure `ImageRaster` function in `recognition` applies the crop extent of R-SUB-7 and fills any part of a crop quad that reaches into the terminal header band, using relative geometry only (R-OCR-17). `workflows` stores them through the `WorkingCopyStore` port (`adapter-files`, data directory per §8). All later steps (review, VLM, upload and the R-QA-5/R-NF-6 exports) work only on these crops. Enforced by type: the crop step returns its own redacted-crop type, the only type that the working-copy store, the VLM request, `ImageEncoder` and the export use cases accept for panel crops; the type has a private field and one constructor, visible only inside the crop step's module (`pub(super)`), so no other code can build it. (The user-selected attachment region of a manual report is the one exception; it is guarded by the confirmed full-size preview of R-SUB-7.) `workflows` also runs the R-CAP-7 retention and the R-NF-9 deletion, because only it knows both capture and report states. Retention (R-CAP-7) is decided by an exhaustive `match` over `ReportState` (no wildcard arm), so a new state cannot be added without a retention rule; a purge test covers every state.
 - The types above live in `capture`; **`FolderScanner`, `FolderWatcher` and `StableFileGate` live in `adapter-files`** (they touch the file system) and deliver new files through the `CaptureSource` port. `CaptureSource` delivers either a checked file (its `FileFingerprint` and source; the pixels are decoded later through `CaptureImageLoader`, see `StableFileGate`) or an intake result "set aside" with its reason (R-CAP-8, R-CAP-1c) that is recorded in the processed-file register and never becomes a Capture (11 §A3).
-- **`FolderScanner`**: It lists the candidates (`Files.walkFileTree` without following links, §9 "Untrusted input"; extension filter plus the known HDR container extensions, R-CAP-8), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files lazily, as a stream rather than a complete list. It is used by the "Import" button and the catch-up scan.
+- **`FolderScanner`**: It lists the candidates (a directory walk that does not follow links, walker crate or `std::fs` chosen in M0, §9 "Untrusted input"; extension filter plus the known HDR container extensions, R-CAP-8), matches them against the **processed-file register** (path, size and mtime as a fast key, content hash as identity) and returns the new files lazily, as a stream rather than a complete list. It is used by the "Import" button and the catch-up scan.
 - **`FolderWatcher`** per folder in mode `AUTOMATIC`:
-  - `WatchService` on a virtual thread; on `OVERFLOW` a full scan follows.
-  - Subfolders (option `recursive`) are registered one by one, including newly created ones (Linux inotify has no recursive watch; the Windows tree modifier is an unsupported JDK API and is not used); links and junctions are not registered, so there are no cycles.
+  - A file-system notification crate (chosen in M0) on a task of the I/O runtime; on an overflow event a full scan follows.
+  - Subfolders (option `recursive`) are registered one by one, including newly created ones (Linux inotify has no recursive watch; whether the crate's recursive mode is used on Windows is decided in M0); links and junctions are not registered, so there are no cycles.
   - If registration fails or the file system is known to be unreliable (FUSE and network mounts such as SMB/NFS; a Wine prefix is a normal local directory where inotify works), polling is used instead (`FolderScanner` every 2 s). Polling can be forced per folder.
-- **`StableFileGate`**: waits until size and mtime are stable for a quiet period. A file whose content (magic bytes) is an unsupported format (R-CAP-8) is then handed over at once as "set aside" with its reason, without decode retries. Before the first decode it runs the header check and registers the file in state `decoding` (§9 "Untrusted input"). A supported format must decode; otherwise it is retried (R-CAP-1c). This check decode runs on the bounded intake executor (§7), never on the watcher's virtual thread, and its raster is discarded at once. A file that passes becomes a `Capture` in state `Imported` (path, size, mtime, content hash; no pixels), persisted through `CaptureRepository`; the capture queue is the set of persisted Captures not yet scanned (`Imported`, `EnvironmentPending`, `Ready`; the "pending files" of R-CAP-1e) and never holds rasters. The OCR job decodes the file again through `CaptureImageLoader` on its OCR worker. Captures without a file (bitmap data from Ctrl+V, drag & drop or clipboard monitoring) are first written losslessly as PNG into an `inbox` folder in the data directory and then handled like files; the inbox file is deleted once the working copies are stored, with the failed capture (R-CAP-7), or, for a capture set aside as not located or not a terminal, when the user decides and at the latest at the end of the "failed captures" retention (R-OCR-16).
+- **`StableFileGate`**: waits until size and mtime are stable for a quiet period. A file whose content (magic bytes) is an unsupported format (R-CAP-8) is then handed over at once as "set aside" with its reason, without decode retries. Before the first decode it runs the header check and registers the file in state `decoding` (§9 "Untrusted input"). A supported format must decode; otherwise it is retried (R-CAP-1c). This check decode runs on the bounded intake pool (§7), never on the watcher's async task, and its raster is discarded at once. A file that passes becomes a `Capture` in state `Imported` (path, size, mtime, content hash; no pixels), persisted through `CaptureRepository`; the capture queue is the set of persisted Captures not yet scanned (`Imported`, `EnvironmentPending`, `Ready`; the "pending files" of R-CAP-1e) and never holds rasters. The OCR job decodes the file again through `CaptureImageLoader` on its OCR worker. Captures without a file (bitmap data from Ctrl+V, drag & drop or clipboard monitoring) are first written losslessly as PNG into an `inbox` folder in the data directory and then handled like files; the inbox file is deleted once the working copies are stored, with the failed capture (R-CAP-7), or, for a capture set aside as not located or not a terminal, when the user decides and at the latest at the end of the "failed captures" retention (R-OCR-16).
 - **From `Imported` to `Ready`** (default, an owner question in [08](08-review.md)): a Capture waits in `Imported` until the first successful `game_versions` fetch for its environment has been recorded (R-CAP-3b). One response covers `live` and `ptu` ([06](06-uex-api.md)), so in practice this wait only occurs while the version history is still empty (first install, offline first start, R-UI-13). Then `workflows` moves the Capture on, in the `ReferenceDataRefreshed` handler (§5) or at import if the fetch already happened: to `EnvironmentPending` if its environment is unknown, the folder asks for every image, or a known channel observed at the capture time maps to another UEX environment (R-CAP-10); otherwise to `Ready`, with the version for its capture time derived and classified per R-CAP-3b (uncertain if the capture time lies before the first observation; `UNKNOWN` if UEX reports no version for the environment). `assignEnvironment` moves an `EnvironmentPending` Capture to `Ready` the same way. A failed refresh before versioning (`versionStampMaxAge`, R-CAP-3b) does not hold a Capture once a fetch was recorded; its version is classified from the existing history (provisional if the capture time is after the last successful fetch). Waiting Captures stay in the capture queue and show their reason there. Only `Ready` Captures reach the OCR pipeline (§7).
 - **Clipboard and drag & drop:**
-  - Drag & drop and Ctrl+V are handled in `ui` on the FX thread (Dragboard/Clipboard). `ui` passes only file paths or the image bytes to the capture application API; decoding stays in `adapter-files`, off the FX thread. Captures without a file follow the inbox rule of the `StableFileGate` bullet.
-  - Clipboard monitoring (opt-in, default off, R-CAP-2) runs in two stages. (1) Cheap change detection in `adapter-platform` via FFM: Windows `GetClipboardSequenceNumber`; Linux per A23. The poll interval is a typed setting (start value 1 s, to be measured). (2) Only after a detected change is the clipboard read, and only image content, never text. Whether the read uses the JavaFX clipboard (one hop to the FX thread through the injected UI executor) or `java.awt.datatransfer` in `adapter-files` is decided in M3 and recorded here. Decoding and fingerprinting run on the bounded intake executor (§7), never on the FX thread.
+  - Drag & drop and Ctrl+V are handled in `ui` on the UI thread (egui input events). `ui` passes only file paths or the image bytes to the capture application API; decoding stays in `adapter-files`, off the UI thread. Captures without a file follow the inbox rule of the `StableFileGate` bullet.
+  - Clipboard monitoring (opt-in, default off, R-CAP-2) runs in two stages. (1) Cheap change detection in `adapter-platform` through the platform API (the only `unsafe` crate, ADR-0005 D1): Windows `GetClipboardSequenceNumber`; Linux per A23. The poll interval is a typed setting (start value 1 s, to be measured). (2) Only after a detected change is the clipboard read, and only image content, never text. Whether the read uses the egui/eframe clipboard (one hop to the UI thread through the channel of §7) or a clipboard crate in `adapter-files` is decided in M3 and recorded here. Decoding and fingerprinting run on the bounded intake pool (§7), never on the UI thread.
 - Settings are applied live: if a folder switches between MANUAL and AUTOMATIC, the watcher starts or stops without restarting the app.
 
 ## 4b. Optional AI recognition (`adapter-vlm`, `adapter-platform`, control in `workflows`)
 
 - **Reader abstraction** (in `recognition`):
 
-  ```java
-  public enum ReaderKind { OCR, VLM }
-  /** Deliberately NOT sealed: implementations live in other JPMS modules (adapter-ocr, adapter-vlm),
-   *  and sealed types in named modules only allow subtypes in the same module. */
-  public interface Reader { ReaderResult read(NormalizedPanel panel) throws ReaderException; }
-  public record ReaderResult(ReaderKind kind, List<RawCard> cards, @Nullable RawHeader header, Duration took) {}
+  ```rust
+  pub enum ReaderKind { Ocr, Vlm }
+
+  /// An ordinary open trait: the implementations live in other crates (`adapter-ocr`, `adapter-vlm`). The call blocks and runs on a bounded worker, never on the async runtime or the UI thread.
+  pub trait Reader {
+      fn read(&self, panel: &NormalizedPanel) -> Result<ReaderResult, ReaderError>;
+  }
+
+  pub struct ReaderResult {
+      pub kind: ReaderKind,
+      pub cards: Vec<RawCard>,
+      pub header: Option<RawHeader>,
+      pub took: Duration,
+  }
   ```
 
   The classic OCR and the VLM deliver the same raw structure: `RawCard` with field-typed raw strings (name, status, quantity text, price text, cargo sizes). For OCR, Layout assigns the fields by position and suffix (07 §2.3); for the VLM, the table column does. **Order:**
@@ -398,8 +584,8 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   The VLM reads per capture; after an AI run, the affected report is re-stitched. Only reports in state `Draft` are touched (R-VLM-4); the write uses the report's `version` (optimistic concurrency), so a concurrent user edit wins and the AI result is re-applied on top of the edited state (never on fields with origin `USER` or a confirmation; a differing AI reading is only shown as a hint, 07 §2.7).
 
 - **`GameProcessMonitor`** (`adapter-platform`, implements `GameStateProbe`):
-  - Periodically checks on a virtual thread: Windows via a Toolhelp snapshot (FFM; image name `StarCitizen.exe`, no handle to other processes; the `…\Bin64\…` path from `ProcessHandle` only as a hint, R-VLM-2); Linux via `/proc/<pid>/cmdline` and `/proc/<pid>/comm`, because `ProcessHandle` returns the Wine binary and drops argv[0] (assumption A7). Undeterminable state counts as RUNNING.
-  - Publishes the states `RUNNING` and `CLOSED` with hysteresis through the `GameStateProbe` port (listener callback → `GameStateChanged` event). `RUNNING` carries the channel folder taken from the executable path (`…\StarCitizen\<CHANNEL>\Bin64\StarCitizen.exe`; Linux per A7), or `unknown`; the `game` context keeps a timestamped history of observed channels in `GameObservationRepository` for the environment cross-check (R-CAP-10). The `ui` maps the event to a JavaFX property; no JavaFX types outside `ui`.
+  - Periodically checks on a task of the I/O runtime: Windows via a Toolhelp snapshot (platform API through the `windows` crate or an equivalent chosen in M0; image name `StarCitizen.exe`, no handle to other processes; the `…\Bin64\…` path only as a hint, R-VLM-2); Linux via `/proc/<pid>/cmdline` and `/proc/<pid>/comm`, because the process image there is the Wine binary and the game name is in argv (assumption A7). Undeterminable state counts as RUNNING.
+  - Publishes the states `RUNNING` and `CLOSED` with hysteresis through the `GameStateProbe` port (a `tokio::sync::watch` channel or callback → `GameStateChanged` event). `RUNNING` carries the channel folder taken from the executable path (`…\StarCitizen\<CHANNEL>\Bin64\StarCitizen.exe`; Linux per A7), or `unknown`; the `game` context keeps a timestamped history of observed channels in `GameObservationRepository` for the environment cross-check (R-CAP-10). The `ui` maps the event to a field of its state; no egui types outside `ui`.
   - Opens no handles to other processes for detection and has no further permissions.
 
 - **`RecognitionPolicy`** (`workflows`) decides, based on the setting (Off / Automatic / Always) and the game state, whether the AI queue may work:
@@ -417,12 +603,12 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - **`Failed`** (terminal; retried only when the user asks): `TRUNCATED` (still truncated after the single retry, R-VLM-10), `UNPARSEABLE`, `CROP_UNAVAILABLE` (working copy expired, R-CAP-7). A request timeout is transient: the job returns to `Pending`, with a bounded attempt count (setting, start value 3). On failure the report keeps its OCR result, and the queue row shows an info note.
   - **`Obsolete`:** the job's report is no longer `Draft` when the job starts or finishes; the result is discarded (R-VLM-4).
   - While a job is running, the game monitor checks at a 2 s interval instead of a 5 s interval.
-  - On switching to `RUNNING` (mode Automatic): `cancel(true)` on the request future (best effort per `HttpClient` javadoc), send the unload request (`keep_alive: 0`) independently, then verify via `/api/ps` that the model is gone – retry until the 5 s target; the running job returns to `Pending(INTERRUPTED_BY_GAME_START)`. Ollama only unloads after the server has finished the cancelled request, hence the verification.
+  - On switching to `RUNNING` (mode Automatic): cancel the in-flight request (dropping its future or a cancellation token; best effort, the server may still finish it), send the unload request (`keep_alive: 0`) independently, then verify via `/api/ps` that the model is gone – retry until the 5 s target; the running job returns to `Pending(INTERRUPTED_BY_GAME_START)`. Ollama only unloads after the server has finished the cancelled request, hence the verification.
   - Every request sends `keep_alive` explicitly (the server-side `OLLAMA_KEEP_ALIVE` may differ from the 5 min default).
   - When the queue is empty: unload the model after a short time (default `keep_alive` 5 min).
 
-- **`OllamaClient`** (`adapter-vlm`): `java.net.http` and Jackson; endpoints `/api/version`, `/api/tags`, `/api/show`, `/api/ps`, `/api/pull` (streaming progress) and `/api/chat` (`stream: false`, `images` as Base64, `options.temperature = 0`).
-  - **Host check:** loopback host per R-VLM-6 (literal check, no DNS lookup); other hosts only after confirmation. For a loopback host the client is built with `HttpClient.Builder.NO_PROXY`, so OS proxy settings cannot route the crops. Confirmed non-loopback hosts follow the system proxy like UEX (§8).
+- **`OllamaClient`** (`adapter-vlm`): `reqwest` and `serde` JSON (ADR-0005 D4; the JSON crate is confirmed in M0); endpoints `/api/version`, `/api/tags`, `/api/show`, `/api/ps`, `/api/pull` (streaming progress) and `/api/chat` (`stream: false`, `images` as Base64, `options.temperature = 0`).
+  - **Host check:** loopback host per R-VLM-6 (literal check, no DNS lookup); other hosts only after confirmation. For a loopback host the client is built with proxying disabled (`reqwest::ClientBuilder::no_proxy`), so OS proxy settings cannot route the crops. Confirmed non-loopback hosts follow the system proxy like UEX (§8).
   - **Remote-model check:** the local server forwards cloud models to ollama.com, so the host check alone is not enough. A model is remote if `/api/show` or `/api/tags` reports `remote_host`/`remote_model`; the tag suffix `:cloud`/`-cloud` is a second check. The check runs before every job and fails closed, and every chat response is checked again (R-VLM-6).
   - **Evaluated models:** after `/api/pull` and every `/api/tags` call, the model digest is compared with the evaluated-model list resource (tag, digest(s), approximate size; R-VLM-11, S-27). There is no size query before a pull; the dialog uses the shipped approximate size (R-VLM-7).
 
@@ -438,7 +624,7 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - The **price prior** is loaded on demand when a terminal is opened or recognised (`commodities_prices?id_terminal=`) and cached (30 min).
 - **Effective tolerance** (R-VAL-2) is computed once in `reference-data` from `DataParameters` and the tolerance settings; `recognition` (repair scoring) and `reporting` (`DeviationAssessor`) use the same value. The effective staleness limit (R-UI-11) is computed the same way: `commodity.ttl` in days, raised by the user setting, or the settings default of 15 days while `ttl` is unavailable (O-95).
 - **Vocabulary filters:** player-owned terminals (`is_player_owned` = 1) and refinery terminals (`commodity_raw`) are not part of the terminal vocabulary (R-MAN-1, R-OCR-8); the `commodity_raw` terminals (`/terminals?type=commodity_raw`, query form unverified) are loaded only to recognise refinery screens as unsupported. Text fields are HTML-unescaped once in `adapter-uex` before indexing (R-API-5).
-- **Persistence:** SQLite (`sqlite-jdbc`), tables `ref_*` with raw JSON and extracted index columns; schema migrations versioned (simple custom migration script, no ORM).
+- **Persistence:** SQLite (`rusqlite` with bundled SQLite, a registered exception, ADR-0005 D2), tables `ref_*` with raw JSON and extracted index columns; schema migrations versioned (simple custom migration script, no ORM).
 - **Observed game versions** (R-CAP-3b): a `workflows` handler for `ReferenceDataRefreshed` passes every `game_versions` value from a successful network fetch, with its fetch time, to the `game` application service, which updates first and last seen per UEX environment. Loading the cache at startup is never an observation. The send-time fetch of `submission` (§6) also goes through `reference-data` and publishes `ReferenceDataRefreshed`, so every successful fetch is an observation ([06](06-uex-api.md)). After recording a fetch, `workflows` moves the Captures waiting in `Imported` on (§4a) and re-classifies the `PROVISIONAL` versions of the Draft reports of that environment (`reclassifyVersion`, R-CAP-3b); queued reports are covered by the send-time check (§6).
 
 ## 6. Submission (`reporting` gate, `submission` queue, HTTP in `adapter-uex`, persistence in `adapter-storage`)
@@ -447,17 +633,17 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   - `reporting`: submission gate, grouping (a report is released only if the gate passes).
   - `submission` (`SubmissionService`): queue states, cooldown, **retry policy** (when and how often to retry), rate budgets: 120 requests/min as an in-memory token bucket, and 1000 report rows/30 min as a sliding window over the persisted attempt records (`SubmissionJobRepository`: start and row count per attempt), so it survives a restart (R-SUB-2). Before every attempt it runs the send-time checks: the acceptance flags and `game_versions`, at most 15 min old, requested through `reference-data`'s application API so that every successful fetch is also a version observation (§5, R-SUB-5); the observation age (R-VAL-6); and newer observations (R-VAL-8). A closed flag, or no fresh state, holds the job. The job is returned if the current version of the report's environment differs from the report's version and from the version its R-CAP-3b choice was confirmed against, if the age check fails, or if a newer observation was already sent.
   - `workflows`: runs the release use case, which reads the account standing and the screenshot policy from `submission`'s API and the environment of the running game's channel from `game`'s API (none if the game is closed or the channel is unknown; R-CAP-10, from M4), and passes them to the gate as `ReleaseContext` (§3; there is no `reporting → submission` dependency). With a mismatching running channel and no `EnvironmentConfirmation` for it, the gate refuses a manual report with `EnvironmentUnconfirmed` (§3; default, an owner question). `workflows` also hands released reports to `submission` and applies the results back to `reporting`.
-  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, **one attempt per call**, through the one shared `HttpClient` of `adapter-uex` with the typed send timeout of `SubmissionRetrySettings` (start value 90 s, R-SUB-2, O-103). Every UEX request carries `User-Agent` and `X-Client-Version` with the build version (R-API-7, O-86). It has no own retries and never enables the JDK's opt-in retry of non-idempotent requests (`jdk.httpclient.enableAllMethodRetry`). Verified in the JDK 27 `MultiExchange` source: without that property the client repeats a POST internally only after a failed connect or when the server marked the request as unprocessed. The gateway surfaces `Retry-After` and maps answers and exceptions to `submission` error types, including the not-processed/unknown distinction of R-SUB-9.
+  - `adapter-uex` (`UexSubmissionGateway`): JSON payload, HTTP, **one attempt per call**, through the one shared `reqwest` client of `adapter-uex` with the typed send timeout of `SubmissionRetrySettings` (start value 90 s, R-SUB-2, O-103). Every UEX request carries `User-Agent` and `X-Client-Version` with the build version (R-API-7, O-86). It has no own retries and enables no automatic retry of non-idempotent requests in the HTTP stack. Amended 2026-10-12: the earlier check of the JDK 27 client source no longer applies; in the M0 API spike the behaviour of `reqwest` and its HTTP stack for a POST (repeated at most after a failed connect or when the server marked the request as unprocessed) is verified at source and recorded here. The gateway surfaces `Retry-After` and maps answers and errors to `submission` error types, including the not-processed/unknown distinction of R-SUB-9.
   - `adapter-storage`: persistence.
 - **Payload building** (in `adapter-uex`): one list `prices[]` per report. Buy rows contain `price_buy`/`scu_buy`/`status_buy`, sell rows the `_sell` fields. In addition there are `container_sizes` (only when it is sent: the one set shared by every row of this report after the container-size split, §3, 11 §A1 "Mandatory field"), `date_added` (`observedAt` in Unix seconds, R-VAL-6, O-91), `faction_affinity` (only when the user entered it, R-SUB-13), `screenshot` (Base64 without `data:` prefix; the encoded string is at most 10,000,000 bytes, R-SUB-7, O-98), `game_version` and `is_production`. A `MissingRow` becomes a row with `id_commodity` and `is_missing = 1`; which other fields it may or must carry is open ([06](06-uex-api.md) open point 12), so marking missing is offered only once that point is verified.
 - **Queue:**
   - persistent in SQLite. Job phases: `queued` → `waiting-for-cooldown` (ETA) → `sending`; `held` (acceptance closed, or no acceptance state at most 15 min old could be fetched, R-SUB-5, R-SUB-11; "API changed" after an HTML HTTP 404 on a write, which holds the whole queue; or the retry limit for the not-processed set is reached, with "retry now"/"cancel"); `paused` (account, R-SUB-11: "re-authentication required", "app token missing or invalid", or a key error that the read-only `GET /user` re-check did not confirm, with "retry now"). Final phases: `succeeded`, `partially-accepted`, `outcome-unknown`, `rejected`, `returned` (with a reason) and `cancelled` (by the user, only before `sending`). There is no generic "failed" phase.
-  - **restart and interrupted sends** (R-SUB-2, R-SUB-9): before the request is handed to the `HttpClient`, the phase `sending` and the attempt record (start, row count, payload hash) are committed in their own SQLite transaction (write-ahead). At startup, a job still in `sending` (crash, kill) becomes `outcome-unknown` and is never queued again; every other unfinished job ends as `returned` (reason restart), so its report goes back to Draft for renewed release. On shutdown the app waits for in-flight sends up to a bounded time (setting), then marks them `outcome-unknown`. `cancel` is refused once a job is `sending`.
+  - **restart and interrupted sends** (R-SUB-2, R-SUB-9): before the request is handed to the HTTP client, the phase `sending` and the attempt record (start, row count, payload hash) are committed in their own SQLite transaction (write-ahead). At startup, a job still in `sending` (crash, kill) becomes `outcome-unknown` and is never queued again; every other unfinished job ends as `returned` (reason restart), so its report goes back to Draft for renewed release. On shutdown the app waits for in-flight sends up to a bounded time (setting), then marks them `outcome-unknown`. `cancel` is refused once a job is `sending`.
   - error classes and their handling: R-SUB-11; unknown outcomes are never retried automatically and never sent to the fallback host (R-SUB-9)
-  - virtual threads
+  - async tasks on the I/O runtime (tokio, ADR-0005 D4)
   - strictly serial: at most one `data_submit` in flight in total (parallelism 1, a typed setting that is not user-editable; R-SUB-2; decided 2026-10-09, O-103, replacing the earlier `Semaphore` of 2)
   - token bucket 120/min (in memory; after a restart, unsent reports need renewed release anyway, and the bucket refills within a minute)
-  - retry with exponential backoff only for the not-processed set of R-SUB-9 (connect-phase failures, 429, `requests_limit_reached`), respecting `Retry-After` up to a maximum backoff (setting; a larger value counts as "transient, retry later", subject to R-VAL-6) and bounded by `SubmissionRetrySettings` (decided in `submission`, executed by calling the gateway again). Every other failure after sending began is an unknown outcome. The gateway checks `HttpConnectTimeoutException` before `HttpTimeoutException`, because it is a subclass.
+  - retry with exponential backoff only for the not-processed set of R-SUB-9 (connect-phase failures, 429, `requests_limit_reached`), respecting `Retry-After` up to a maximum backoff (setting; a larger value counts as "transient, retry later", subject to R-VAL-6) and bounded by `SubmissionRetrySettings` (decided in `submission`, executed by calling the gateway again). Every other failure after sending began is an unknown outcome. The gateway classifies a connect-phase timeout as a connect failure (not processed) before the general timeout class (unknown outcome), because both surface as a timeout; a test pins the order.
 - **Job phases → Report states** (applied by `workflows`; the Report changes only on these events, and the queue view shows the current job phase from the `submission` read model):
 
   | Job phase | Report state ([11 §A3](11-ddd-and-tdd.md)) | Event from `submission` |
@@ -478,18 +664,20 @@ public enum ImportMode { MANUAL, AUTOMATIC }
 - **History:** `ids_reports` with the per-row mapping (accepted with a verified ID, accepted with an unverified ID, not accepted, unmapped; R-SUB-9), each UEX report ID stored with the `date_added` returned with it (IDs repeat across UEX partitions), timestamp, `observedAt`, payload hash, attempt records, response status, the per-row UEX lifecycle status and the per-row withdrawal result; link `https://uexcorp.space/data/info/id/<id>`.
 - **Row mapping and lifecycle polling** (R-SUB-4, R-SUB-9; decided 2026-10-09, O-88, O-103): `submission` maps a returned UEX report ID to a row only after a `data_info` lookup shows the row's terminal, commodity and `date_added`, never by position alone. A poller in `submission` reads `data_info` with the Bearer token and secret key (`username` filter, `limit=100`) at most every 5 minutes while rows are not final, and on the user's refresh at most once a minute; a row stops being polled at `consolidated`, `declined` or `expired`, or 14 days after sending. Status changes are published as events (`UexReportStatusChanged(row, status)`); `workflows` reverts the local prior update of a row that becomes `declined` or `expired` (R-VAL-7). Its reads do not occupy the single `data_submit` slot, and they count against the 120/min bucket.
 
-## 7. UI (`ui`, JavaFX 27)
+## 7. UI (`ui`, egui/eframe 0.36)
 
-- **MVVM:** views in Java code or FXML (passive, no logic); ViewModels with JavaFX properties call only the application APIs of the context modules and `workflows`; dependencies via constructor (no DI framework). ViewModels are unit-testable without a started window.
+- **State per view:** each view is a function of an owned state value. `update` draws the view from its state and returns commands; the drawing code holds no logic. Commands go through channels to the application APIs of the context crates and `workflows`; dependencies are passed to the constructor (no DI framework, no global state). State transitions are plain functions, unit-testable without a window; the harness for tests that drive the drawn UI is O-114.
 - **Threading:**
-  - Network, file listing and folder watching run on virtual threads. CPU-heavy or native work runs only on bounded platform executors, never on virtual threads:
-    - **OCR pool** (default `max(1, min(2, cores / 2))`): per job, decoding of the capture (`CaptureImageLoader`), locate and OCR. ONNX Runtime runs with the `OcrRuntimeSettings` of 07 §2.2, never with its defaults, so OCR uses at most pool size × intra-op threads cores (start value: pool size × 1). The pipeline takes only Captures in state `Ready` (environment set and version classified per R-CAP-3b, 11 §A3) from the persisted queue with at most one prefetch per worker; there is no submit-all into an unbounded executor queue. Captures in `Imported` (waiting for the first successful `game_versions` fetch, §4a; default, an owner question) and in `EnvironmentPending` are never taken.
-    - **Intake executor** (default 1 thread): the stable-file gate's check decode (raster discarded at once), content hashing and upload encoding. ImageIO's JPEG decoder and ICC colour conversion are native code.
-    - **SQLite** executor (JNI, which still pins virtual threads).
+  - The UI thread runs only `update` and never blocks on I/O or computation.
+  - Network, file listing and folder watching run as tasks on the `tokio` runtime. CPU-heavy work (OCR, image decoding and encoding, content hashing) runs only on bounded dedicated thread pools, never on the async runtime:
+    - **OCR pool** (default `max(1, min(2, cores / 2))`): per job, decoding of the capture (`CaptureImageLoader`), locate and OCR. ONNX Runtime runs with the `OcrRuntimeSettings` of 07 §2.2, never with its defaults, so OCR uses at most pool size × intra-op threads cores (start value: pool size × 1). The pipeline takes only Captures in state `Ready` (environment set and version classified per R-CAP-3b, 11 §A3) from the persisted queue with at most one prefetch per worker; there is no submit-all into an unbounded queue. Captures in `Imported` (waiting for the first successful `game_versions` fetch, §4a; default, an owner question) and in `EnvironmentPending` are never taken.
+    - **Intake pool** (default 1 thread): the stable-file gate's check decode (raster discarded at once), content hashing, colour conversion and upload encoding.
+    - **SQLite thread(s):** `rusqlite` calls are blocking and native; they run on a dedicated thread (single writer), not on the async runtime.
   - Peak memory is therefore bounded by (OCR pool size + intake threads) × the per-image peak at the pixel budget, whatever the backlog size.
-  - OCR and intake workers run **below normal OS priority**: on Windows `SetThreadPriority` (below normal), on Linux a per-thread nice value (`setpriority` on the thread ID; Linux applies nice per thread). Both are called via FFM in `adapter-platform` and applied by the worker thread factory in `app` when the thread starts. `Thread.setPriority` is not relied on (HotSpot ignores it on Linux by default). Verified in M4 (R-NF-3).
-  - UI updates go through an injected UI executor (in production `Platform::runLater`, in tests a direct executor), so ViewModels stay testable without a started toolkit.
-  - All executors are created in `app` and wrapped for context propagation (09 §4).
+  - OCR and intake workers run **below normal OS priority**: on Windows `SetThreadPriority` (below normal), on Linux a per-thread nice value (`setpriority` on the thread ID; Linux applies nice per thread). Both calls sit in `adapter-platform` (the only crate with `unsafe`) and are applied by the thread start hook of the pools that `app` creates. Verified in M4 (R-NF-3).
+  - **UI updates:** background work never touches view state. It sends its result through a channel and then calls `egui::Context::request_repaint`; `update` drains the channels at its start. Tests drain the same channels directly, without a window.
+  - **Dialogs and window state:** all dialogs open through one presenter module in `ui`, and only in answer to a user action. No background event calls a viewport command (focus, minimise, restore, always-on-top, attention request); background events change persistent state only (R-UI-16, 09 §7).
+  - All pools and the runtime are created in `app`; the log context is carried by `tracing` spans and re-entered in each task (09 §4).
 - **App shell:** a global status area is visible in every view (R-UI-8). It shows:
   - test or production mode and environment (R-SUB-8);
   - connection and reference-data age with the background loading line (R-API-1, R-UI-8, R-UI-13);
@@ -508,57 +696,57 @@ public enum ImportMode { MANUAL, AUTOMATIC }
   6. Settings (folders, environments and UEX mapping, key, game installation and localisation file, test mode, AI, connection hosts, update check, retention, theme, text size; safety thresholds – send and digit threshold, staleness limit, deviation tolerances and `maxObservationAge` – are offered only in the stricter direction, with "Reset to defaults" (R-NF-5); catalogue in §2)
   7. Onboarding wizard; its start screen, shown before any setup step, carries the Star Citizen Fan Kit unit (R-UI-19)
   8. Diagnostics
-  9. About dialog (Help menu): legal notices, "Open-source licences" view, source-code link and the Fan Kit unit (R-UI-18, R-UI-19). Its licence list is a resource generated at build time from the licence-gate report and the reviewed list ([10](10-supply-chain-security.md) S-34); where it is packaged is decided in M1.
-- **Fan Kit unit** (R-UI-19): one component renders the logo and both notices. The notice texts come from fixed keys of the base ResourceBundle, the logo from the bundled file checked by SHA-256. Theme CSS may set the notices' colour and size within the R-UI-19 limits but applies no effect, tint or opacity to the logo.
-- **Theming:** own CSS (dark, light and high contrast, R-UI-17) built from the design tokens (ADR-0004). On Windows the high-contrast theme follows the system setting (`Windows.SPI.HighContrast`, watched for changes) while the theme setting is "Follow OS" or has never been changed; an explicitly chosen Dark or Light theme wins, and an explicitly chosen High contrast stays on (decided 2026-10-09). On Linux the user chooses it. Beyond that, "Follow OS" follows only the system's light or dark colour scheme (D8, ADR-0004). The colours for recognition confidence and deviation are theme variables (palette suitable for colour vision deficiency, replaceable in the theme).
-- **Rendering load** (R-NF-3): no continuous animations and no indeterminate progress controls; timer-driven labels update at most once per second through the injected UI executor and stop while the window is iconified.
+  9. About dialog (Help menu): legal notices, "Open-source licences" view, source-code link and the Fan Kit unit (R-UI-18, R-UI-19). Its licence list is a resource generated at build time by `xtask` from the licence-gate report (`cargo-deny`) and the reviewed list ([10](10-supply-chain-security.md) S-34); where it is packaged is decided in M1.
+- **Fan Kit unit** (R-UI-19): one component renders the logo and both notices. The notice texts come from fixed keys of the base message catalogue (the base locale file; its format is chosen in M0), the logo from the bundled file checked by SHA-256. The theme may set the notices' colour and size within the R-UI-19 limits but applies no effect, tint or opacity to the logo; the image is painted untinted.
+- **Theming:** the Tallyline egui theme (dark, light and high contrast, R-UI-17) built from the design tokens (ADR-0005 D6). On Windows the high-contrast theme follows the system setting (`Windows.SPI.HighContrast`, read and watched for changes by `adapter-platform`) while the theme setting is "Follow OS" or has never been changed; an explicitly chosen Dark or Light theme wins, and an explicitly chosen High contrast stays on (decided 2026-10-09). On Linux the user chooses it. Beyond that, "Follow OS" follows only the system's light or dark colour scheme (D8, ADR-0004). The colours for recognition confidence and deviation are theme tokens (palette suitable for colour vision deficiency, replaceable in the theme).
+- **Rendering load** (R-NF-3): no continuous repaint. The UI repaints on input, on a channel result (`request_repaint`) and, for timer-driven labels, with `request_repaint_after` at most once per second; while the window is minimised no timer-driven repaint is requested. There are no continuous animations and no indeterminate progress indicators. GPU and VRAM load of the wgpu backend next to the game are measured in M4 (O-113).
 - **Field marking** (R-UI-4, R-UI-10..12):
-  - `reporting` builds each `Field` from a `FieldReading` (origin `RECOGNIZED`) or from user input (origin `USER`) and computes its `FieldAssessment(confidence, level, deviation, referenceOutdated, reference, referenceAge, delta)` with `DeviationAssessor`. The function is pure and property-tested; `level` follows the rule in 07 §2.6, `referenceOutdated` the stale-reference rule there.
-  - Whether a field currently blocks release under I2 is computed once in `reporting` (e.g. `SubmissionGate.blockingFields`), never in the ViewModel; it also drives F8 navigation and the R-UI-12 counters.
-  - The ViewModel maps `Field` (assessment, confirmation, origin) 1:1 to CSS pseudo-classes, without thresholds or findings logic:
-    - confidence channel (icon and border): `:confidence-confirm`, `:confidence-select`, `:confidence-correct` (level OK has none), `:user-entered`, `:confirmed`, `:double-confirmed` (OCR and AI agree, 07 §2.7), `:confirmation-suspended` (I7);
-    - deviation channel (background and Δ badge): `:deviation-minor`, `:deviation-major`, `:no-reference`, `:reference-outdated`, `:deviation-worsened` (I6);
-    - other field states: `:ai-hint` (a differing AI reading that never overwrites, 07 §2.7), `:not-sent` (an optional value that failed its checks, 11 §A1 "Mandatory field");
-    - gate state: `:needs-confirmation` = the field or its row needs a user decision before release: the I2 cases (level other than OK and not resolved by confirmation or correction, or an unconfirmed `MAJOR` deviation), a confirmation revoked by a worsened deviation (I6), a confirmation suspended by a conflicting reading (I7), an unexpected commodity (R-UI-12) and a row flagged `NewerObservationSent` (R-VAL-8). All of them already block release; the pseudo-class shows them alike (decided 2026-10-09 by @greluc, checkpoint B of the JavaFX handoff);
-    - row level: `:unreviewed` (11 §A1), `:newer-observation-sent` (R-VAL-8), `:row-selected` (set from the selection model, because the review table runs in cell-selection mode and JavaFX gives selected rows no `:selected` there; ADR-0004, SP-9).
-  - All other states (report, job, capture, folder, game, AI, connection, account, UEX row lifecycle, withdrawal, mode) are style classes `tl-state-<id>` on their components ([docs/design-system/states.md](../design-system/states.md)).
+  - `reporting` builds each `Field` from a `FieldReading` (origin `Recognized`) or from user input (origin `User`) and computes its `FieldAssessment` (`confidence`, `level`, `deviation`, `reference_outdated`, `reference`, `reference_age`, `delta`) with `DeviationAssessor`. The function is pure and property-tested; `level` follows the rule in 07 §2.6, `referenceOutdated` the stale-reference rule there.
+  - Whether a field currently blocks release under I2 is computed once in `reporting` (e.g. `SubmissionGate::blocking_fields`), never in the view state; it also drives F8 navigation and the R-UI-12 counters.
+  - The view state maps `Field` (assessment, confirmation, origin) 1:1 to **field states**, without thresholds or findings logic. The Tallyline `TableCell` widget takes the field states and paints the confidence channel as border plus icon and the deviation channel as background plus Δ badge. The names below are the state names of the design system (earlier documents wrote them with a leading colon, as CSS pseudo-classes); in code they are enum variants:
+    - confidence channel (icon and border): `confidence-confirm`, `confidence-select`, `confidence-correct` (level OK has none), `user-entered`, `confirmed`, `double-confirmed` (OCR and AI agree, 07 §2.7), `confirmation-suspended` (I7);
+    - deviation channel (background and Δ badge): `deviation-minor`, `deviation-major`, `no-reference`, `reference-outdated`, `deviation-worsened` (I6);
+    - other field states: `ai-hint` (a differing AI reading that never overwrites, 07 §2.7), `not-sent` (an optional value that failed its checks, 11 §A1 "Mandatory field");
+    - gate state: `needs-confirmation` = the field or its row needs a user decision before release: the I2 cases (level other than OK and not resolved by confirmation or correction, or an unconfirmed `MAJOR` deviation), a confirmation revoked by a worsened deviation (I6), a confirmation suspended by a conflicting reading (I7), an unexpected commodity (R-UI-12) and a row flagged `NewerObservationSent` (R-VAL-8). All of them already block release; the field state shows them alike (decided 2026-10-09 by @greluc, checkpoint B of the earlier JavaFX handoff);
+    - row level: `unreviewed` (11 §A1), `newer-observation-sent` (R-VAL-8), `row-selected` (set from the review table's own selection state, because the table works in cell selection and does not mark the selected row by itself; ADR-0004, SP-9).
+  - All other states (report, job, capture, folder, game, AI, connection, account, UEX row lifecycle, withdrawal, mode) are state identifiers `tl-state-<id>` rendered by the Tallyline widgets ([docs/design-system/states.md](../design-system/states.md)).
   - The view contains no comparison logic; this guarantees the same assessment in OCR and manual capture.
 
 ## 8. Platform integration
 
 | Topic | Windows | Linux |
 |---|---|---|
-| Secret store | Credential Manager (`CredWriteW`/`CredReadW`) via **FFM API** | Secret Service (libsecret) via FFM; fallback file per R-NF-4 (0600 from creation, refused if wider; not on file systems without POSIX permissions) |
-| Truststore | `Windows-ROOT` (SunMSCAPI, module `jdk.crypto.mscapi` – must be added to the jlink image explicitly) in addition to the bundled JDK truststore | Bundled JDK truststore **plus** the system bundle (`/etc/ssl/certs/ca-certificates.crt` or `/etc/pki/tls/certs/ca-bundle.crt`), because a jlink runtime does not use the system store |
-| Trust manager | One reviewed composite `X509ExtendedTrustManager` that forwards the `SSLEngine`/`Socket` overloads (so hostname verification stays active); test against a wrong-host certificate | same |
-| Proxy | `java.net.useSystemProxies=true` so `HttpClient` follows the OS proxy; exception: the `OllamaClient` uses `HttpClient.Builder.NO_PROXY` for loopback hosts (confirmed non-loopback Ollama hosts follow the system proxy like UEX) | same (environment variables / GNOME settings as far as the JDK supports them), with the same Ollama exception |
-| Native libraries | `--enable-native-access` (JEP 472) for every module that loads natives: our FFM adapter module, `javafx.graphics`, `org.xerial.sqlitejdbc` and ONNX Runtime (in the jlink image: the merged module, see below). **JavaFX:** modules only from the verified Maven Central platform JARs (`org.openjfx:javafx-*:27:<win\|linux>`, 10 S-4). `build-logic` copies their natives into the runtime image (`bin/javafx/` on Windows, `lib/` on Linux). That is where JavaFX's `NativeLibLoader` looks first for jlinked modules, so nothing is extracted at runtime. As defence in depth, the `app` bootstrap sets `javafx.cachedir` to an owner-only directory in the app's cache directory, one of its per-user data directories (storage rows below; portable marker honoured; never the installation directory or the shared temp directory), before the toolkit starts; `Main` does not extend `Application`. Gluon's JavaFX jmods are not used (decided 2026-10-08, 10 S-24). The Maven Central JARs carry no licence or notice files, so `build-logic` adds the OpenJFX legal files of tag `27-ga` (`LICENSE`, `ADDITIONAL_LICENSE_INFO`, `ASSEMBLY_EXCEPTION` and `modules/javafx.graphics/src/main/legal/*.md`) to the app image's notices directory (R-DOC-3). **ONNX Runtime 1.30.0** has no module descriptor (only `Automatic-Module-Name`). jlink rejects automatic modules, so `org.beryx.jlink` merges ORT into the merged module and leaves `com.microsoft.onnxruntime` as a descriptor-only delegating module. The `app` build therefore sets `mergedModuleName` explicitly, and the launcher grants native access to that merged module. `com.microsoft.onnxruntime` applies only to `:app:run` on the module path. Fallback, only if merging causes other problems: a real descriptor via a module-info patching plugin (a new plugin, reviewed under S-4/S-8). ORT natives via `onnxruntime.native.path`; only the linux-x64 and win-x64 natives ship (whether `onnxruntime_providers_shared.dll` is needed is decided in M0). ORT telemetry is switched off per R-NF-12: `OrtEnvironment.setTelemetry(false)` before the first session, and on Linux `ORT_DISABLE_TELEMETRY=1` (launcher row). On Windows, `onnxruntime.dll` imports `MSVCP140_1.dll` and `VCRUNTIME140_1.dll`, and the OpenJDK runtime ships no `MSVCP140_1.dll`; an M0 test therefore loads ORT from the jlink image on a clean Windows machine without the Visual C++ redistributable (the copy in the JavaFX natives may be the only one; licence question O-12). **sqlite-jdbc** via `org.sqlite.lib.path`/`org.sqlite.lib.name`. Nothing is extracted into the shared temp dir; the packaged-app smoke test ([04](04-roadmap.md) M1) checks this. | same |
-| Launcher JVM options | `-Xmx` and `-XX:MaxDirectMemorySize` set explicitly in the jpackage launcher (R-NF-3) | same; plus `ORT_DISABLE_TELEMETRY=1` in the process environment before ONNX Runtime initialises (R-NF-12). jpackage launchers cannot set environment variables, so the mechanism is designed in the M0 spike |
+| Secret store | Credential Manager, through the `keyring` crate (4.2.0) or, if it cannot meet R-NF-4, through the `windows` crate in `adapter-platform`; chosen in M0 | Secret Service through the same `keyring` crate or a D-Bus client chosen in M0; fallback file per R-NF-4 (0600 from creation, refused if wider; not on file systems without POSIX permissions) |
+| Certificate store | rustls with the platform verifier (candidate `rustls-platform-verifier`, chosen with the TLS provider, O-110) uses the Windows certificate store | the same verifier uses the system store, including the distribution bundle (`/etc/ssl/certs/ca-certificates.crt` or `/etc/pki/tls/certs/ca-bundle.crt`); which locations the verifier reads is verified in M0 |
+| Certificate verification | One reviewed verifier configuration shared by `adapter-uex` and `adapter-vlm`; hostname verification stays active; test against a wrong-host certificate | same |
+| Proxy | `reqwest` follows the proxy settings it supports on Windows (verified in M0); exception: the Ollama client disables proxying for loopback hosts (confirmed non-loopback Ollama hosts follow the system proxy like UEX) | the proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `NO_PROXY`) as far as `reqwest` supports them; whether desktop proxy settings are read is verified in M0 and a gap recorded in 09, with the same Ollama exception |
+| Native libraries | The native parts are the registered exceptions of ADR-0005 D2 (09 §3b). **ONNX Runtime:** the shared library (`onnxruntime.dll`) ships next to the executable, pinned by SHA-256 like the OCR assets (10 S-22); whether the `ort` build step downloads it or the application loads it at run time is decided in M0 (O-108), and a download at build time is allowed only with a fixed SHA-256. Only the win-x64 and linux-x64 builds ship; whether `onnxruntime_providers_shared.dll` is needed is decided in M0. ORT telemetry is switched off per R-NF-12: the application sets `ORT_DISABLE_TELEMETRY=1` itself (process start row) and disables non-essential events through the `ort` environment setting, if the binding exposes it (verified in M0). On Windows, `onnxruntime.dll` imports `MSVCP140_1.dll` and `VCRUNTIME140_1.dll`; an M0 test loads ORT on a clean Windows machine without the Visual C++ redistributable, and its result decides whether these DLLs must ship (licence question O-12, now limited to them). **SQLite** is compiled into the executable (`rusqlite` with bundled SQLite). Our own binary links the C runtime statically where the toolchain allows it. Nothing is extracted into the shared temp directory; the packaged-app smoke test ([04](04-roadmap.md) M1) checks this. | **ONNX Runtime:** `libonnxruntime.so` shipped next to the executable, pinned and handled as on Windows; ORT telemetry as on Windows (the Linux telemetry traffic is row X1 of §9). **SQLite** compiled into the executable. Nothing is extracted into the shared temp directory. |
+| Process start | No launcher and no runtime options: the executable is its own launcher, so there is no heap or direct-memory flag; memory is bounded by the pixel budget and the pool bounds of §7 (R-NF-3). Before the first ONNX Runtime call, `adapter-platform` sets `ORT_DISABLE_TELEMETRY=1` in the process environment (R-NF-12); in the 2024 edition that call is `unsafe`, confined to `adapter-platform` and registered in 09 §3a. The M0 network spike still verifies that no ORT traffic remains | same |
 | Config file (`ConfigFile`, R-NF-5) | `%APPDATA%\<App>` | `$XDG_CONFIG_HOME/<app>` (default `~/.config`) |
 | Data: **one** SQLite database with all domain tables (queue, history, cooldown, processed-file register, outbox, AI queue) **and** the rebuildable `ref_*` tables; working copies (R-CAP-7); `backup/` (R-NF-11). Never in a cache directory. | `%LOCALAPPDATA%\<App>\data` | `$XDG_DATA_HOME/<app>` (default `~/.local/share`) |
 | Logs and diagnostics exports (R-NF-6) | `%LOCALAPPDATA%\<App>\logs` | `$XDG_STATE_HOME/<app>/logs` (default `~/.local/state`) |
-| Regenerable files only (JavaFX cache dir, natives extracted per S-24); deleting them is harmless | `%LOCALAPPDATA%\<App>\cache` | `$XDG_CACHE_HOME/<app>` (default `~/.cache`) |
-| Portable mode (R-NF-2) | all of the above under `<launcher dir>\data\{config,data,logs,cache}`; if it is not writable, the startup self-test fails visibly (R-NF-5) | same under `<launcher dir>/data/` |
+| Regenerable files only (for example render or shader caches, if the graphics backend writes any); deleting them is harmless | `%LOCALAPPDATA%\<App>\cache` | `$XDG_CACHE_HOME/<app>` (default `~/.cache`) |
+| Portable mode (R-NF-2) | all of the above under `<executable dir>\data\{config,data,logs,cache}`; if it is not writable, the startup self-test fails visibly (R-NF-5) | same under `<executable dir>/data/` |
 | Single instance (R-NF-10) | lock file in the data directory plus a per-user lock `%LOCALAPPDATA%\<App>\instance.lock`, taken in portable mode too; Unix-domain socket in `%LOCALAPPDATA%\<App>\run` | lock file in the data directory plus `$XDG_RUNTIME_DIR/<app>.lock` (fallback `$XDG_STATE_HOME/<app>`); Unix-domain socket in `$XDG_RUNTIME_DIR` (otherwise in an owner-only `run` directory next to the per-user lock file, i.e. `$XDG_STATE_HOME/<app>/run`; never in the cache directory, which moves in portable mode) |
 | SC detection | RSI Launcher log, process, drive default paths | Wine/Proton prefixes (configurable; default candidates see assumption A3); process via `/proc` |
-| Package | MSI (jpackage with one pinned WiX major version, chosen in M1, 10 S-11; no licence dialog that adds terms) and the plain app image as ZIP next to it; every package carries `LICENSE`, `NOTICE` and the notices directory (R-DOC-3) | `.deb` (jpackage; its `copyright` file replaced with a DEP-5 file via `--resource-dir`, R-DOC-3), `tar.gz` (app image) |
+| Package | MSI (`cargo-packager` with a pre-installed WiX 3.11.2 pinned by SHA-256 in `docs/dependency-pins.md`, ADR-0005 D7; no NSIS, no licence dialog that adds terms) and a plain ZIP built by `xtask` next to it; every package carries `LICENSE`, `NOTICE` and the notices directory (R-DOC-3) | `.deb` (`cargo-packager`; its `copyright` file is a DEP-5 file, R-DOC-3; verified in the M1 spike, O-116), `tar.gz` built by `xtask` |
 
 The storage rows (config file to single instance) are the single source of truth for storage locations; R-NF-2, R-NF-5, R-NF-9 and R-NF-10 refer to them.
 
-The installed app writes nothing into its installation directory – no config, logs, database, caches, extracted native libraries or JavaFX cache – so that uninstalling leaves nothing behind and a read-only installation works. All state goes to the storage locations above. The only exception is portable mode (R-NF-2: the archive distributions with `portable.marker`). If the data directories fail the startup self-test (R-NF-5), the app reports it and never falls back to the installation directory.
+The installed app writes nothing into its installation directory – no config, logs, database, caches or extracted native libraries – so that uninstalling leaves nothing behind and a read-only installation works. All state goes to the storage locations above. The only exception is portable mode (R-NF-2: the archive distributions with `portable.marker`). If the data directories fail the startup self-test (R-NF-5), the app reports it and never falls back to the installation directory.
 
 ## 9. Security and privacy
 
-- Secret key only in the OS keystore (Linux fallback file per R-NF-4); masking in logs via a Logback filter. A test ensures that the key never appears in a log line.
+- Secret key only in the OS keystore (Linux fallback file per R-NF-4); masking in logs via a `tracing` layer. A test ensures that the key never appears in a log line.
 - Crops: the upload screenshot contains only the shop crop(s) plus the location field. No stored or transmitted crop contains the terminal header with the balance; the exclusion is geometric and happens before the working copy is stored (R-SUB-7, R-CAP-7, F30).
 - No telemetry, analytics, crash reporting or remote logging (R-NF-12). The app sends and stores user data only as listed in the data-flow inventory at the end of this section (privacy gate, CLAUDE.md). A local Ollama can forward cloud models to ollama.com; such remote models are used only after consent (R-VLM-6).
 - No listening TCP or UDP sockets; the only local IPC is the single-instance Unix-domain socket, which accepts nothing but a fixed activation token (R-NF-10).
 - No access to the game process except reading the process list (path and game detection).
 - Only the redacted working copies are passed to the VLM, never the whole screenshot (R-VLM-9).
 - **Untrusted input** (image files, folders, UEX and Ollama responses):
-  - Poison-file guard (R-CAP-1d): before the first decode, `StableFileGate` writes a register row in state `decoding` (path, size, mtime). Success sets it to `imported`, a decode error to `failed`. At startup, a row still in `decoding` becomes `failed` ("decoder crashed") and is decoded again only via "Re-import". Decoding runs on the bounded intake executor (§7), not on the watcher's virtual thread.
-  - Header check before decoding (`adapter-files`): dimensions are read through `ImageReader` without decoding pixels. Hard upper limits on file size, declared pixel count and embedded ICC profile size live in a settings record (start values 200 MB and 100 MP, far above the R-OCR-17 pixel budget; the profile limit is set in M2 from the decode fixtures). A file above a limit is set aside with a reason, never decoded or downscaled.
-  - Folder scan: `FolderScanner` uses `Files.walkFileTree` without `FOLLOW_LINKS`. `visitFileFailed` records the error per folder (R-CAP-1e) and continues. Symbolic links are not followed. On Windows, directory junctions and other reparse points are skipped and reported as "link skipped" (detection method verified in M3). A configured root that is itself a link is resolved once with `toRealPath()` (Wine prefixes are often reached through symlinks), and every candidate's real path must lie under the root's real path.
+  - Poison-file guard (R-CAP-1d): before the first decode, `StableFileGate` writes a register row in state `decoding` (path, size, mtime). Success sets it to `imported`, a decode error to `failed`. At startup, a row still in `decoding` becomes `failed` ("decoder crashed") and is decoded again only via "Re-import". Decoding runs on the bounded intake pool (§7), not on the watcher's async task.
+  - Header check before decoding (`adapter-files`): dimensions are read from the header with the decoder crate's header-only API, without decoding pixels. Hard upper limits on file size, declared pixel count and embedded ICC profile size live in a settings record (start values 200 MB and 100 MP, far above the R-OCR-17 pixel budget; the profile limit is set in M2 from the decode fixtures). A file above a limit is set aside with a reason, never decoded or downscaled.
+  - Folder scan: `FolderScanner` walks the tree without following links. A failed directory or file entry is recorded per folder (R-CAP-1e) and the walk continues. Symbolic links are not followed. On Windows, directory junctions and other reparse points are skipped and reported as "link skipped" (detection method verified in M3). A configured root that is itself a link is resolved once to its canonical path (Wine prefixes are often reached through symlinks), and every candidate's real path must lie under the root's real path.
   - Responses: `adapter-uex` and `adapter-vlm` cap response bodies at a size limit (setting), and the anti-corruption layer range-checks numeric values (R-API-5). `Retry-After` is clamped to a maximum backoff (§6).
   - Tests: decode fixtures in 07 §4 (item 7), and a test that a `decoding` row left over at startup becomes `failed` and is not decoded again.
 
@@ -578,7 +766,7 @@ The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to lea
 | N6 | Ollama registry, contacted by Ollama, not by the app | Ollama's pull request | only when the user starts a pull | user action | R-VLM-7 |
 | N7 | non-loopback Ollama host, remote (cloud) models | redacted panel crops (unencrypted over `http`) | only after the R-VLM-6 confirmation | consent per host and model | R-VLM-6, R-VLM-9 |
 | N8 | fixed URLs of optional OCR model downloads (later) | the request only | user-initiated download | fixed URL and SHA-256 | R-L10N-3, 10 S-23 |
-| X1 | **Known exception until mitigated:** telemetry of ONNX Runtime's official natives | Linux: trace events over HTTPS from the 1DS SDK, with a persistent device identifier (the endpoint `mobile.events.data.microsoft.com` is in the 1.30.0 native); Windows: ETW TraceLogging events, which Windows may forward to Microsoft depending on the user's diagnostic-data consent | on by default in the official builds (`Privacy.md` in the jar) | R-NF-12: `ORT_DISABLE_TELEMETRY=1` before ORT initialises (Linux) and `OrtEnvironment.setTelemetry(false)` before the first session (both), verified by the M0 network spike; if anything remains, an ORT build with `--no_telemetry` (O-13). The row becomes "mitigated" only when the spike and the smoke-test network check pass; no release bundles ONNX Runtime before that. | R-NF-12 |
+| X1 | **Known exception until mitigated:** telemetry of ONNX Runtime's official natives | Linux: trace events over HTTPS from the 1DS SDK, with a persistent device identifier (the endpoint `mobile.events.data.microsoft.com` is in the 1.30.0 native); Windows: ETW TraceLogging events, which Windows may forward to Microsoft depending on the user's diagnostic-data consent | on by default in the official builds (`Privacy.md` shipped with the official builds) | R-NF-12: our own code sets `ORT_DISABLE_TELEMETRY=1` before the first ORT call (Linux; ADR-0005 consequences) and switches off non-essential events through the ONNX Runtime environment setting before the first session, if the `ort` binding exposes it (both platforms), verified by the M0 network spike; if anything remains, an ORT build with `--no_telemetry` (O-13). The row becomes "mitigated" only when the spike and the smoke-test network check pass; no release bundles ONNX Runtime before that. | R-NF-12 |
 
 **Local storage** (locations: §8 storage rows)
 
@@ -591,7 +779,7 @@ The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to lea
 | L5 | database backups (`backup/`) | database copies and the config file | the last 3 backups | R-NF-11, [release process](../release-process.md) |
 | L6 | logs | rotating log files, secrets masked | rotation limits set in M1 | R-NF-6 |
 | L7 | diagnostics export | allowlisted files, saved where the user chooses | the user's file | R-NF-6 |
-| L8 | cache directory | regenerable files only (JavaFX cache, natives per 10 S-24) | can be deleted at any time | §8 |
+| L8 | cache directory | regenerable files only (for example render or shader caches, if the graphics backend writes any) | can be deleted at any time | §8 |
 
 **Local sources read** (read-only; nothing from them leaves the machine)
 
@@ -601,12 +789,12 @@ The privacy gate ([CLAUDE.md](../../CLAUDE.md), R-NF-12) allows user data to lea
 
 ## 10. Build and CI
 
-- Gradle 9.8.1 (Kotlin DSL, version catalog `gradle/libs.versions.toml`, convention plugins in `build-logic`), Java toolchain 27 via Foojay resolver.
+- Cargo workspace (resolver and shared dependency versions in the root `Cargo.toml`, `Cargo.lock` committed), stable Rust pinned in `rust-toolchain.toml` (edition 2024; exact pin set in M0; raised in its own pull requests, ADR-0005 D10). Repository checks and generators are the `xtask` crate (ADR-0005 D12).
 - GitHub Actions, matrix `windows-latest` and `ubuntu-latest`:
-  - `./gradlew check` (Spotless, Error Prone/NullAway, tests, ArchUnit, JaCoCo gate), always with `--dependency-verification strict` (10 S-4)
+  - `cargo xtask check`, always with `--locked`: `cargo fmt --check`, `cargo clippy` with `-D warnings` (including `disallowed_types` and `disallowed_methods`), all tests, the architecture rules over `cargo metadata`, `cargo-deny` (licences, sources, bans, duplicates), `cargo-audit`, `cargo-vet` and the verification of the vendored sources against their committed hashes (10 S-4, ADR-0005 D8, D13)
   - OCR eval on the public (redacted) corpus
-  - on tags: read-only build jobs (`jpackage` per OS, archives, SBOM) with the packaged-app smoke test ([04](04-roadmap.md) M1)
-- Separate jobs outside `check`: PIT (changed classes in the PR, full run nightly, 11 §B3); OSV scan (in the PR, daily on `main` and on the latest release tag, 10 S-19); dependency submission (S-20); the weekly live-API drift job (04 M1).
-- **Repository and licence gates** from M0 ([10](10-supply-chain-security.md) S-32…S-37, ADR-0003): the licence gate (`app.cash.licensee`, part of `check`), `reuse lint` and the `LICENSE`/`LICENSES` comparison, the DCO check, the English check, gitleaks, actionlint and zizmor, CodeQL for GitHub Actions, dependency review. Every `gradle/actions` step sets `cache-provider: basic` (S-37); CI tools outside Gradle are pinned per S-36.
-- Releases: a publish job without Gradle downloads the build outputs, computes SHA-256 checksums, attests them and publishes them with the CycloneDX SBOM (10 S-14, S-16), the plain app-image ZIP next to the MSI (R-DOC-3) and the source archives of R-DOC-4. A read-only build job fetches those archives from pinned URLs and checks them against committed SHA-256 values, like the OCR assets (10 S-22).
-- **Supply chain:** dependency locking, dependency verification (SHA-256 for every artifact, plus PGP where signed), wrapper validation, SHA-pinned actions – see [10-supply-chain-security.md](10-supply-chain-security.md).
+  - on tags: read-only build jobs (`cargo-packager` per OS, archives by `xtask`, SBOM) with the packaged-app smoke test ([04](04-roadmap.md) M1)
+- Separate jobs outside `check`: mutation testing with `cargo-mutants` (changed code in the PR, full run nightly, 11 §B3) and the coverage report with `cargo-llvm-cov`; OSV scan (in the PR, daily on `main` and on the latest release tag, 10 S-19); dependency submission (S-20); the weekly live-API drift job (04 M1).
+- **Repository and licence gates** from M0 ([10](10-supply-chain-security.md) S-32…S-37, ADR-0003): the licence gate (`cargo-deny`, part of `check`), `reuse lint` and the `LICENSE`/`LICENSES` comparison, the DCO check, the English check, gitleaks, actionlint and zizmor, CodeQL for GitHub Actions, dependency review. CI tools outside Cargo are pinned per S-36.
+- Releases: a publish job without a build downloads the build outputs, computes SHA-256 checksums, attests them and publishes them with the CycloneDX SBOM (10 S-14, S-16; generator candidate `cargo-cyclonedx`, chosen in M0), the plain ZIP next to the MSI (R-DOC-3) and the source archives of R-DOC-4. A read-only build job fetches those archives from pinned URLs and checks them against committed SHA-256 values, like the OCR assets (10 S-22).
+- **Supply chain:** `Cargo.lock` with `--locked`, `cargo vendor` with committed hashes, `cargo-deny`, `cargo-audit`, `cargo-vet`, SHA-pinned actions – see [10-supply-chain-security.md](10-supply-chain-security.md).

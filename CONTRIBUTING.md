@@ -43,13 +43,13 @@ Everyone who takes part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Repor
 | Topic | Where |
 |---|---|
 | Requirements (`R-…`) and assumptions (`A…`) | [`docs/plan/01-requirements.md`](docs/plan/01-requirements.md) |
-| Modules, context map, threading, privacy | [`docs/plan/02-architecture.md`](docs/plan/02-architecture.md) |
+| Crates, context map, threading, privacy | [`docs/plan/02-architecture.md`](docs/plan/02-architecture.md) |
 | UEX API notes and open verification points | [`docs/plan/06-uex-api.md`](docs/plan/06-uex-api.md) |
 | OCR pipeline, corpus and measurement concept | [`docs/plan/07-ocr-concept.md`](docs/plan/07-ocr-concept.md) |
 | Engineering rules and Definition of Done | [`docs/plan/09-engineering-principles.md`](docs/plan/09-engineering-principles.md) (§11) |
 | Supply-chain measures (`S-…`) | [`docs/plan/10-supply-chain-security.md`](docs/plan/10-supply-chain-security.md) |
 | Domain language, DDD and TDD rules | [`docs/plan/11-ddd-and-tdd.md`](docs/plan/11-ddd-and-tdd.md) |
-| Architecture decisions | [`docs/adr/`](docs/adr/): ADR-0001 is [`03-language-decision.md`](docs/plan/03-language-decision.md); the licence decision is [ADR-0003](docs/adr/0003-licence-and-contributions.md) |
+| Architecture decisions | [`docs/adr/`](docs/adr/): ADR-0001 is [`03-language-decision.md`](docs/plan/03-language-decision.md) (superseded); the implementation language, toolkit, supply chain and packaging decision is [ADR-0005](docs/adr/0005-rust-and-egui.md); the licence decision is [ADR-0003](docs/adr/0003-licence-and-contributions.md) |
 | Open owner decisions and open verifications | [`docs/adr/0000-open-points.md`](docs/adr/0000-open-points.md) |
 | Releases, patch day, UEX API changes | [`docs/release-process.md`](docs/release-process.md) |
 | Pinned versions of GitHub Actions and CI tools | [`docs/dependency-pins.md`](docs/dependency-pins.md) |
@@ -87,9 +87,9 @@ In the planning phase the documents are the product. These rules apply to every 
 - **IDs are stable.** IDs of requirements (`R-…`, including letter suffixes such as `R-CAP-1a`), assumptions (`A…`), predecessor bugs (`F…`), supply-chain measures (`S-…`), report invariants (`I…`) and open points (`O-…`) are never reused or renumbered. A dropped requirement keeps its row, marked `Withdrawn (YYYY-MM-DD)` with the reason and its replacement.
 - **ADRs are immutable once accepted.** A new decision gets a new ADR in `docs/adr/NNNN-kebab-title.md` that supersedes the old one; the old ADR only gets a status line. ADR labels have four digits (`ADR-0001`). Claim the next number against `origin/main` and the open pull requests when you push, because parallel work picks the same number.
 - **Do not guess.** Versions, API fields, licences and library behaviour are checked at the source, and the source is named (URL, or file and line). Anything you could not check is marked as an assumption.
-- **Do not invent** build commands, file paths, modules or class names that are neither in `docs/` nor in the tree. If it is not written down, it has not been decided: ask.
+- **Do not invent** build commands, file paths, crates or type names that are neither in `docs/` nor in the tree. A crate or version that [ADR-0005](docs/adr/0005-rust-and-egui.md) does not name is chosen and verified at source in M0. If it is not written down, it has not been decided: ask.
 - **Diagrams** are Mermaid or plain-text trees; no binary diagram files.
-- **English only, British spelling with -ise,** in documents, code, commits, pull requests and issues: colour, behaviour, licence (noun) and license (verb), normalise, organise, recognise. Technical identifiers keep the spelling of their technology (Java and JavaFX API names, Gradle's "version catalog", CSS `color`, the `LICENSE` file name). Quote non-English text only verbatim, for example an error message.
+- **English only, British spelling with -ise,** in documents, code, commits, pull requests and issues: colour, behaviour, licence (noun) and license (verb), normalise, organise, recognise. Technical identifiers keep the spelling of their technology (Rust, egui and crate API names such as `egui::Color32`, Cargo's "lockfile", the `LICENSE` file name). Quote non-English text only verbatim, for example an error message.
 - **Verbatim third-party text is never edited**, not for spelling, style or formatting: the GPL text in `LICENSE` and the texts in `LICENSES/`, the Code of Conduct, the Developer Certificate of Origin, the licence files and notices of bundled components, and the [Fan Kit notices](#star-citizen-fan-kit-unit).
 - **No secrets and no personal data** in documents: no keys, tokens, player handles, balances, e-mail addresses or account names. The project contact address and the CLA roster are the deliberate exceptions.
 
@@ -97,13 +97,14 @@ In the planning phase the documents are the product. These rules apply to every 
 
 The binding rules are in [`09-engineering-principles.md`](docs/plan/09-engineering-principles.md) (Definition of Done in §11), [`11-ddd-and-tdd.md`](docs/plan/11-ddd-and-tdd.md) and the architecture guardrails in [`CLAUDE.md`](CLAUDE.md). The ones contributors most often miss:
 
-- **Test first.** In the core modules no production code is written without a failing test (11 §B1). New use cases start with an acceptance test tagged with the requirement ID (`@Tag("R-…")`). A bug fix starts with a test that reproduces the bug. OCR heuristics may be explored in the evaluation harness, but before the merge their behaviour is pinned down by golden and unit tests that fail without the change.
-- **Gradle wrapper only.** Build and test with `./gradlew` (`gradlew.bat` on Windows), not with an IDE test runner. `./gradlew check` is green before every commit; `./gradlew spotlessApply` formats.
-- **No comments besides Javadoc.** This is binding: @greluc decided it for all his projects on 2026-09-26.
-  - It covers every source, test and configuration file: no `//` or `/* */` outside Javadoc, no `#` comments in YAML, TOML, `.properties`, `.gitignore`, `.gitattributes`, `.editorconfig` or shell scripts, no `<!-- -->` in FXML or XML, and no commented-out code or configuration.
-  - What stays: Javadoc (short, the contract only, no history), the licence header, shebangs, and tool directives without prose after them.
-  - The reasoning goes into the commit message and the pull request; durable facts go into `docs/`. Open work is an issue, not a `TODO`. The reason for a suppression goes into the commit message and the pull request, never into a comment.
-- **UI texts** come only from ResourceBundles; colours only from CSS theme variables.
+- **Rust only, native code only by registered exception.** Our own code is Rust ([ADR-0005](docs/adr/0005-rust-and-egui.md) D1). A dependency that contains native code (C, C++, assembler, a `-sys` crate, a `build.rs` that compiles or downloads something) needs a row in the native-code exception register (09 §3b) and @greluc's approval first. Every crate has `#![forbid(unsafe_code)]` except the platform adapter.
+- **Test first.** In the core crates no production code is written without a failing test (11 §B1). New use cases start with an acceptance test tagged with the requirement ID (the tagging mechanism is chosen in M0). A bug fix starts with a test that reproduces the bug. OCR heuristics may be explored in the evaluation harness, but before the merge their behaviour is pinned down by golden and unit tests that fail without the change.
+- **Cargo and `cargo xtask` only.** Build and test with `cargo` and `cargo xtask`, not with an IDE test runner. `cargo xtask check` (format check, Clippy with `-D warnings`, rustdoc lints, tests, architecture rules, `cargo-deny`) is green before every commit; `cargo fmt` formats. These commands exist from M0 on.
+- **No comments besides rustdoc.** This is binding: @greluc decided it for all his projects on 2026-09-26.
+  - It covers every source, test and configuration file: no plain `//` or `/* */`, no `#` comments in YAML, TOML, `.gitignore`, `.gitattributes`, `.editorconfig` or shell scripts, no `<!-- -->` in XML, and no commented-out code or configuration.
+  - What stays: rustdoc (`///` and `//!`, short, the contract only, no history), the licence header, shebangs, and tool directives without prose after them.
+  - The reasoning goes into the commit message and the pull request; durable facts go into `docs/`. Open work is an issue, not a `TODO`. A lint suppression is `#[expect(lint, reason = "…")]` (or `allow`) with one short sentence and a row in the suppression register (09 §3a); the longer reasoning goes into the commit message and the pull request.
+- **UI texts** come only from the message catalogue; colours only from the theme tokens, never as literals in view code.
 - **UEX API:**
   - Tests use responses written against the documented schema; recorded responses are committed only anonymised and only once UEX allows publishing them ([`06-uex-api.md`](docs/plan/06-uex-api.md) open point 7).
   - Live tests are opt-in (`UEXDR_LIVE_TEST=1`) and only ever use `is_production=0`. Never send anything with `is_production=1`.
@@ -116,10 +117,10 @@ The binding rules are in [`09-engineering-principles.md`](docs/plan/09-engineeri
 The licence policy has one canonical place: the "Stack rules" in [`CLAUDE.md`](CLAUDE.md), which [09 §9](docs/plan/09-engineering-principles.md#9-dependencies-and-build) links to. It says which licences may be shipped, which need @greluc's approval first and how build-only tools are treated. This guide does not repeat it. In practice:
 
 - Check the licence before you write code. If it is unclear, ask first.
-- Justify every new dependency in the pull request: what it does, its SPDX licence ID and where you read it (POM URL or upstream licence file), and its maintenance status (S-29).
+- Justify every new dependency in the pull request: what it does, its SPDX licence ID and where you read it (the crate's `Cargo.toml` licence field and its licence file), its maintenance status (S-29), and whether it brings native code, a `build.rs` or `unsafe` that the exception register does not cover. Only crates.io; no git dependencies; stable releases only, apart from the registered exceptions (`ort`).
 - A shipped component gets its `NOTICE` entry in the same pull request. A bundled file (OCR model, font, icon, logo) also gets its `REUSE.toml` annotation, its licence text under `LICENSES/` and its SHA-256 in `NOTICE` (OCR models also in their checksum file, S-22).
-- The lockfiles and `gradle/verification-metadata.xml` are updated in the same pull request, as a separate commit (S-3, S-5). New signing-key fingerprints are listed in the pull request with the source you checked them against. Verification failures are never "fixed" by turning verification off.
-- GitHub Actions are pinned by full commit SHA, without a trailing comment; the tag each SHA resolves to is recorded in [`docs/dependency-pins.md`](docs/dependency-pins.md). Workflow `permissions` are minimal. Every `gradle/actions` step sets `cache-provider: basic` or `cache-disabled: true`, because the default cache provider is proprietary.
+- `Cargo.toml`, `Cargo.lock`, the `cargo vendor` directory and the `cargo-vet` records are updated in the same pull request, the lockfile and vendor update as a separate commit (S-3, S-5). New crates are checked for a `build.rs`, procedural macros and the licence of their native parts; what you checked goes into the pull request. Failures of `cargo-deny`, `cargo-audit` or `cargo-vet` are never "fixed" by turning the check off or adding an unexplained exception.
+- GitHub Actions are pinned by full commit SHA, without a trailing comment; the tag each SHA resolves to is recorded in [`docs/dependency-pins.md`](docs/dependency-pins.md). Workflow `permissions` are minimal. An action step whose default behaviour includes a proprietary component is configured to switch it off (S-37).
 
 ### Code from other projects
 
@@ -142,7 +143,7 @@ The repository follows [Conventional Commits 1.0.0](https://www.conventionalcomm
 ```
 
 - **Type:** `feat`, `fix`, `docs`, `refactor`, `test`, `perf`, `build`, `ci`, `style` or `chore`. Types map to the repository's labels: `feat` → `enhancement`, `fix` → `bug`, `docs` → `documentation`; the other types have no label of their own. The CLA signature pull request and its commit use `cla: sign — <handle>` (see [Contributor Licence Agreement](#contributor-licence-agreement)); this is the only other type.
-- **Scope:** the module (`recognition`, `adapter-uex`), the document area (`plan`, `adr`, `corpus`) or `deps`.
+- **Scope:** the crate (`recognition`, `adapter-uex`), the document area (`plan`, `adr`, `corpus`) or `deps`.
 - **Summary:** imperative mood, lower-case start, no full stop at the end.
 - **Breaking change** (a MAJOR version under the release process): `!` after the type or scope, or a `BREAKING CHANGE:` footer.
 - **Body:** why the change is made, and the requirement IDs. Reasoning that would otherwise end up in a code comment belongs here.
@@ -154,7 +155,7 @@ Examples:
 docs(plan): close remaining cross-document gaps of the fourth review
 feat(recognition): resolve status names through the active global.ini
 fix(adapter-files): wait for the stable-file gate before reading a capture
-build(deps): add jqwik for parser property tests
+build(deps): add proptest for parser property tests
 ```
 
 ### DCO sign-off
@@ -197,7 +198,7 @@ Good to know:
 - CI must be green before a merge (once CI exists, from M0).
 - Review is requested automatically through [`.github/CODEOWNERS`](.github/CODEOWNERS). That file is review routing, not access control. It names @greluc for everything and lists the governance, licence and supply-chain paths explicitly, because those get the closest review.
 - Branch protection for `main` (S-28) requires a pull request and green checks; @greluc may bypass it for his own pull requests.
-- **No squash merges.** Pull requests are merged with a merge commit or a rebase merge, so every commit lands on `main` as it is, in particular the separate lockfile and verification-metadata commit (S-3, S-5). Each commit therefore has to stand on its own: a Conventional Commits message, a sign-off, and a green `./gradlew check`.
+- **No squash merges.** Pull requests are merged with a merge commit or a rebase merge, so every commit lands on `main` as it is, in particular the separate lockfile and verification-metadata commit (S-3, S-5). Each commit therefore has to stand on its own: a Conventional Commits message, a sign-off, and a green `cargo xtask check`.
 - Do not force-push a branch once review has started, unless the reviewer asks for it. Never force-push `main`.
 - Every user-visible change updates `README.md`, the user guide under `docs/user/` (from M1) and the `[Unreleased]` section of `CHANGELOG.md` (Keep a Changelog) in the same commit. `CHANGELOG.md` does not exist yet; the first user-visible change creates it. An entry is one to three sentences on what changed and why it matters to users, plus the requirement ID.
 
@@ -257,4 +258,4 @@ The project is licensed under the GNU General Public License, version 3 or (at y
 - You contribute under the project licence, which your DCO sign-off confirms, and under the [CLA](CLA.md).
 - From M0 on, every source file starts with a licence header: an SPDX copyright line and an SPDX licence-identifier line naming `GPL-3.0-or-later`. Files that cannot carry a header (images, models, generated files, and configuration files under the no-comments rule) are annotated in [`REUSE.toml`](REUSE.toml), and `reuse lint` checks the whole tree.
 - The project's copyright line names Lucas Greuloch. When you change a file that carries a header, add one copyright line of the same form for yourself, once per file.
-- Not everything in the repository is under the GPL. [`REUSE.toml`](REUSE.toml) and [`NOTICE`](NOTICE) name the files that keep their own licence: the corpus screenshots (game content of Cloud Imperium), the Fan Kit logo files, the Code of Conduct and, once they are added, the Gradle Wrapper files, the OCR models and bundled fonts. `NOTICE` also lists every third-party component shipped in the installers.
+- Not everything in the repository is under the GPL. [`REUSE.toml`](REUSE.toml) and [`NOTICE`](NOTICE) name the files that keep their own licence: the corpus screenshots (game content of Cloud Imperium), the Fan Kit logo files, the Code of Conduct and, once they are added, the vendored crates (each under its own licence), the OCR models and bundled fonts. `NOTICE` also lists every third-party component shipped in the installers.

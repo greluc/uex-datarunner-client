@@ -1,6 +1,8 @@
 # States: from the domain to the screen
 
-> **Doc type:** Living spec — draft (JavaFX handoff stage 2, ADR-0004 Proposed). Last reviewed: 2026-10-09.
+> **Doc type:** Living spec — draft (JavaFX handoff stage 2; ADR-0004 partly superseded by ADR-0005). Last reviewed: 2026-10-12.
+
+> **Note 2026-10-12:** [ADR-0005](../adr/0005-rust-and-egui.md) replaces JavaFX with egui. The state ids, their meaning and their plan sources stand. The JavaFX column below (pseudo-classes such as `:confidence-confirm`, `:row-selected`, and the style classes `tl-state-<id>`) names a CSS mechanism that no longer exists: in the egui rendition each state is a variant or flag on the widget (for example `Confidence`, `Deviation`, `ChipTone` of the Tallyline crate), keyed by the same state id, and the "Selection and focus in the review table (SP-9)" paragraph is a JavaFX finding (egui has no CSS pseudo-classes; the review table is our own work, ADR-0005 D3). Open point O-112 decides what of the crate is adopted; see [README.md](README.md), "egui rendition (ADR-0005)".
 
 This document maps every user-visible state of the plan to the Tallyline state ids, and each id to what the JavaFX theme uses: a pseudo-class or a style class. The id list with labels, icons, tokens and accessible texts is generated into [`ui/design-tokens/states.json`](../../ui/design-tokens/states.json) from the system's "State language" section (Claude Design system Tallyline, version `1791542897-a5d3`, 179 ids). The domain terms are those of [11](../plan/11-ddd-and-tdd.md) §A1.
 
@@ -16,6 +18,8 @@ This document maps every user-visible state of the plan to the Tallyline state i
 - Test and production are shown in the shell of every view and on report and history rows; their tokens (`env-test-*`, `env-production-*`) stay outside the critical family.
 
 ## Field level: the pseudo-class set of 02 §7
+
+The "JavaFX" column in this and the next section is the superseded CSS mapping (note above); the state ids in the first column are the stable keys.
 
 | State id | JavaFX | Plan source |
 |---|---|---|

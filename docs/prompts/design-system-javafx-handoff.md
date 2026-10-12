@@ -1,6 +1,8 @@
 # Task: Turn the Claude Design system into the JavaFX 27 theme of UEX Datarunner Client
 
-> **Doc type:** Prompt — stage 1 run 2026-10-09 (checkpoint A passed); stage 2 in progress. Last reviewed: 2026-10-09.
+> **Doc type:** Prompt — Historical: stage 1 run 2026-10-09 (checkpoint A passed), stage 2 in progress when the JavaFX handoff was superseded by ADR-0005 (2026-10-12). Last reviewed: 2026-10-12.
+
+> Superseded 2026-10-12 by [ADR-0005](../adr/0005-rust-and-egui.md) (Rust and egui); the Tallyline egui rendition replaces this handoff (open point O-112). The text below is kept unchanged as the record.
 
 You are Claude Code, working in the repository `uex-datarunner-client`.
 

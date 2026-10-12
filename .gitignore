@@ -1,26 +1,7 @@
-.gradle/
-build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
-.kotlin/
+target/
 
 .idea/
-*.iml
-*.ipr
-*.iws
 .vscode/
-.classpath
-.project
-.settings/
-.factorypath
-.apt_generated/
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
 
 .DS_Store
 Thumbs.db
@@ -39,24 +20,23 @@ __pycache__/
 .env
 .env.*
 !.env.example
-*.local.properties
 *.p12
 *.pfx
 *.jks
 *.keystore
 *.pem
 *.key
-/gradle/verification-keyring.gpg
 
 corpus-private/
 design-previews/
 
 *.log
-logbackups/
 game-log/
-*.hprof
-*.jfr
 *.dmp
+*.pdb
+*.rs.bk
+*.profraw
+*.profdata
 
 *.db
 *.db-shm

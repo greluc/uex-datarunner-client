@@ -1,6 +1,6 @@
 # UEX API 2.0 – working notes
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-09.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
 
 > **Sources.** Corrected 2026-10-09: the earlier notes were written without access to the official documentation and rested on search snippets, third-party copies and open-source clients ([3P]). On 2026-10-09 the official documentation and the live API were checked. Tags:
 >
@@ -173,7 +173,7 @@ Production behaviour seen in the predecessor's own log of one session on 2026-10
 - An undocumented code `user_not_verified` (account not verified with RSI) is handled by one client.
 - During UEX overload, users saw spurious secret-key errors that later went away ([#10](https://github.com/Shebuka/SC-Datarunner-UEX/issues/10), [#29](https://github.com/Shebuka/SC-Datarunner-UEX/issues/29)).
 - A commenter writing as a UEX reviewer said reports **without container sizes often need manual review** ([#13](https://github.com/Shebuka/SC-Datarunner-UEX/issues/13)).
-- One client reports that UEX's bot protection blocks calls from an Electron main process, and another saw a 403 from a GitHub Actions runner; clients that send a browser User-Agent exist. A plain Java `HttpClient` worked for every GET on 2026-10-09; a write from it is unverified.
+- One client reports that UEX's bot protection blocks calls from an Electron main process, and another saw a 403 from a GitHub Actions runner; clients that send a browser User-Agent exist. A plain JDK `HttpClient` worked for every GET on 2026-10-09; a write from it is unverified. Amended 2026-10-12: the client is now `reqwest` (ADR-0005 D4), so the same check, GET and write, is repeated with it in the M0 API spike.
 - `commodity.price_variation` was 60 in a mid-2025 recording and is 25 today; `scu_variation` stayed 5000.
 - The documented Bearer requirement is recent or was ambiguous before: one client released in June 2026 sends only `secret-key`, and a summary of the documentation from July 2026 read "Bearer Token (via `secret-key` header)". The live 403 `not_allowed` is real for `data_info` today.
 
