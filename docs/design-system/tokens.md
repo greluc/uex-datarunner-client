@@ -4,7 +4,7 @@
 
 > **Note 2026-10-12:** [ADR-0005](../adr/0005-rust-and-egui.md) replaces JavaFX with egui. The token files, their schema, the conversion rules and the values below stand until open point O-112 (adoption of the `tallyline-egui` crate) says otherwise. The section "JavaFX mapping" and the Java scripts under "Regenerating" describe a superseded mechanism: the egui rendition maps the same tokens to `egui::Style`, `TextStyle` and per-face font families, and an `xtask` task replaces the Java scripts once O-112 is settled. See [README.md](README.md), "egui rendition (ADR-0005)".
 
-The design tokens of the app's design system, Tallyline, live in [`ui/design-tokens/`](../../ui/design-tokens/). They were converted from the Claude Design system Tallyline, version `1791542897-a5d3` (2026-10-09), by [`tools/design-system/ConvertTokens.java`](../../tools/design-system/ConvertTokens.java). The token files are the repository's source of truth; the Claude Design artifact is a reference and is never read at build or run time. Why this schema and these rules: [ADR-0004](../adr/0004-design-system.md).
+The design tokens of the app's design system, Tallyline, live in [`ui/design-tokens/`](../../ui/design-tokens/). They were converted from the Claude Design system Tallyline, version `1791542897-a5d3` (2026-10-09), by `ConvertTokens.java` (removed 2026-10-12, see "Regenerating" below). The token files are the repository's source of truth; the Claude Design artifact is a reference and is never read at build or run time. Why this schema and these rules: [ADR-0004](../adr/0004-design-system.md).
 
 ## Files
 
@@ -27,7 +27,7 @@ The three DTCG modules are Final Community Group Reports of 28 October 2025 (che
 - **Lengths:** px at the 14 px base, as in the system.
 - **Retired tokens:** a token whose usage in the system starts with "Retired YYYY-MM-DD" keeps its value and gets the DTCG `$deprecated` property (Format Module §5.2.4) with that date. No view and no generated sheet may use it; it stays only so that references do not break.
 - **Motion:** the system's README defines 120 ms (hover, pressed), 160 ms (selection, panel open) and `ease-out`, but its `tokens.json` has no motion family; the converter adds them as `motion.duration-hover`, `motion.duration-select` and `motion.easing-standard` (`[0, 0, 0.58, 1]`).
-- **Validation:** [`tools/design-system/ValidateTokens.java`](../../tools/design-system/ValidateTokens.java) fails loudly and fixes nothing. It checks that every colour and shadow token has a value in every theme, that aliases resolve without cycles, that every name matches `[a-z0-9-]`, that colours are sRGB objects or aliases whose components agree with their `hex`, that high contrast has no translucent colour and no shadow, that shadows have one layer and no spread, that type styles have no letter spacing and use a listed face for their weight, that rows and in-cell targets are at least 24 px, and that every pairing and state names known tokens and unique ids. Last run: passed on version `1791542897-a5d3` (2026-10-09); two conversion runs gave byte-identical files.
+- **Validation:** `ValidateTokens.java` (removed 2026-10-12; an `xtask` task takes over its checks in M0) failed loudly and fixes nothing. It checks that every colour and shadow token has a value in every theme, that aliases resolve without cycles, that every name matches `[a-z0-9-]`, that colours are sRGB objects or aliases whose components agree with their `hex`, that high contrast has no translucent colour and no shadow, that shadows have one layer and no spread, that type styles have no letter spacing and use a listed face for their weight, that rows and in-cell targets are at least 24 px, and that every pairing and state names known tokens and unique ids. Last run: passed on version `1791542897-a5d3` (2026-10-09); two conversion runs gave byte-identical files.
 
 ## JavaFX mapping
 
@@ -81,18 +81,4 @@ The colour values per theme are in the theme files; their contrast results are i
 
 ## Regenerating
 
-> Superseded 2026-10-12 by ADR-0005 D12: the Java scripts below are replaced by an `xtask` task once O-112 is settled. Until then they remain the way to regenerate and check the token files.
-
-```bash
-java tools/design-system/ConvertTokens.java <export>/design-system ui/design-tokens "Claude Design system Tallyline, version <version>"
-```
-
-```bash
-java tools/design-system/ValidateTokens.java ui/design-tokens
-```
-
-```bash
-java tools/design-system/Contrast.java ui/design-tokens <report section file> "<inputs label>"
-```
-
-The scripts need JDK 22 or later (multi-file source launcher, JEP 458; tested on Temurin 27+35) and nothing else. A new system version is converted, validated and checked in one commit, together with the documents it changes.
+> Removed 2026-10-12 (ADR-0005 D12, O-112): the Java scripts `ConvertTokens.java`, `ValidateTokens.java` and `Contrast.java` that converted a Claude Design export into `ui/design-tokens/`, validated it and wrote the contrast section of the accessibility report are gone from the repository and stay in the Git history. Their replacement is an `xtask` task, built in M0 together with the reconciliation of `ui/design-tokens/` and the `design/tokens.json` of the Tallyline egui crate. Until then the token files below are edited only together with the documents they change, and a new system version is converted in the same commit.

@@ -6,7 +6,7 @@
 - **Decider:** @greluc
 - **Supersedes:** [ADR-0001](../plan/03-language-decision.md) (Java 27 + JavaFX 27); the toolkit and build parts of [ADR-0004](0004-design-system.md) (§3, §4, §6, §7 and the JavaFX spikes)
 - **Amends:** the technology terms of [ADR-0002](0002-modules-by-bounded-context.md): "Gradle/JPMS module" reads as "Cargo workspace crate", `internal` package as `pub(crate)` module; the context cut itself is unchanged
-- **Related:** open points O-108 to O-124 in [the register](0000-open-points.md), [01](../plan/01-requirements.md) (R-UI-17, R-NF-1, R-NF-3, R-SEC-8), [02](../plan/02-architecture.md) §2, §7, §8, §10, [09](../plan/09-engineering-principles.md), [10](../plan/10-supply-chain-security.md), [`CLAUDE.md`](../../CLAUDE.md)
+- **Related:** open points O-108 to O-125 in [the register](0000-open-points.md), [01](../plan/01-requirements.md) (R-UI-17, R-NF-1, R-NF-3, R-SEC-8), [02](../plan/02-architecture.md) §2, §7, §8, §10, [09](../plan/09-engineering-principles.md), [10](../plan/10-supply-chain-security.md), [`CLAUDE.md`](../../CLAUDE.md)
 
 ## Context
 
@@ -67,7 +67,7 @@ A review of the Rust ecosystem on 2026-10-12 (primary pages of rten, tract, ocrs
 - Requirements: R-UI-17 is split (D5); R-NF-1 gains native Wayland, X11 stays; R-NF-3 loses heap and direct-memory limits in favour of a process-memory ceiling and the pool bounds; R-SEC-8 names ONNX Runtime and the packager instead of sqlite-jdbc and JavaFX; the coverage table in 04 follows. IDs stay; changes carry a dated "Amended 2026-10-12" note.
 - ONNX Runtime telemetry (R-NF-12, O-13): the app is its own launcher, so the variable `ORT_DISABLE_TELEMETRY` is set by our code before the first ORT call (an `unsafe` call in the edition-2024 `std::env::set_var`, confined to the platform adapter and registered in 09 §3a); the jpackage launcher limitation disappears. The M0 network spike stays.
 - The Windows C++ runtime (O-12): our binary can link the C runtime statically; the ONNX Runtime library still needs the Microsoft runtime DLLs.
-- Existing Java tooling under `tools/design-system/` and the JavaFX handoff documents become historical. They are not deleted in this change; their replacement is an `xtask` task (O-112).
+- The Java tooling under `tools/design-system/` was removed on 2026-10-12 (the Git history keeps it); its replacement is an `xtask` task (O-112). The JavaFX handoff documents stay as historical records.
 - The Fan Kit unit, the privacy gate, the crop rules, the submission lifecycle and all domain invariants are unchanged; the byte-exact pinning tests are rewritten for egui.
 
 ## Open points registered by this ADR
@@ -78,11 +78,11 @@ A review of the Rust ecosystem on 2026-10-12 (primary pages of rten, tract, ocrs
 | O-109 | SQLite through `rusqlite` with bundled SQLite as a registered exception | decided 2026-10-12 (@greluc) |
 | O-110 | TLS provider (`ring` or `aws-lc-rs`), licence check, `rustls-platform-verifier` for the system store | open – default applied |
 | O-111 | R-UI-17 split; screen reader as a Could (`R-UI-17a`) | decided 2026-10-12 (@greluc) |
-| O-112 | Adopting the `tallyline-egui` crate: modified Apache-2.0 icon font (needs the owner's approval; ADR-0004 §5 chose path data), Python generators versus `xtask`, plain comments and missing docs in the delivered code, licence headers, source of truth for tokens (`ui/design-tokens/` DTCG versus the crate's `design/tokens.json`), retirement of `tools/design-system/*.java`, whether D1 to D11 of O-83 stand | open |
+| O-112 | Adopting the `tallyline-egui` crate: modified Apache-2.0 icon font (needs the owner's approval; ADR-0004 §5 chose path data), Python generators versus `xtask`, plain comments and missing docs in the delivered code, licence headers, source of truth for tokens (`ui/design-tokens/` DTCG versus the crate's `design/tokens.json`), retirement of `tools/design-system/*.java`, whether D1 to D11 of O-83 stand | decided 2026-10-12 (@greluc); import and token reconciliation open |
 | O-113 | wgpu backend; VRAM and GPU load next to the game measured in M4 (R-NF-3) | decided 2026-10-12 (@greluc); measurement open |
 | O-114 | UI test harness for egui (candidate `egui_kittest`) and the Fan Kit pinning tests | open |
 | O-115 | Native Wayland as a target (R-NF-1); clipboard monitoring stays A23 | decided 2026-10-12 (@greluc) |
-| O-116 | Installer: `cargo-packager` with pre-installed pinned WiX 3.11.2; M1 spike for offline build, DEP-5, archives | decided 2026-10-12 (@greluc); spike open |
+| O-116 | Installer: `cargo-packager` with pre-installed pinned WiX 3.11.2; the spike for offline build, DEP-5 and archives runs in M1 | decided 2026-10-12 (@greluc); spike open |
 | O-117 | Licence allowlist extended for Rust crates (D9) | decided 2026-10-12 (@greluc) |
 | O-118 | Lint `reason` attributes allowed (D11) | decided 2026-10-12 (@greluc) |
 | O-119 | Rust toolchain pin and update rhythm (D10); makes O-9 moot | decided 2026-10-12 (@greluc) |
@@ -90,4 +90,5 @@ A review of the Rust ecosystem on 2026-10-12 (primary pages of rten, tract, ocrs
 | O-121 | Yardstick for "mature pure-Rust alternative" (D1) | decided 2026-10-12 (@greluc) |
 | O-122 | Crate, package and binary names (waits for O-8) | open |
 | O-123 | Async runtime and HTTP client: tokio and `reqwest` (D4) | decided 2026-10-12 (@greluc) |
-| O-124 | Architecture enforcement by Clippy, `cargo-deny` and `xtask` (D13) | open – default applied |
+| O-124 | Architecture enforcement by Clippy, `cargo-deny` and `xtask` (D13) | decided 2026-10-12 (@greluc) |
+| O-125 | Clippy lint set: `unwrap_used` and `expect_used` denied outside tests, `clippy::pedantic` for the core crates | decided 2026-10-12 (@greluc) |

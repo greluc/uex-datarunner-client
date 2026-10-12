@@ -30,13 +30,14 @@ Added 2026-10-12. [ADR-0005](../adr/0005-rust-and-egui.md) D6 keeps Tallyline an
 
 **egui limits** (listed in the crate's README): one set of widget visuals, so built-in widgets show keyboard focus as a 2 pt stroke on the frame edge and pressed buttons look focused; one selection colour; no line height per `TextStyle`; no font weights (one font family per face); an approximated shadow blur; missing glyphs fall back to egui's fonts. The state names in [states.md](states.md) and the contrast results in [accessibility-report.md](accessibility-report.md) are unaffected.
 
-**Findings that are the open conditions of O-112:**
-1. Its generators `tools/gen_tokens.py` and `tools/build_icons.py` are Python; the Rust-only rule (D12) asks for an `xtask` task instead.
-2. The icon font `MaterialSymbolsRounded-Tallyline.ttf` is a modified, subset Apache-2.0 font; ADR-0004 §5 chose path data, and `CLAUDE.md` allows only unmodified SIL OFL fonts. Shipping it needs the owner's approval.
-3. About 30 plain `//` comments and many undocumented public items conflict with the code-comment rule and `#![deny(missing_docs)]` (D11).
-4. The licence in `Cargo.toml` is a placeholder (MIT OR Apache-2.0); the project licence is GPL-3.0-or-later and every file needs the licence header.
-5. Its `tokens.json` carries only `"version": 1`, so its equality with design-system version `1791542897-a5d3` is not proven; the source of truth for tokens (`ui/design-tokens/` in DTCG, or the crate's `design/tokens.json`) is to be decided.
-6. The Java tools under `tools/design-system/` would be retired and replaced by an `xtask` task once the point is settled.
-7. Whether D1 to D11 of O-83 stand is part of the same decision.
+**Findings and what @greluc decided on 2026-10-12 (O-112):**
+1. Its generators `tools/gen_tokens.py` and `tools/build_icons.py` are Python. *Decided:* Python stays outside the repository with the design system; only the generated `tokens.rs` and `icon.rs` are committed and are updated only from there.
+2. The icon font `MaterialSymbolsRounded-Tallyline.ttf` is a modified, subset Apache-2.0 font; ADR-0004 §5 chose path data, and `CLAUDE.md` allowed only unmodified SIL OFL fonts. *Decided:* the font is approved as a named exception; `NOTICE` records the modification (Apache-2.0 section 4(b)), the source, the SHA-256 and the licence text.
+3. About 30 plain `//` comments and many undocumented public items conflict with the code-comment rule and `#![deny(missing_docs)]`. *Decided:* cleaned up before the import (D11).
+4. The licence in `Cargo.toml` is a placeholder (MIT OR Apache-2.0); the project licence is GPL-3.0-or-later and every file needs the licence header. *Decided:* fixed before the import.
+5. Its `tokens.json` carries only `"version": 1`, so its equality with design-system version `1791542897-a5d3` is not proven. *Decided:* reconciled in M0; until then `ui/design-tokens/` (DTCG) and the crate's `design/tokens.json` exist side by side, and an M0 test checks that they contain the same values.
+6. The Java tools under `tools/design-system/` were removed on 2026-10-12 (Git history keeps them); an `xtask` task replaces them in M0.
+7. D1 to D11 of O-83 stand unchanged for the egui rendition.
+8. The crate is imported in M0 as its own pull request, after the cleanup of points 3 and 4; until then it stays outside the repository.
 
-Until O-112 is decided, `ui/design-tokens/` remains the current source of the token values.
+Until the M0 reconciliation, `ui/design-tokens/` remains the current source of the token values.
