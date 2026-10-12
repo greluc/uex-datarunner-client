@@ -1,7 +1,7 @@
 # Security policy
 
-Thank you for taking the time to look at the security of the UEX Datarunner
-Client. This document explains how to report a vulnerability, which versions
+Thank you for taking the time to look at the security of Tallyline. This
+document explains how to report a vulnerability, which versions
 receive fixes, and what you can expect from us in return.
 
 > **Project status: planning.** There is no release and no runnable code yet.
@@ -49,7 +49,7 @@ private form:
 
 If you cannot use GitHub's form, e-mail the maintainer at
 [lucas.greuloch@gmail.com](mailto:lucas.greuloch@gmail.com) with the subject
-*"Security report: UEX Datarunner Client"*. As a last resort, open a minimal
+*"Security report: Tallyline"*. As a last resort, open a minimal
 public issue that says only *"I would like to report a security issue, please
 contact me"*, without any technical detail, and we will contact you privately
 to arrange a channel.

@@ -15,7 +15,7 @@ Acceptance date:  see docs/adr/0000-open-points.md
 The Fankit Agreement and the Fan Kit Guidelines are not reproduced here.
 
 These files are not covered by the GNU General Public License or by any other
-licence of the UEX Datarunner Client project. This project grants no rights in
+licence of the Tallyline project. This project grants no rights in
 them; any use of them is subject to Cloud Imperium's terms.
 
 The logo is shown only together with the trademark notice of the Fan Kit

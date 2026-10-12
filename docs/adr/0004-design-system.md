@@ -2,7 +2,7 @@
 
 > **Doc type:** Decision record — Partly superseded by ADR-0005 (2026-10-12). Last reviewed: 2026-10-12.
 
-- **Status:** Partly superseded by [ADR-0005](0005-rust-and-egui.md) (2026-10-12): §3, §4, §6, §7 and the JavaFX spikes; §1 owner decisions and §2 token schema stand until O-112 says otherwise. (Was: Proposed (2026-10-09), to be accepted at the end of the JavaFX handoff (stage 4) by @greluc.)
+- **Status:** Partly superseded by [ADR-0005](0005-rust-and-egui.md) (2026-10-12): §3, §4, §6, §7 and the JavaFX spikes; §1 owner decisions and §2 token schema stand until O-112 says otherwise. (Was: Proposed (2026-10-09), to be accepted at the end of the JavaFX handoff (stage 4) by @greluc.) Amended 2026-10-12 (O-8): the D1 name Tallyline is also the product name, and the token extension key `space.uexdatarunner` is now `tallyline`.
 - **Related:** [`docs/prompts/design-system.md`](../prompts/design-system.md) (brief), [`design-system-update-2026-10.md`](../prompts/design-system-update-2026-10.md) (update brief), [`design-system-update-2-2026-10.md`](../prompts/design-system-update-2-2026-10.md) (correction brief), [`design-system-javafx-handoff.md`](../prompts/design-system-javafx-handoff.md) (handoff), [`docs/design-system/`](../design-system/), register O-83, O-84, O-105, O-106; 01 R-UI-1…19; 02 §7, §8
 
 ## Context

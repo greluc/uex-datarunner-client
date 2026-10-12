@@ -841,7 +841,7 @@
         }
       },
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "none": true
         }
       },

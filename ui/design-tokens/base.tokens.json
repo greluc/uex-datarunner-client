@@ -5,7 +5,7 @@
     "ibmplexsans-regular": {
       "$value": "IBM Plex Sans",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "file": "fonts/IBMPlexSans-Regular.ttf",
           "weight": 400,
           "style": "normal"
@@ -15,7 +15,7 @@
     "ibmplexsans-semibold": {
       "$value": "IBM Plex Sans",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "file": "fonts/IBMPlexSans-SemiBold.ttf",
           "weight": 600,
           "style": "normal"
@@ -25,7 +25,7 @@
     "ibmplexsans-bold": {
       "$value": "IBM Plex Sans",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "file": "fonts/IBMPlexSans-Bold.ttf",
           "weight": 700,
           "style": "normal"
@@ -35,7 +35,7 @@
     "jetbrainsmononl-regular": {
       "$value": "JetBrains Mono NL",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "file": "fonts/JetBrainsMonoNL-Regular.ttf",
           "weight": 400,
           "style": "normal"
@@ -45,7 +45,7 @@
     "jetbrainsmononl-bold": {
       "$value": "JetBrains Mono NL",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "file": "fonts/JetBrainsMonoNL-Bold.ttf",
           "weight": 700,
           "style": "normal"
@@ -80,7 +80,7 @@
       },
       "$description": "The system and app name on the cover and the About dialog only.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "display",
           "lineHeightPx": 44
         }
@@ -102,7 +102,7 @@
       },
       "$description": "View titles (Report editor, Settings).",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "heading",
           "lineHeightPx": 28
         }
@@ -124,7 +124,7 @@
       },
       "$description": "Panel and dialog titles.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "heading",
           "lineHeightPx": 24
         }
@@ -146,7 +146,7 @@
       },
       "$description": "Group titles inside panels and settings sections.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "heading",
           "lineHeightPx": 20
         }
@@ -168,7 +168,7 @@
       },
       "$description": "Short labels written as literal capitals (TERMINAL, SIDE, MODE). No tracking.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "heading",
           "lineHeightPx": 16
         }
@@ -190,7 +190,7 @@
       },
       "$description": "Default UI and body text. The 100 % base size.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 20
         }
@@ -212,7 +212,7 @@
       },
       "$description": "Emphasised values in prose, counters' words, selected navigation.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 20
         }
@@ -234,7 +234,7 @@
       },
       "$description": "Secondary meta lines, status-bar items.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 18
         }
@@ -256,7 +256,7 @@
       },
       "$description": "Hints under fields, the key hint, column captions. Smallest text in the system.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 16
         }
@@ -278,7 +278,7 @@
       },
       "$description": "Button and menu-item labels.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 20
         }
@@ -300,7 +300,7 @@
       },
       "$description": "State chips, source chips, environment chip.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "ui",
           "lineHeightPx": 18
         }
@@ -322,7 +322,7 @@
       },
       "$description": "Column headers, literal capitals.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "table",
           "lineHeightPx": 16
         }
@@ -344,7 +344,7 @@
       },
       "$description": "Commodity names in rows. Never smaller than the base.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "table",
           "lineHeightPx": 20
         }
@@ -366,7 +366,7 @@
       },
       "$description": "Text cells (status names) and the State column.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "table",
           "lineHeightPx": 20
         }
@@ -388,7 +388,7 @@
       },
       "$description": "Ages and sources beside values (\"3 days ago\").",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "table",
           "lineHeightPx": 18
         }
@@ -410,7 +410,7 @@
       },
       "$description": "Every price, SCU, UEX value, Δ figure, count and time in tables and headers.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "numerals",
           "lineHeightPx": 20
         }
@@ -432,7 +432,7 @@
       },
       "$description": "Counters and the value in a focused or confirmed cell.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "numerals",
           "lineHeightPx": 20
         }
@@ -454,7 +454,7 @@
       },
       "$description": "Summary-header counters.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "numerals",
           "lineHeightPx": 24
         }
@@ -476,7 +476,7 @@
       },
       "$description": "Log viewer, file paths, hosts in diagnostics.",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "mono",
           "lineHeightPx": 18
         }
@@ -498,7 +498,7 @@
       },
       "$description": "Shortcut hints (F8, Shift+F8, Esc).",
       "$extensions": {
-        "space.uexdatarunner": {
+        "tallyline": {
           "group": "mono",
           "lineHeightPx": 16
         }

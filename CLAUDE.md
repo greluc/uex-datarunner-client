@@ -1,6 +1,6 @@
-# CLAUDE.md – UEX Datarunner Client
+# CLAUDE.md – Tallyline
 
-Desktop client (Windows + Linux) for capturing Star Citizen commodity terminal data – **manually or via screenshot OCR** – and submitting it to the **UEX API 2.0** (`POST /data_submit`). Current UEX data (terminals, commodities, latest prices, status levels, tolerances) are **constraints and default values** for recognition and selection.
+**Tallyline** (the product name, decided 2026-10-12, O-8; the GitHub repository is still `uex-datarunner-client`) is a desktop client (Windows + Linux) for capturing Star Citizen commodity terminal data – **manually or via screenshot OCR** – and submitting it to the **UEX API 2.0** (`POST /data_submit`). Current UEX data (terminals, commodities, latest prices, status levels, tolerances) are **constraints and default values** for recognition and selection.
 
 **Status:** planning phase. No code exists yet. Starting point is milestone M0 in `docs/plan/04-roadmap.md`. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
 
@@ -167,7 +167,7 @@ cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked # all tests
 cargo test <name> --locked      # targeted tests
 cargo run                       # start the app (the binary crate's name is O-122)
-cargo run --release -p ocr-eval -- --corpus "$UEXDR_CORPUS_DIR"   # OCR evaluation (tools/ocr-eval)
+cargo run --release -p ocr-eval -- --corpus "$TALLYLINE_CORPUS_DIR"   # OCR evaluation (tools/ocr-eval)
 cargo update --dry-run          # available updates (adopt stable ones only)
 cargo xtask package             # installer for the current OS (cargo-packager)
 ```
@@ -243,7 +243,7 @@ cargo xtask package             # installer for the current OS (cargo-packager)
   - Only a loopback host (definition in R-VLM-6) without asking; no remote (cloud) models without explicit consent, classified by Ollama's `remote_host`/`remote_model` metadata, not by name alone.
   - VLM results go through the same resolution and validation as OCR. Fusion follows the rules in `07-ocr-concept.md` §2.7.
   - The AI never overwrites a field the user confirmed or one with origin `USER` (typed or corrected); neither does a new capture, a re-stitch or a merge (11 §A3 I7).
-  - CI does not start Ollama; the parser is tested with recorded responses; live runs are opt-in via `UEXDR_VLM_HOST`.
+  - CI does not start Ollama; the parser is tested with recorded responses; live runs are opt-in via `TALLYLINE_VLM_HOST`.
 
 ## Tests
 
@@ -252,11 +252,11 @@ cargo xtask package             # installer for the current OS (cargo-packager)
 **Modelling: DDD.** Domain terms exactly as in 11 §A1. Contexts as crates; other aggregates only by ID; aggregates are immutable structs, commands return an `Outcome` (new state + events, or a refusal reason). The invariants of `Report` (I1–I7) belong in the aggregate, not in the UI or services. UEX, game and Ollama formats are translated only in the adapters (anti-corruption layer).
 
 - **Unit:** parsers (price, SCU, status, cargo sizes) with `proptest` property tests; fuzzy matcher; validation rules; stitching.
-- **API:** `wiremock` with responses written against the documented schema; recorded responses are committed only anonymised and only once UEX's terms allow it (06 open point 7). A live test runs only opt-in and always with `is_production=0`: locally via `UEXDR_LIVE_TEST=1`, or in the weekly scheduled API-drift job (04 M1), which runs the prebuilt API-spike CLI, without Cargo, with the key of a dedicated UEX test account from a protected GitHub environment (10 S-14) and never runs on pull requests. The drift job makes only GET calls unless @greluc approves its exact write calls (endpoints, `is_production=0`, test account) once when the workflow is added; that approval is recorded in 06. Without the variable the live test is skipped visibly (ignored or reported as skipped; the mechanism is chosen in M0), never reported as passed.
+- **API:** `wiremock` with responses written against the documented schema; recorded responses are committed only anonymised and only once UEX's terms allow it (06 open point 7). A live test runs only opt-in and always with `is_production=0`: locally via `TALLYLINE_LIVE_TEST=1`, or in the weekly scheduled API-drift job (04 M1), which runs the prebuilt API-spike CLI, without Cargo, with the key of a dedicated UEX test account from a protected GitHub environment (10 S-14) and never runs on pull requests. The drift job makes only GET calls unless @greluc approves its exact write calls (endpoints, `is_production=0`, test account) once when the workflow is added; that approval is recorded in 06. Without the variable the live test is skipped visibly (ignored or reported as skipped; the mechanism is chosen in M0), never reported as passed.
 - **Credentials:** never real credentials in tests or fixtures, and never @greluc's personal DataRunner key. Live runs use a dedicated UEX test account once UEX provides one (O-19, O-69); until then there is no automated live write test. The key comes from an environment variable or the OS keystore, never from a file in the worktree. Anything that reaches a worktree, CI log, screenshot or recorded response is assumed leaked: anonymise before committing, rotate a key that appeared.
 - **OCR:**
   - Synthetic images for locate and layout; synthetic class variants (scale, tone, canvas, JPEG) and the metamorphic gate (07 §4).
-  - The golden corpus via `UEXDR_CORPUS_DIR`; without the variable the test is skipped visibly, never falsely green.
+  - The golden corpus via `TALLYLINE_CORPUS_DIR`; without the variable the test is skipped visibly, never falsely green.
   - Digest test for model and runtime updates.
   - Never regenerate `expected.json` from a recognition run to make a diff go away. Change only the entries you mean to change, settle a disputed field against the pixels of the capture, and leave `verified` at `false`; only a human sets it to `true`. `tools/ocr-eval annotate` writes proposals to a separate file.
   - A change to locate, anchors, panel normalisation or crop geometry is verified with the crop dump over the whole corpus (public and, locally, private), looked at before the golden sweep: a wrong crop can still yield plausible values.

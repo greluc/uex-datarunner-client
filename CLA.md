@@ -1,10 +1,10 @@
-# UEX Datarunner Client — Individual Contributor Licence Agreement
+# Tallyline — Individual Contributor Licence Agreement
 
 **Version 1.0 — effective 2026-10-08.**
 
 This Contributor Licence Agreement ("Agreement") sets out the terms
 under which You ("the Contributor") license Your contributions to the
-UEX Datarunner Client project ("the Project"), hosted at
+Tallyline project ("the Project"), hosted at
 <https://github.com/greluc/uex-datarunner-client>. By submitting a
 Contribution to the Project, You accept and agree to the terms below for
 Your present and future Contributions.
@@ -246,8 +246,8 @@ withdraw under [§ 12 — Withdrawal](#12-withdrawal).
 2. Include the following sign-off in the pull-request description,
    **verbatim**:
 
-   > I have read the UEX Datarunner Client Individual Contributor
-   > Licence Agreement, version 1.0, and I hereby accept and agree to
+   > I have read the Tallyline Individual Contributor Licence
+   > Agreement, version 1.0, and I hereby accept and agree to
    > its terms for all of my present and future Contributions to the
    > Project.
 
@@ -307,11 +307,11 @@ otherwise mergeable Contribution under the previously signed version.
 
 ---
 
-*This is the UEX Datarunner Client Individual Contributor Licence
+*This is the Tallyline Individual Contributor Licence
 Agreement, version 1.0, effective 2026-10-08. It is adapted from the
 Profit Basetool Individual Contributor License Agreement, version 1.0
 (<https://github.com/krt-profit/basetool/blob/4dfdfc40679d742965abdfadfb4c7304be5987ea/CLA.md>),
-with changes made on 2026-10-08. That text is closely modelled on the
+with changes made on 2026-10-08, and on 2026-10-12 the Project name was changed from "UEX Datarunner Client" to "Tallyline" without changing any term (the only signatory at that date was the Project owner, so no version change was needed). That text is closely modelled on the
 Apache Software Foundation Individual Contributor License Agreement (the
 Profit Basetool CLA cites
 v2.0; the form the ASF publishes today is V2.2), whose copyright is held

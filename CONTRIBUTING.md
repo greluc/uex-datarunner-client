@@ -1,4 +1,4 @@
-# Contributing to the UEX Datarunner Client
+# Contributing to Tallyline
 
 Thank you for helping. The project is in its **planning phase**: there is no runnable code yet, and the documents under [`docs/`](docs/) are the product. The first code arrives with milestone M0 ([`docs/plan/04-roadmap.md`](docs/plan/04-roadmap.md)).
 
@@ -107,7 +107,7 @@ The binding rules are in [`09-engineering-principles.md`](docs/plan/09-engineeri
 - **UI texts** come only from the message catalogue; colours only from the theme tokens, never as literals in view code.
 - **UEX API:**
   - Tests use responses written against the documented schema; recorded responses are committed only anonymised and only once UEX allows publishing them ([`06-uex-api.md`](docs/plan/06-uex-api.md) open point 7).
-  - Live tests are opt-in (`UEXDR_LIVE_TEST=1`) and only ever use `is_production=0`. Never send anything with `is_production=1`.
+  - Live tests are opt-in (`TALLYLINE_LIVE_TEST=1`) and only ever use `is_production=0`. Never send anything with `is_production=1`.
   - Never put a key or token into code, tests, fixtures, logs or commits.
 - **Recognition changes** are evaluated per corpus class, and no field may become silently wrong. After a change to locate, anchors or crop geometry, look at the crop dumps of the whole corpus before the golden sweep.
 - **UI or packaging changes** are verified by launching the app, not only by tests.
