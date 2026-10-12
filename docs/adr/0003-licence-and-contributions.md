@@ -2,7 +2,7 @@
 
 > **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-12.
 
-- **Status:** Accepted (2026-10-08)
+- **Status:** Accepted (2026-10-08). Amended by ADR-0005 (2026-10-12): the licence, the contribution terms and the Fan Kit unit stand; the Java-stack details (Licensee gate, jlink image, jpackage packaging, OpenJDK and OpenJFX entries, Maven Central POM reads) are replaced by ADR-0005 D7 to D9 and `NOTICE`
 - **Decider:** @greluc
 - **Answers:** [ADR-0001](../plan/03-language-decision.md) §5 (the open licence decision) and the licence item of [08-review.md](../plan/08-review.md) §D
 - **Related:** [`CLAUDE.md`](../../CLAUDE.md) ("Stack rules", "Licence", "Star Citizen Fan Kit unit", "Git and pull requests"), [`CONTRIBUTING.md`](../../CONTRIBUTING.md), [`CLA.md`](../../CLA.md), [`docs/cla-signatures.md`](../cla-signatures.md), [`NOTICE`](../../NOTICE), [`REUSE.toml`](../../REUSE.toml), [open-points register](0000-open-points.md) (O-1 to O-43, O-79 to O-82)
