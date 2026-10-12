@@ -1,6 +1,6 @@
 # ADR-0003: Licence GPL-3.0-or-later, contributions under DCO and CLA, Star Citizen Fan Kit unit
 
-> **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-08.
+> **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-12.
 
 - **Status:** Accepted (2026-10-08)
 - **Decider:** @greluc
@@ -28,6 +28,8 @@
 | PP-OCRv6 models and dictionary | Apache-2.0 (PaddleOCR repository) | Hugging Face model-card licence not read (O-20) |
 | Microsoft C/C++ runtime (DLLs from JDK and JavaFX; statically linked into the launcher and `msica.dll`) | Microsoft redistribution terms | O-12 |
 | WiX parts embedded in the MSI | MS-RL | Binaries from WiX 6 on also carry the Open Source Maintenance Fee EULA (O-11) |
+
+Amended 2026-10-12: the Java and JavaFX components of this table (OpenJDK runtime, OpenJFX, Jackson, sqlite-jdbc, SLF4J, Logback) are replaced by the Rust stack of [ADR-0005](0005-rust-and-egui.md); the table is kept as the record of the 2026-10-08 evaluation. The licence allowlist gained Unicode-3.0, Zlib, BSL-1.0, CC0-1.0 and `Apache-2.0 WITH LLVM-exception` (ADR-0005 D9, O-117), and `cargo-deny` replaces the Licensee gate. The licences of the native parts of `ring` or `aws-lc-rs` need review before the TLS provider is chosen (O-110). The decisions below (GPL-3.0-or-later, DCO and CLA, Fan Kit unit, source duties) stand unchanged.
 
 - Build, test and CI tools are never distributed. Several are not, or not clearly, GPL-compatible (JUnit, jqwik and JaCoCo under EPL-2.0 without a Secondary License; TestFX under EUPL-1.1). `gradle/actions` v6.4.0 runs a proprietary caching component unless `cache-provider: basic` is set.
 - The corpus holds Star Citizen screenshots, and the app works with Cloud Imperium game content and names. basetool and basetool-android show the Fan Kit unit and pin it with tests; the extractor uses a diverging variant, and basetool's README is not compliant.

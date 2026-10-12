@@ -1,6 +1,6 @@
 # Review of the plan (2026-10-08)
 
-> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-09.
+> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-12.
 
 All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`. The criteria were completeness, factual errors, logic gaps and contradictions between the documents. The findings have been corrected directly in the documents. This list records **what** was wrong or incomplete, so that the changes remain traceable.
 
@@ -463,3 +463,13 @@ No code was copied and none is ported. Every finding is recorded in our own word
 - Every capture of one session was taken 7–170 s after the latest kiosk load at its location; the matching window starts at 5 minutes.
 - Open: the two mapping tables and their per-version validation.
 
+## Addendum 2026-10-12: language and toolkit decision superseded by ADR-0005
+
+[ADR-0005](../adr/0005-rust-and-egui.md) replaced the implementation stack that this review and its sections A to Q assumed: Java 27 with JavaFX 27 and Gradle (ADR-0001, [03](03-language-decision.md)) became Rust with egui, with native code only by registered exception. The sections above are left as written; they are a historical record and name Java technology (JDK, JavaFX, jlink, jpackage, Gradle, Error Prone, ArchUnit, TestFX, `HttpClient`) where it was current on their dates.
+
+Reading guide for the findings above:
+
+- Findings about the domain, the UEX API, recognition, validation, the submission lifecycle and the corpus are unaffected.
+- Findings about the Java toolchain, packaging and licence duties (JDK 27 versus 25, the jlink image and the ONNX Runtime merge, JavaFX natives, WiX through jpackage, OpenJDK and OpenJFX source archives, the Licensee gate, Gradle dependency verification) are overtaken. The matching open points are marked moot or amended in the [register](../adr/0000-open-points.md) (O-9, O-11, O-12, O-14 to O-16, O-25, O-35, O-66, O-67), and O-108 to O-124 record the new decisions.
+- The accessibility question O-73 is narrowed: R-UI-17 no longer contains the screen-reader requirement, which became R-UI-17a (Could).
+- Section K question 20 (JDK security-release rhythm) and question 21 (WiX) are moot; the Rust toolchain rhythm is O-119 and the installer decision is O-116.

@@ -1,8 +1,8 @@
 # ADR-001: Implementation language – Java vs. Rust
 
-> **Doc type:** Decision record (ADR-0001) — Accepted 2026-10-08; §5 answered by ADR-0003 (2026-10-08). Last reviewed: 2026-10-08.
+> **Doc type:** Decision record (ADR-0001) — Superseded by ADR-0005 (2026-10-12); §5 answered by ADR-0003 (2026-10-08). Last reviewed: 2026-10-12.
 
-- **Status:** Accepted (2026-10-08); §5 answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08)
+- **Status:** Superseded by [ADR-0005](../adr/0005-rust-and-egui.md) (2026-10-12); was Accepted (2026-10-08); §5 answered by [ADR-0003](../adr/0003-licence-and-contributions.md) (2026-10-08)
 - **Decision:** **Java 27 + JavaFX 27**, build with Gradle 9.8.1 (Kotlin DSL)
 - **Context:** Desktop client for Windows and Linux that reads Star Citizen terminal screenshots via OCR or allows manual input, validates against UEX reference data and submits to the UEX API.
 
