@@ -1,0 +1,12 @@
+name: Seeded workflow error
+on:
+  workflow_dispatch:
+    inputs:
+      title:
+        type: string
+jobs:
+  bad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "${{ inputs.title }} ${{ steps.nope.outputs.x }}"
