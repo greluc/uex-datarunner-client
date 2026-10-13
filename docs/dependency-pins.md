@@ -1,6 +1,6 @@
 # Dependency pins
 
-> **Doc type:** Living reference — current. Last reviewed: 2026-10-12.
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-13.
 
 This file records what the pins in `.github/` cannot say themselves: the tag each pinned GitHub Action resolves to, and the version and checksum of every CI tool that a workflow downloads or installs outside the crate dependency graph. Rust crates are pinned elsewhere: in `Cargo.toml`, `Cargo.lock`, the `cargo vendor` directory and the `cargo-vet` records (S-3 to S-6). Amended 2026-10-12: the Gradle-based pins were replaced by the Cargo-based ones when the implementation language changed to Rust ([ADR-0005](adr/0005-rust-and-egui.md)).
 
@@ -19,8 +19,9 @@ This file records what the pins in `.github/` cannot say themselves: the tag eac
 
 | Action | Tag | Commit SHA | Checked on | Used in | Notes |
 |---|---|---|---|---|---|
+| `actions/checkout` | v7.0.1 | `3d3c42e5aac5ba805825da76410c181273ba90b1` | 2026-10-13 (`git ls-remote` shows a lightweight tag at this commit; the GitHub release is not a pre-release and dates from 2026-07-20) | `.github/workflows/ci.yml` | called with `persist-credentials: false` (S-14); no proprietary component |
 
-No action is pinned yet.
+The Rust toolchain is not installed by an action: the workflow runs `rustup toolchain install` on the runner's preinstalled rustup, which reads `rust-toolchain.toml` (rustup 1.28 and later no longer installs the toolchain automatically), and a step compares `rustc --version` with the pinned channel.
 
 ## CI tools
 
