@@ -39,7 +39,7 @@ jobs:
           echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
 
       - name: Scan the history for secrets
-        run: gitleaks git --config .gitleaks.toml --redact --no-banner --exit-code 1 .
+        run: gitleaks git --config .gitleaks.toml --redact --no-banner --log-opts HEAD --exit-code 1 .
 
   actionlint:
     name: actionlint
