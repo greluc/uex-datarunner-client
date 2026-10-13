@@ -302,3 +302,17 @@ The code carries no comments besides rustdoc, the rustdoc is short and precise, 
 - `CHANGELOG.md` follows Keep a Changelog with an `[Unreleased]` section and records every user-visible change (features, fixes, changed defaults, new settings, data migrations, recognition-profile updates) in one to three sentences on what changed and why it matters, plus the requirement ID. No rationale, file lists or pasted commit messages.
 - Never commit generated artefacts, models > 50 MB, private screenshots or secrets. OCR assets (models, dictionary) with their hash in `NOTICE`.
 - **Contact address:** the project's and @greluc's only e-mail address is `lucas.greuloch@gmail.com` (`.github/SECURITY.md`, `CODE_OF_CONDUCT.md`, `CLA.md`, package metadata, commit identity). Any other address of his found in a file, a template or a commit is stale and gets replaced. Check the domain for typos before using the address.
+
+## Agent skills
+
+### Issue tracker
+
+Issues are tracked in GitHub Issues of `greluc/uex-datarunner-client`, through the `gh` CLI; creating or changing issues needs @greluc's yes (see "External writes"). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), all existing on GitHub. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: the ubiquitous language is `docs/plan/11-ddd-and-tdd.md` §A1 and the decisions are `docs/adr/`; there is no `CONTEXT.md` yet. See `docs/agents/domain.md`.
