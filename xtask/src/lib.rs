@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod check;
+pub mod exit;
 pub mod listing;
 pub mod registry;
 pub mod requirement;

@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use xtask::check::{Step, plan};
+use xtask::exit::exit_code;
 use xtask::listing::check_listing;
 use xtask::registry::Registry;
 
@@ -29,7 +30,7 @@ fn main() -> ExitCode {
         ["check"] => run_check(&workspace_root()),
         _ => usage(),
     };
-    outcome.unwrap_or(ExitCode::FAILURE)
+    exit_code(outcome, &mut io::stderr())
 }
 
 fn usage() -> io::Result<ExitCode> {
