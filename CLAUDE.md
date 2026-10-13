@@ -2,7 +2,7 @@
 
 **Tallyline** (the product name, decided 2026-10-12, O-8; the GitHub repository is still `uex-datarunner-client`) is a desktop client (Windows + Linux) for capturing Star Citizen commodity terminal data – **manually or via screenshot OCR** – and submitting it to the **UEX API 2.0** (`POST /data_submit`). Current UEX data (terminals, commodities, latest prices, status levels, tolerances) are **constraints and default values** for recognition and selection.
 
-**Status:** planning phase. No code exists yet. Starting point is milestone M0 in `docs/plan/04-roadmap.md`. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
+**Status:** planning phase, milestone M0 in `docs/plan/04-roadmap.md` has started. The only code so far is the `xtask` crate (`cargo xtask check`, `rust-toolchain.toml`, workspace lints); every other crate is created with its first test. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
 
 ## Language
 
@@ -76,7 +76,7 @@ Reading UEX (GET) is allowed. Every write that an agent makes or triggers – `d
 
 | Area | Choice | Version |
 |---|---|---|
-| Language/toolchain | Rust, stable channel, edition 2024, pinned in `rust-toolchain.toml` (ADR-0005 D10) | **1.99.0** (verified 2026-10-08, ADR-0001; the exact pin is set in M0); raised in its own pull requests roughly every second or third release |
+| Language/toolchain | Rust, stable channel, edition 2024, pinned in `rust-toolchain.toml` (ADR-0005 D10) | **1.99.0** (verified 2026-10-08, ADR-0001; pinned in `rust-toolchain.toml` since 2026-10-13); raised in its own pull requests roughly every second or third release |
 | UI | `egui`/`eframe` with the wgpu backend; native Wayland and X11 through winit; the review table, in-cell editing and the searchable combo box are our own work on top of `egui_extras` and the Tallyline widgets (ADR-0005 D3, D6; adopting `tallyline-egui` is O-112) | 0.36.2 |
 | Build | Cargo workspace; repository checks and generators in an `xtask` crate (ADR-0005 D12) | verified in M0 |
 | OCR runtime | `ort` (ONNX Runtime binding, **registered native-code exception and the one release-candidate exception**; how the library reaches the build is decided in M0, O-108) | `=2.0.0-rc.13` |
@@ -158,7 +158,7 @@ This site is not endorsed by or affiliated with the Cloud Imperium or Roberts Sp
 
 ## Commands
 
-Valid from M0 once the build exists. They are the intended interface; flags, the `xtask` alias and the crate names (O-122) are fixed in M0, so check the tree before you rely on one:
+Valid from M0 once the build exists. They are the intended interface; `cargo xtask check` exists today (format, Clippy, rustdoc, tests and the requirement-tag check; the other gates join it with their tickets), the other flags are fixed in M0, so check the tree before you rely on one:
 
 ```bash
 cargo xtask check               # format check, Clippy, rustdoc lints, all tests, architecture rules, cargo-deny, coverage gate
