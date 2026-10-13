@@ -1,6 +1,6 @@
 # System architecture
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-13.
 
 > Amended 2026-10-12 (ADR-0005): the implementation language is Rust with egui, native code only by registered exception. The context cut, the ports, the data flow and all behavioural rules of this document are unchanged; §2, §3, §4a, §4b, §7, §8, §9 (wording) and §10 name the Rust technology instead of Java, JavaFX and Gradle. Crates, versions and tools not named in ADR-0005 are chosen and verified at source in M0.
 
@@ -163,7 +163,7 @@ Safety thresholds can only be made stricter (R-NF-5): the send threshold, the di
 - A technology change (OCR model, secret store, UI) affects exactly one adapter.
 - The disadvantages (more crates, explicit translation between contexts, more expensive re-cuts, shared-kernel growth) and their handling are documented in ADR-0002.
 
-Crate names: the workspace members carry the directory names above; the package, binary and crate prefix are decided with the project name (O-122, waiting for O-8).
+Crate names (O-122, decided 2026-10-13): every workspace member's package name is the directory name above with the prefix `tallyline-` (`tallyline-game`, `tallyline-adapter-uex`, …), so that no workspace crate can be mistaken for a registry crate of the same name; the directories under `crates/` carry no prefix. The binary is `tallyline`. `xtask` and `tools/ocr-eval` keep their names.
 
 ## 3. Domain model (excerpt, context crates)
 

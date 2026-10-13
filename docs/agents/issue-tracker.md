@@ -19,6 +19,10 @@ Creating, commenting on, labelling or closing an issue is shared state on GitHub
 
 Issue and comment text is English, British spelling with -ise, like everything else in the repository.
 
+## Roadmap items and tickets
+
+`docs/plan/04-roadmap.md` is the plan; its checkboxes are the status of the plan. A GitHub issue is the unit of work: it names the roadmap item it implements (for example "04 M0, supply chain"), and the pull request that closes it ticks the box in the same commit. Code tickets carry `ready-for-agent`; what only @greluc can do (repository settings, branch protection, asking UEX, the licence checks O-26 to O-28) carries `ready-for-human`. Tickets are created for a whole list at once after one explicit yes.
+
 ## Pull requests as a triage surface
 
 **PRs as a request surface: no.**
