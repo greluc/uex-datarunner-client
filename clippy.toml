@@ -1,0 +1,15 @@
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+disallowed-types = [
+    { path = "std::sync::OnceLock", reason = "no global state" },
+    { path = "std::sync::LazyLock", reason = "no global state" },
+    { path = "std::cell::OnceCell", reason = "no global state" },
+]
+disallowed-methods = [
+    { path = "std::process::exit", reason = "return an ExitCode from main instead" },
+]
+disallowed-macros = [
+    { path = "std::thread_local", reason = "no global state" },
+]
