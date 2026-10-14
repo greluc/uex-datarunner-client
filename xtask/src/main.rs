@@ -12,6 +12,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use xtask::check::{Step, plan};
+use xtask::deny::unjustified_suppressions;
 use xtask::exit::exit_code;
 use xtask::guard::scan;
 use xtask::listing::check_listing;
@@ -21,6 +22,8 @@ use xtask::vendor::{actual_list, regenerate, verify};
 
 const REQUIREMENTS: &str = "docs/plan/01-requirements.md";
 const ROADMAP: &str = "docs/plan/04-roadmap.md";
+const ENGINEERING_PRINCIPLES: &str = "docs/plan/09-engineering-principles.md";
+const DENY_CONFIG: &str = "deny.toml";
 const LOCKFILE: &str = "Cargo.lock";
 const HASH_LIST: &str = "supply-chain/vendor-hashes.txt";
 const VENDOR_WORK_DIR: &str = "target/xtask-vendor";
@@ -80,6 +83,7 @@ fn run_check(root: &Path) -> io::Result<ExitCode> {
 fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
     match step {
         Step::SupplyChainGuard => guard_passes(root),
+        Step::DenySuppressions => deny_suppressions_pass(root),
         Step::Cargo { args, env, .. } => Ok(Command::new(cargo_program())
             .args(args)
             .envs(env.iter().copied())
@@ -106,6 +110,17 @@ fn guard_passes(root: &Path) -> io::Result<bool> {
     let findings = scan(&collect(root)?);
     for finding in &findings {
         writeln!(io::stderr(), "{}: {}", finding.file, finding.problem)?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn deny_suppressions_pass(root: &Path) -> io::Result<bool> {
+    let findings = unjustified_suppressions(
+        &fs::read_to_string(root.join(DENY_CONFIG))?,
+        &fs::read_to_string(root.join(ENGINEERING_PRINCIPLES))?,
+    );
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
     }
     Ok(findings.is_empty())
 }

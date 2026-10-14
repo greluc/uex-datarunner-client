@@ -8,6 +8,8 @@
 pub enum Step {
     /// The supply-chain guard of 10 S-4 over the repository files; it runs before any Cargo call.
     SupplyChainGuard,
+    /// The justification rule of 10 S-6 over the suppressions in `deny.toml`.
+    DenySuppressions,
     /// A Cargo invocation that must exit successfully.
     Cargo {
         /// The name shown in the report.
@@ -30,6 +32,7 @@ impl Step {
     pub fn name(&self) -> &'static str {
         match self {
             Self::SupplyChainGuard => "supply-chain guard",
+            Self::DenySuppressions => "cargo-deny suppressions",
             Self::Cargo { name, .. } => name,
             Self::RequirementTags { .. } => "requirement tags",
         }
@@ -49,6 +52,11 @@ fn cargo(name: &'static str, args: &[&str]) -> Step {
 pub fn plan() -> Vec<Step> {
     vec![
         Step::SupplyChainGuard,
+        cargo(
+            "cargo-deny",
+            &["deny", "--locked", "check", "licenses", "sources", "bans"],
+        ),
+        Step::DenySuppressions,
         cargo("format", &["fmt", "--all", "--check"]),
         cargo(
             "clippy",
@@ -93,7 +101,7 @@ mod tests {
         match step {
             Step::Cargo { args, .. } => args.iter().map(String::as_str).collect(),
             Step::RequirementTags { list } => list.iter().map(String::as_str).collect(),
-            Step::SupplyChainGuard => Vec::new(),
+            Step::SupplyChainGuard | Step::DenySuppressions => Vec::new(),
         }
     }
 
@@ -101,7 +109,7 @@ mod tests {
     fn rustdoc_runs_with_warnings_denied_through_the_environment() {
         let plan = plan();
         assert_eq!(
-            plan[3],
+            plan[5],
             Step::Cargo {
                 name: "rustdoc",
                 args: ["doc", "--workspace", "--no-deps", "--locked"]
@@ -113,13 +121,15 @@ mod tests {
     }
 
     #[test]
-    fn the_plan_runs_the_guard_first_then_format_clippy_rustdoc_tests_and_requirement_tags() {
+    fn the_plan_runs_the_supply_chain_steps_first_then_format_clippy_rustdoc_tests_and_tags() {
         let plan = plan();
         let names: Vec<_> = plan.iter().map(Step::name).collect();
         assert_eq!(
             names,
             [
                 "supply-chain guard",
+                "cargo-deny",
+                "cargo-deny suppressions",
                 "format",
                 "clippy",
                 "rustdoc",
@@ -127,9 +137,13 @@ mod tests {
                 "requirement tags"
             ]
         );
-        assert_eq!(cargo_args(&plan[1]), ["fmt", "--all", "--check"]);
         assert_eq!(
-            cargo_args(&plan[2]),
+            cargo_args(&plan[1]),
+            ["deny", "--locked", "check", "licenses", "sources", "bans"]
+        );
+        assert_eq!(cargo_args(&plan[3]), ["fmt", "--all", "--check"]);
+        assert_eq!(
+            cargo_args(&plan[4]),
             [
                 "clippy",
                 "--workspace",
@@ -140,9 +154,9 @@ mod tests {
                 "warnings"
             ]
         );
-        assert_eq!(cargo_args(&plan[4]), ["test", "--workspace", "--locked"]);
+        assert_eq!(cargo_args(&plan[6]), ["test", "--workspace", "--locked"]);
         assert_eq!(
-            cargo_args(&plan[5]),
+            cargo_args(&plan[7]),
             ["test", "--workspace", "--locked", "--", "--list"]
         );
     }

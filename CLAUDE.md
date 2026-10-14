@@ -158,7 +158,7 @@ This site is not endorsed by or affiliated with the Cloud Imperium or Roberts Sp
 
 ## Commands
 
-Valid from M0 once the build exists. They are the intended interface; `cargo xtask check` exists today (the supply-chain guard, format, Clippy, rustdoc, tests and the requirement-tag check; the other gates join it with their tickets), the other flags are fixed in M0, so check the tree before you rely on one:
+Valid from M0 once the build exists. They are the intended interface; `cargo xtask check` exists today (the supply-chain guard, `cargo-deny` for licences, sources and bans, which must be installed at the version in `docs/dependency-pins.md`, format, Clippy, rustdoc, tests and the requirement-tag check; the other gates join it with their tickets), the other flags are fixed in M0, so check the tree before you rely on one:
 
 ```bash
 cargo xtask check               # supply-chain guard, format check, Clippy, rustdoc lints, all tests, architecture rules, cargo-deny, coverage gate

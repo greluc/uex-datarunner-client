@@ -6,6 +6,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+const MAX_ATTEMPTS: u32 = 10_000;
+
 /// A fresh directory below the system temporary directory, removed when dropped.
 pub(crate) struct Scratch {
     root: PathBuf,
@@ -20,7 +22,16 @@ impl Scratch {
             let root = base.join(format!("xtask-test-{}-{attempt}", std::process::id()));
             match fs::create_dir(&root) {
                 Ok(()) => return Self { root },
-                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => attempt += 1,
+                Err(error)
+                    if attempt < MAX_ATTEMPTS
+                        && matches!(
+                            error.kind(),
+                            std::io::ErrorKind::AlreadyExists
+                                | std::io::ErrorKind::PermissionDenied
+                        ) =>
+                {
+                    attempt += 1;
+                }
                 Err(error) => panic!("cannot create {}: {error}", root.display()),
             }
         }
