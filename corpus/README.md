@@ -34,4 +34,7 @@ The images in `corpus/public/` are screenshots of Star Citizen. The game content
 | `patch-city-01` | Patch City (Pyro), orange theme, 3840×2160 originals, debug overlay on, no location text: 1× Buy, 10× Sell (scrolled with overlap) | transcribed, not verified (schema version 2) |
 | `ruin-station-01` | Ruin Station (Pyro), orange theme, 3840×2160 originals, debug overlay on: 5× Buy, 22× Sell (scrolled with overlap; Pitambu never complete) | transcribed, not verified (schema version 2) |
 
-The originals of `patch-city-01` and `ruin-station-01` and the game's language file `global.ini` in use when they were taken belong in the private corpus; each `expected.json` records their SHA-256.
+| `seraphim-station-01` | Seraphim Station (Stanton), blue theme, 3840×2160 originals: the same pages without a selected inventory (`unselected-*`, 5× Buy, 7× Sell, debug overlay on) and with Seraphim Station selected (7× Buy, 7× Sell) | transcribed, not verified (schema version 2) |
+| `levski-01` | Levski (Nyx), grey theme, 3840×2160 originals from three positions: front (`v1-*`), closer front (`v2-*`) and oblique (`v3-*`), each 5× Buy and 22 to 26× Sell | transcribed, not verified (schema version 2) |
+
+The originals of `patch-city-01`, `ruin-station-01`, `seraphim-station-01` and `levski-01` and the game's language file `global.ini` in use when they were taken belong in the private corpus; each `expected.json` records their SHA-256.
