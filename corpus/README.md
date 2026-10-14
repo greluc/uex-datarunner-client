@@ -1,6 +1,6 @@
 # OCR Test Corpus
 
-This directory contains the **public** part of the golden corpus (see `docs/plan/07-ocr-concept.md` §4). The private part lives outside the repo and is included via `UEXDR_CORPUS_DIR`.
+This directory contains the **public** part of the golden corpus (see `docs/plan/07-ocr-concept.md` §4). The private part lives outside the repo and is included via `TALLYLINE_CORPUS_DIR`.
 
 ## Rules
 
@@ -10,19 +10,19 @@ This directory contains the **public** part of the golden corpus (see `docs/plan
 - **Original screenshots** (lossless, original resolution) are preferred. Images uploaded via chat are probably scaled and recompressed; this is noted in `source` (schema version 2: `sourceFidelity`).
 - An entry with `sourceFidelity: reencoded-unknown` (assumption A6, e.g. `pyro-gateway-stanton-01`) never counts for a resolution or capture-method class. It counts only for its theme and text-height band and as a source for synthetic variants.
 - **Real class captures go into the public corpus by default**, after redaction, so that CI can gate their classes. A capture is added only if the contributor took it themselves or the person who captured it consented, and the contributor agrees to its publication in `corpus/public/` ([CLA](../CLA.md) §6, [CONTRIBUTING.md](../CONTRIBUTING.md)). The private corpus holds only captures that cannot be redacted without destroying the evaluated region. A class that exists only privately has the status `insufficient` in CI and is evaluated locally before every release (`docs/release-process.md`).
-- **Redaction** uses filled rectangles over the balance and personal data (player names, chat) only. It must not touch the shop panel, the location field or the anchors, and it must not re-encode the rest of the image. PNG originals stay PNG. JPEG originals are redacted with a block-level lossless wipe (e.g. `jpegtran -wipe`); if that is not possible, they are decoded once and stored as PNG, and `sourceFidelity` records it.
+- **Redaction** uses filled rectangles over the balance and personal data (player names, chat, and the `Session:` line of the `r_DisplayInfo` debug overlay when it is on) only. It must not touch the shop panel, the location field or the anchors, and it must not re-encode the rest of the image. PNG originals stay PNG. JPEG originals are redacted with a block-level lossless wipe (e.g. `jpegtran -wipe`); if that is not possible, they are decoded once and stored as PNG, and `sourceFidelity` records it.
 - **Schema version 2** of `expected.json` (07 §4) adds per-capture `conditions` (capture method, HDR, renderer, resolutions, …) and a `measured` object, and moves the section to the card (`sectionHeaders` per capture; `section` and, for partial cards, `partialEdge` per card). Unknown values are `null`, never guessed. `pyro-gateway-stanton-01` is migrated in M2 with unknown values set to `null`.
 - Schema version 2 entries also carry the expected UEX IDs (`expectedTerminalId`, `expectedCommodityId`), capture times (`capturedAt`) and a frozen `reference/` directory of recorded, anonymised UEX responses (07 §4). Without them an entry counts only as smoke for prior-dependent metrics. Whether UEX data may be published here is open (06 open point 7); until it is cleared, `reference/` directories live in the private corpus under the same entry id.
 - **"Report a misread" exports** (R-QA-5) become a new entry only if the contributor allows it in the misread form, under the same consent rule. They contain redacted panel crops, not full frames, so, like `reencoded-unknown` entries, they count only for their theme and text-height band, never for a resolution or capture-method class. The exported values stay `"verified": false` until a maintainer has checked them. The exported reference snapshot goes into the entry's `reference/` directory with `priorProvenance`, in the private corpus until 06 open point 7 is cleared.
-- Corpus data outside the Git repository (Git LFS, a separate corpus repository, `UEXDR_CORPUS_DIR`) has a `SHA256SUMS` file per entry; the eval verifies it before running.
-- If the public corpus grows beyond 200 MB in total (start value), the images move to Git LFS or to a separate corpus repository pinned by commit and SHA-256 manifest (decision by the project owner, O-43). CI never fetches unpinned corpus data.
+- Corpus data outside the Git repository (the private corpus under `TALLYLINE_CORPUS_DIR`) has a `SHA256SUMS` file per entry; the eval verifies it before running.
+- **Images are stored in Git LFS** (decided 2026-10-14, O-43): `.gitattributes` routes every `.jpg`, `.jpeg` and `.png` under `corpus/public/` through LFS, so Git holds only pointer files with the SHA-256 of each image. Contributors need `git-lfs` installed before they clone or add images. A clone without LFS objects has pointer files in place of the images; the corpus runner refuses such a file with a visible error and never reports it as passed. CI jobs that read the images check out with LFS and cache the objects; other jobs do not fetch them. CI never fetches unpinned corpus data.
 
 ## Licence
 
 The images in `corpus/public/` are screenshots of Star Citizen. The game content they show is copyright Cloud Imperium Rights LLC and Cloud Imperium Rights Ltd. They are **not** covered by the project licence (GPL-3.0-or-later): [`REUSE.toml`](../REUSE.toml) marks them `LicenseRef-Game-Screenshots` ([`LICENSES/LicenseRef-Game-Screenshots.txt`](../LICENSES/LicenseRef-Game-Screenshots.txt)), and [`NOTICE`](../NOTICE) §3 lists them. They are here only as test data for the text recognition; this project grants no rights in them, and any use of the game content is subject to Cloud Imperium's terms. Whether those terms allow the screenshots in a public repository is not verified yet: the project owner checks the RSI Terms of Service and the Fankit and Fandom FAQ (O-28 in [`docs/adr/0000-open-points.md`](../docs/adr/0000-open-points.md)). If they do not, the images are removed.
 
 - The transcriptions (`expected.json`) and every other text file here are under the project licence, GPL-3.0-or-later.
-- The images are never shipped in the installers or app archives. They are part of the repository and of GitHub's source archive of every tag (the repository uses no `export-ignore`).
+- The images are never shipped in the installers or app archives. They are part of the repository as Git LFS objects (the repository uses no `export-ignore`). GitHub's source archive of a tag holds only their pointer files: the repository setting "Include Git LFS objects in archives" stays off (O-43). To get the images, clone the repository with `git-lfs`.
 - Recorded UEX data (`reference/` directories, the reference snapshot of a misread export) gets its own licence marking only once UEX allows publishing it ([06](../docs/plan/06-uex-api.md) open point 7); until then it stays in the private corpus.
 - The `REUSE.toml` patterns cover `.jpg`, `.jpeg` and `.png` files under `corpus/public/`; an image in any other format needs a new pattern in the same pull request.
 
@@ -31,3 +31,10 @@ The images in `corpus/public/` are screenshots of Star Citizen. The game content
 | Entry | Content | Status |
 |---|---|---|
 | `pyro-gateway-stanton-01` | Pyro Gateway (Stanton), blue theme: 4× Buy (scrolled, without overlap), 1× Sell | transcribed, not verified |
+| `patch-city-01` | Patch City (Pyro), orange theme, 3840×2160 originals, debug overlay on, no location text: 1× Buy, 10× Sell (scrolled with overlap) | transcribed, not verified (schema version 2) |
+| `ruin-station-01` | Ruin Station (Pyro), orange theme, 3840×2160 originals, debug overlay on: 5× Buy, 22× Sell (scrolled with overlap; Pitambu never complete) | transcribed, not verified (schema version 2) |
+
+| `seraphim-station-01` | Seraphim Station (Stanton), blue theme, 3840×2160 originals: the same pages without a selected inventory (`unselected-*`, 5× Buy, 7× Sell, debug overlay on) and with Seraphim Station selected (7× Buy, 7× Sell) | transcribed, not verified (schema version 2) |
+| `levski-01` | Levski (Nyx), grey theme, 3840×2160 originals from three positions: front (`v1-*`), closer front (`v2-*`) and oblique (`v3-*`), each 5× Buy and 22 to 26× Sell | transcribed, not verified (schema version 2) |
+
+The originals of `patch-city-01`, `ruin-station-01`, `seraphim-station-01` and `levski-01` and the game's language file `global.ini` in use when they were taken belong in the private corpus; each `expected.json` records their SHA-256.
