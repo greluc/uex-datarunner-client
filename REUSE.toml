@@ -18,6 +18,7 @@ path = [
   "rustfmt.toml",
   ".cargo/**",
   "supply-chain/**",
+  "xtask/fixtures/**",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "Lucas Greuloch"

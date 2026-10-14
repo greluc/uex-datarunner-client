@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
@@ -13,20 +14,26 @@ use std::process::{Command, ExitCode};
 
 use xtask::check::{Step, plan};
 use xtask::deny::unjustified_suppressions;
+use xtask::dependabot;
 use xtask::exit::exit_code;
 use xtask::guard::scan;
 use xtask::listing::check_listing;
+use xtask::osv::{judge, shipped_packages, shipped_roots};
 use xtask::registry::Registry;
 use xtask::sources::collect;
 use xtask::vendor::{actual_list, regenerate, verify};
+use xtask::vet::violations;
 
 const REQUIREMENTS: &str = "docs/plan/01-requirements.md";
 const ROADMAP: &str = "docs/plan/04-roadmap.md";
 const ENGINEERING_PRINCIPLES: &str = "docs/plan/09-engineering-principles.md";
 const DENY_CONFIG: &str = "deny.toml";
+const VET_CONFIG: &str = "supply-chain/config.toml";
+const VET_BASELINE: &str = "supply-chain/bootstrap-exemptions.txt";
 const LOCKFILE: &str = "Cargo.lock";
 const HASH_LIST: &str = "supply-chain/vendor-hashes.txt";
 const VENDOR_WORK_DIR: &str = "target/xtask-vendor";
+const SHIPPED_TARGETS: [&str; 2] = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"];
 
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -39,6 +46,7 @@ fn main() -> ExitCode {
     {
         ["check"] => run_check(&root),
         ["guard"] => run_guard(&root),
+        ["osv-gate", report] => run_osv_gate(&root, Path::new(report)),
         ["vendor-hashes", "write"] => write_hash_list(&root),
         ["vendor-hashes", "verify"] => verify_hash_list(&root),
         _ => usage(),
@@ -49,7 +57,7 @@ fn main() -> ExitCode {
 fn usage() -> io::Result<ExitCode> {
     writeln!(
         io::stderr(),
-        "usage: cargo xtask check | guard | vendor-hashes write | vendor-hashes verify"
+        "usage: cargo xtask check | guard | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify"
     )?;
     Ok(ExitCode::FAILURE)
 }
@@ -84,6 +92,8 @@ fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
     match step {
         Step::SupplyChainGuard => guard_passes(root),
         Step::DenySuppressions => deny_suppressions_pass(root),
+        Step::VetExemptions => vet_exemptions_pass(root),
+        Step::Dependabot => dependabot_passes(root),
         Step::Cargo { args, env, .. } => Ok(Command::new(cargo_program())
             .args(args)
             .envs(env.iter().copied())
@@ -96,6 +106,76 @@ fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
 
 fn run_guard(root: &Path) -> io::Result<ExitCode> {
     Ok(exit_status(guard_passes(root)?))
+}
+
+fn cargo_stdout(root: &Path, args: &[&str]) -> io::Result<String> {
+    let output = Command::new(cargo_program())
+        .args(args)
+        .current_dir(root)
+        .output()?;
+    if !output.status.success() {
+        io::stderr().write_all(&output.stderr)?;
+        return Err(io::Error::other(format!("cargo {} failed", args.join(" "))));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::PackageId>)> {
+    let metadata = cargo_stdout(
+        root,
+        &["metadata", "--locked", "--no-deps", "--format-version", "1"],
+    )?;
+    let roots = shipped_roots(&metadata).map_err(io::Error::other)?;
+    let mut shipped = BTreeSet::new();
+    for name in &roots {
+        for target in SHIPPED_TARGETS {
+            let tree = cargo_stdout(
+                root,
+                &[
+                    "tree",
+                    "--locked",
+                    "--package",
+                    name,
+                    "--target",
+                    target,
+                    "--edges",
+                    "normal",
+                    "--all-features",
+                    "--prefix",
+                    "none",
+                    "--format",
+                    "{p}",
+                ],
+            )?;
+            shipped.extend(shipped_packages(&tree));
+        }
+    }
+    Ok((roots, shipped))
+}
+
+fn run_osv_gate(root: &Path, report: &Path) -> io::Result<ExitCode> {
+    let (roots, shipped) = shipped_graph(root)?;
+    let text = fs::read_to_string(report)
+        .map_err(|error| io::Error::new(error.kind(), format!("{}: {error}", report.display())))?;
+    let verdict = judge(&text, &shipped).map_err(io::Error::other)?;
+    writeln!(
+        io::stderr(),
+        "shipped packages: {} in {} workspace members ({})",
+        shipped.len(),
+        roots.len(),
+        if roots.is_empty() {
+            "none yet".to_owned()
+        } else {
+            roots.join(", ")
+        }
+    )?;
+    for finding in &verdict.reported {
+        writeln!(io::stderr(), "reported: {finding}")?;
+    }
+    for finding in &verdict.blocking {
+        writeln!(io::stderr(), "BLOCKING: {finding}")?;
+    }
+    Ok(exit_status(verdict.blocking.is_empty()))
 }
 
 fn exit_status(passed: bool) -> ExitCode {
@@ -117,6 +197,26 @@ fn guard_passes(root: &Path) -> io::Result<bool> {
 fn deny_suppressions_pass(root: &Path) -> io::Result<bool> {
     let findings = unjustified_suppressions(
         &fs::read_to_string(root.join(DENY_CONFIG))?,
+        &fs::read_to_string(root.join(ENGINEERING_PRINCIPLES))?,
+    );
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn dependabot_passes(root: &Path) -> io::Result<bool> {
+    let findings = dependabot::violations(&collect(root)?);
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn vet_exemptions_pass(root: &Path) -> io::Result<bool> {
+    let findings = violations(
+        &fs::read_to_string(root.join(VET_CONFIG))?,
+        &fs::read_to_string(root.join(VET_BASELINE))?,
         &fs::read_to_string(root.join(ENGINEERING_PRINCIPLES))?,
     );
     for finding in &findings {

@@ -61,7 +61,8 @@ The `unsafe` code of the platform adapter is registered here too. Edition 2024 m
 |---|---|---|---|---|
 | `adapter-platform`, the `set_var` call for `ORT_DISABLE_TELEMETRY` (planned, does not exist yet) | `unsafe_code` | `set_var` is `unsafe` in edition 2024; the variable must be set before the first ONNX Runtime call and before other threads read the environment (R-NF-12, O-13) | 2026-10-12 (planned) | when ONNX Runtime or `ort` offers a way to switch telemetry off without the environment, or the M0 telemetry spike removes the need |
 
-| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `deny`, `denygate`, `guard`, `negative`, `vendor`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
+| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `dependabot`, `deny`, `denygate`, `guard`, `negative`, `osv`, `vendor`, `vet`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
+| `supply-chain/config.toml` `[[exemptions]]`, the crates listed in `supply-chain/bootstrap-exemptions.txt` | `cargo-vet` criteria `safe-to-deploy` | the crates that no import covers are exempt with the shared `notes` text "initial adoption, not yet audited" (10 S-6); the set only shrinks | 2026-10-14 | 2027-04-13, before release 1.0 |
 
 No other suppression exists yet.
 
@@ -156,7 +157,7 @@ Further test rules:
 - [ ] UI texts in English, via the message catalogues (no hard-coded strings)
 - [ ] Affected plan or ADR documents updated in the same commit; a user-visible change also updates `README.md`, the user guide (`docs/user/`) and `CHANGELOG.md`
 - [ ] No secrets, private screenshots or large binary files in the diff
-- [ ] For changed dependencies: `Cargo.lock` and the `cargo-vet` files (and the vendor hash list, if kept) updated in the same PR as a separate commit (10 S-5); new crates and their publishers checked and documented in the PR; a new build script or procedural macro on the S-12 list; a moved action pin or CI tool pin updates its row in `docs/dependency-pins.md`
+- [ ] For changed dependencies: `Cargo.lock` and the `cargo-vet` files (and the vendor hash list, if kept) updated in the same PR as a separate commit (10 S-5); new crates and their publishers checked and documented in the PR; a new crate audited or imported, never added to the bootstrap exemptions of `cargo-vet` (10 S-6, the procedure is in `supply-chain/README.md`); a Dependabot pull request gets its vendor hash and audit follow-up commits (10 S-8); a new build script or procedural macro on the S-12 list; a moved action pin or CI tool pin updates its row in `docs/dependency-pins.md`
 - [ ] A shipped component or bundled asset: its licence is allowed by the licence policy (§9); `NOTICE` entry, `REUSE.toml` annotation, licence text under `LICENSES/` and SHA-256 for bundled files; licence gate and `reuse lint` green
 - [ ] The Star Citizen Fan Kit unit is unchanged (logo file and both notices byte for byte, rendered together, pinning tests unchanged), unless the project owner approved the change (R-UI-19)
 - [ ] A new network destination, a new kind of data sent or a new local store: the data-flow inventory (02 §9) is updated, with the project owner's approval
