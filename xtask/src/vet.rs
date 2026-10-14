@@ -10,6 +10,9 @@ use crate::register;
 /// The `notes` text every bootstrap exemption carries.
 pub const BOOTSTRAP_NOTES: &str = "initial adoption, not yet audited";
 
+/// The criteria every bootstrap exemption certifies.
+pub const BOOTSTRAP_CRITERIA: &str = "safe-to-deploy";
+
 /// The revisit date of the shared suppression-register row for the bootstrap exemptions.
 pub const BOOTSTRAP_REVISIT_DATE: &str = "2027-04-13";
 
@@ -46,6 +49,14 @@ pub fn violations(config: &str, baseline: &str, register: &str) -> Vec<String> {
         .partition(|exemption| exemption.notes.as_deref() == Some(BOOTSTRAP_NOTES));
     let rows = register::rows(register);
     let mut found = Vec::new();
+    for exemption in &bootstrap {
+        if exemption.criteria.as_deref() != Some(BOOTSTRAP_CRITERIA) {
+            found.push(format!(
+                "cargo-vet exemption {} {}: the bootstrap criteria are exactly \"{BOOTSTRAP_CRITERIA}\"",
+                exemption.name, exemption.version
+            ));
+        }
+    }
     for exemption in &justified {
         found.extend(justified_violations(exemption, &rows));
     }
@@ -63,6 +74,7 @@ pub fn violations(config: &str, baseline: &str, register: &str) -> Vec<String> {
 struct Exemption {
     name: String,
     version: String,
+    criteria: Option<String>,
     notes: Option<String>,
 }
 
@@ -80,6 +92,7 @@ fn exemptions(table: &toml::Table) -> Vec<Exemption> {
                 .map(move |entry| Exemption {
                     name: name.clone(),
                     version: text(entry, "version").unwrap_or_default(),
+                    criteria: text(entry, "criteria"),
                     notes: text(entry, "notes"),
                 })
         })
@@ -268,6 +281,14 @@ mod tests {
             violations(&config, BASELINE, REGISTER),
             Vec::<String>::new()
         );
+    }
+
+    #[test]
+    fn r_sec_2__a_bootstrap_exemption_with_weaker_criteria_is_a_violation() {
+        let config = bootstrap().replacen("safe-to-deploy", "safe-to-run", 1);
+        let found = violations(&config, BASELINE, REGISTER);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].contains("safe-to-deploy"), "{found:?}");
     }
 
     #[test]

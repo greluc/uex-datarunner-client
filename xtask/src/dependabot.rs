@@ -109,7 +109,7 @@ fn entry_violations(entry: &Entry<'_>) -> Vec<String> {
                 default_days = Some(value.trim().to_owned());
             }
         }
-        if trimmed == "exclude:" {
+        if trimmed.starts_with("exclude:") {
             found.push(format!(
                 "{subject}: the cooldown has an `exclude` list, which takes dependencies out of it"
             ));
@@ -241,6 +241,18 @@ mod tests {
         let config = GOOD.replacen(
             "default-days: 7\n",
             "default-days: 7\n      exclude:\n        - serde\n",
+            1,
+        );
+        let found = check(&config);
+        assert_eq!(found.len(), 1, "{found:?}");
+        assert!(found[0].contains("exclude"), "{found:?}");
+    }
+
+    #[test]
+    fn r_sec_5__a_flow_style_exclude_list_in_the_cooldown_is_a_violation() {
+        let config = GOOD.replacen(
+            "default-days: 7\n",
+            "default-days: 7\n      exclude: [serde]\n",
             1,
         );
         let found = check(&config);

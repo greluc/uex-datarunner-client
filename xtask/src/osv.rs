@@ -12,6 +12,8 @@ use serde_json::Value;
 /// The CVSS score from which a vulnerability in a shipped package blocks the merge.
 pub const BLOCKING_SCORE: f64 = 7.0;
 
+const MIN_SCORE: f64 = 0.0;
+const MAX_SCORE: f64 = 10.0;
 const CRATES_IO_ECOSYSTEM: &str = "crates.io";
 const TOOLING_PACKAGE: &str = "xtask";
 const TOOLING_DIRECTORY: &str = "tools";
@@ -228,7 +230,7 @@ fn severity(group: &Value) -> Severity {
         _ => None,
     };
     match score {
-        Some(score) if score.is_finite() => Severity::Scored(score),
+        Some(score) if (MIN_SCORE..=MAX_SCORE).contains(&score) => Severity::Scored(score),
         _ => Severity::Unscored,
     }
 }
@@ -400,7 +402,9 @@ mod tests {
 
     #[test]
     fn r_sec_5__a_group_without_a_score_blocks_until_it_is_triaged() {
-        for max_severity in ["\"\"", "null", "\"n/a\"", "\"NaN\"", "[]"] {
+        for max_severity in [
+            "\"\"", "null", "\"n/a\"", "\"NaN\"", "[]", "-1", "\"11\"", "10.1",
+        ] {
             let json = report("pkg", &group(r#""RUSTSEC-2099-0001""#, max_severity), "");
             let verdict = judge(&json, &shipped(&[("pkg", "1.0.0")])).unwrap();
             assert_eq!(verdict.blocking.len(), 1, "{max_severity}");

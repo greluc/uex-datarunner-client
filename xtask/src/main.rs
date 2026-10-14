@@ -155,7 +155,9 @@ fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::P
 
 fn run_osv_gate(root: &Path, report: &Path) -> io::Result<ExitCode> {
     let (roots, shipped) = shipped_graph(root)?;
-    let verdict = judge(&fs::read_to_string(report)?, &shipped).map_err(io::Error::other)?;
+    let text = fs::read_to_string(report)
+        .map_err(|error| io::Error::new(error.kind(), format!("{}: {error}", report.display())))?;
+    let verdict = judge(&text, &shipped).map_err(io::Error::other)?;
     writeln!(
         io::stderr(),
         "shipped packages: {} in {} workspace members ({})",
