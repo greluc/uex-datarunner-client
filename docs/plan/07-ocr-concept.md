@@ -493,5 +493,5 @@ Corrected 2026-10-08: basetool-sc-extractor is GPL-3.0-or-later. Since [ADR-0003
   - correctly flagged (wrong, but flagged)
   - **silently wrong** (wrong and classified as confident) – the most important metric, target ≈ 0
   - runtime, peak heap and peak process memory (per resolution class, R-NF-3)
-- **CI** checks the public, redacted partial corpus. The private corpus is included locally via an environment variable (`TALLYLINE_CORPUS_DIR`).
+- **CI** checks the public, redacted partial corpus. Its images are Git LFS objects (O-43): the jobs that read them check out with LFS and cache the objects, and an LFS pointer file in place of an image fails the run visibly. The private corpus is included locally via an environment variable (`TALLYLINE_CORPUS_DIR`).
 - The first public entry is `pyro-gateway-stanton-01` (unverified, `sourceFidelity: reencoded-unknown`; its reference snapshot can only be recorded `post-capture`). The **Patch City screenshots** still have to be supplied as files (redact the balance first) or stored in the private corpus.
