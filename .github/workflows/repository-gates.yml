@@ -131,3 +131,59 @@ jobs:
           fail-on-severity: high
           license-check: false
           comment-summary-in-pr: never
+
+  reuse:
+    name: reuse lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      REUSE_VERSION: 6.2.0
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the hash-locked reuse
+        run: |
+          python3 --version | grep --quiet '^Python 3\.12\.'
+          python3 -m venv "$RUNNER_TEMP/reuse-venv"
+          "$RUNNER_TEMP/reuse-venv/bin/pip" install --disable-pip-version-check --require-hashes --only-binary :all: \
+            --requirement .github/requirements/reuse-build.txt
+          "$RUNNER_TEMP/reuse-venv/bin/pip" install --disable-pip-version-check --require-hashes --no-build-isolation \
+            --requirement .github/requirements/reuse.txt
+          echo "$RUNNER_TEMP/reuse-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Verify reuse reports the pinned version
+        run: test "$(reuse --version | head -n 1)" = "reuse, version ${REUSE_VERSION}"
+
+      - name: Lint the licence information of every file
+        run: reuse lint
+
+  dco:
+    name: DCO sign-off
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Check the sign-off of every pull-request commit
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: cargo xtask dco "$BASE_SHA" "$HEAD_SHA"

@@ -14,6 +14,12 @@ pub enum Step {
     VetExemptions,
     /// The Dependabot rules of 10 S-7 and S-8 over `.github/`.
     Dependabot,
+    /// The byte comparison of `LICENSE` and `LICENSES/GPL-3.0-or-later.txt` (10 S-35).
+    LicenceCopy,
+    /// The SPDX header of every Rust file (10 S-35).
+    SourceHeaders,
+    /// The English check over the tracked files (ADR-0005 D12).
+    English,
     /// A Cargo invocation that must exit successfully.
     Cargo {
         /// The name shown in the report.
@@ -39,6 +45,9 @@ impl Step {
             Self::DenySuppressions => "cargo-deny suppressions",
             Self::VetExemptions => "cargo-vet exemptions",
             Self::Dependabot => "dependabot",
+            Self::LicenceCopy => "licence copy",
+            Self::SourceHeaders => "source headers",
+            Self::English => "english",
             Self::Cargo { name, .. } => name,
             Self::RequirementTags { .. } => "requirement tags",
         }
@@ -65,6 +74,9 @@ pub fn plan() -> Vec<Step> {
         Step::DenySuppressions,
         Step::VetExemptions,
         Step::Dependabot,
+        Step::LicenceCopy,
+        Step::SourceHeaders,
+        Step::English,
         cargo("format", &["fmt", "--all", "--check"]),
         cargo(
             "clippy",
@@ -112,15 +124,22 @@ mod tests {
             Step::SupplyChainGuard
             | Step::DenySuppressions
             | Step::VetExemptions
-            | Step::Dependabot => Vec::new(),
+            | Step::Dependabot
+            | Step::LicenceCopy
+            | Step::SourceHeaders
+            | Step::English => Vec::new(),
         }
+    }
+
+    fn named<'a>(plan: &'a [Step], name: &str) -> &'a Step {
+        plan.iter().find(|step| step.name() == name).unwrap()
     }
 
     #[test]
     fn rustdoc_runs_with_warnings_denied_through_the_environment() {
         let plan = plan();
         assert_eq!(
-            plan[7],
+            *named(&plan, "rustdoc"),
             Step::Cargo {
                 name: "rustdoc",
                 args: ["doc", "--workspace", "--no-deps", "--locked"]
@@ -143,6 +162,9 @@ mod tests {
                 "cargo-deny suppressions",
                 "cargo-vet exemptions",
                 "dependabot",
+                "licence copy",
+                "source headers",
+                "english",
                 "format",
                 "clippy",
                 "rustdoc",
@@ -151,12 +173,15 @@ mod tests {
             ]
         );
         assert_eq!(
-            cargo_args(&plan[1]),
+            cargo_args(named(&plan, "cargo-deny")),
             ["deny", "--locked", "check", "licenses", "sources", "bans"]
         );
-        assert_eq!(cargo_args(&plan[5]), ["fmt", "--all", "--check"]);
         assert_eq!(
-            cargo_args(&plan[6]),
+            cargo_args(named(&plan, "format")),
+            ["fmt", "--all", "--check"]
+        );
+        assert_eq!(
+            cargo_args(named(&plan, "clippy")),
             [
                 "clippy",
                 "--workspace",
@@ -167,9 +192,12 @@ mod tests {
                 "warnings"
             ]
         );
-        assert_eq!(cargo_args(&plan[8]), ["test", "--workspace", "--locked"]);
         assert_eq!(
-            cargo_args(&plan[9]),
+            cargo_args(named(&plan, "tests")),
+            ["test", "--workspace", "--locked"]
+        );
+        assert_eq!(
+            cargo_args(named(&plan, "requirement tags")),
             ["test", "--workspace", "--locked", "--", "--list"]
         );
     }

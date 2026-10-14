@@ -1,0 +1,3 @@
+[[exception]]
+path = "xtask/src/english.rs"
+reason = "The task's own source: the German word list and the German samples of its tests."
