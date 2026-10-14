@@ -54,7 +54,7 @@ The archives also hold `LICENSE` (MIT), `ThirdPartyNotices.txt` and `Privacy.md`
 - With `load-dynamic`, `ort-sys` gets `disable-linking`, and its build script returns before linking or downloading anything. The compiled graph (`cargo tree --target all -e normal`) is `ort`, `ort-sys`, `libloading` 0.9.0, `smallvec`, `windows-link` on Windows and `libc` on Linux; `Cargo.lock` also lists the optional dependencies of `ort` (`ndarray`, `tracing` and theirs), which these features do not compile. `ort-sys` keeps `links = "onnxruntime"`, so the 09 §3b architecture check sees it.
 - On Windows, the official `onnxruntime.dll` loaded from an absolute path in a directory that held nothing else, after `SetDefaultDllDirectories`, and ran the model. `onnxruntime_providers_shared.dll` was not present and not needed for the CPU execution provider. The dependent `MSVCP140*.dll`/`VCRUNTIME140*.dll` were found in `System32`, because the Visual C++ redistributable is installed on the test machine; whether they ship is the import-analysis item (O-12).
 - `api-31` makes `ort` refuse a library older than 1.31 (`LoadDynamicError::BadVersion`) and log, not refuse, a newer one. The test also showed that the 1.28.3 library of the first run is refused on its hash.
-- Linux has not run locally (no Rust toolchain in the available WSL distribution); the workflow covers it once the branch is pushed.
+- Linux did not run locally (no Rust toolchain in the available WSL distribution). In CI the workflow passed on `windows-latest` and `ubuntu-latest` on 2026-10-14 (run 38585549568): on both, all five tests passed with the official 1.31.0 library.
 
 ### Behaviour of `ort` that the adapter must respect
 
