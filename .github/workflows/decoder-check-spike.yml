@@ -1,0 +1,60 @@
+name: Decoder check spike
+
+on:
+  push:
+    branches:
+      - prototype/decoder-check
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  SPIKE_MANIFEST: prototype/decoder-check/Cargo.toml
+
+jobs:
+  fixtures:
+    name: fixtures (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        shell: bash
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Check formatting
+        shell: bash
+        run: cargo fmt --manifest-path "$SPIKE_MANIFEST" --check
+
+      - name: Run Clippy
+        shell: bash
+        run: cargo clippy --locked --manifest-path "$SPIKE_MANIFEST" --all-targets -- -D warnings
+
+      - name: Run the decode fixtures
+        shell: bash
+        run: |
+          cargo test --locked --manifest-path "$SPIKE_MANIFEST" 2>&1 | tee "$RUNNER_TEMP/fixtures.txt"
+          {
+            echo '```text'
+            grep -E '^(test |test result)' "$RUNNER_TEMP/fixtures.txt"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

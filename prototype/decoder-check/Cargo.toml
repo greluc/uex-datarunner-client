@@ -1,0 +1,30 @@
+[package]
+name = "tallyline-decoder-check-spike"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99.0"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[dependencies]
+png = "=0.18.1"
+zune-jpeg = "=0.5.15"
+zune-core = "=0.5.3"
+image = { version = "=0.25.10", default-features = false, features = ["bmp"] }
+moxcms = "=0.8.1"
+
+[dev-dependencies]
+jpeg-encoder = "=0.7.1"
+
+[lints.rust]
+missing_docs = "deny"
+unsafe_code = "forbid"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+wildcard_enum_match_arm = "deny"
