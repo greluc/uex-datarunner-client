@@ -258,14 +258,18 @@ Source code
   section 6) lapse. The detailed entry is in the history of this file.
 
 2.10 Microsoft Visual C++ runtime and Universal C Runtime (Windows only)
-  Files         vcruntime140*.dll, msvcp140*.dll, ucrtbase.dll and
-                api-ms-win-*.dll that the ONNX Runtime library imports
-                [whether they are shipped or the installer requires the
-                Visual C++ Redistributable is decided in the O-12 review]
-  Licence       Microsoft's redistribution terms [text not obtained yet;
-                unverified; O-12, O-82]
-  Status        if shipped, redistributed unmodified. For now the project
-                relies on the System Library definition of GPL-3.0 section 1.
+  Files         none shipped (ADR-0009). The ONNX Runtime library imports
+                msvcp140.dll, msvcp140_1.dll, vcruntime140.dll and
+                vcruntime140_1.dll, version 14.44 or newer (M0 import
+                analysis, 2026-10-14); they come from the Microsoft Visual
+                C++ Redistributable (x64), which the user installs as a
+                prerequisite. The Universal C Runtime (ucrtbase.dll,
+                api-ms-win-crt-*.dll) is part of Windows 10 and 11.
+  Licence       Microsoft's terms for the Redistributable, between Microsoft
+                and the user; the project redistributes nothing of it
+  Status        not part of any artefact. For now the project relies on the
+                System Library definition of GPL-3.0 section 1 for the
+                dependency on the separately installed runtime.
                 A legal review follows before the first release, and a
                 narrow GPL-3.0 section 7 additional permission is decided
                 before the first external contribution [open point O-12].
