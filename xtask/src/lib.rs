@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 pub mod check;
+pub mod deny;
 pub mod exit;
 pub mod guard;
 pub mod hashlist;
@@ -17,6 +18,8 @@ pub mod sources;
 pub mod tags;
 pub mod vendor;
 
+#[cfg(test)]
+mod denygate;
 #[cfg(test)]
 mod negative;
 #[cfg(test)]

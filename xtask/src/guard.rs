@@ -333,8 +333,8 @@ pub fn check_section_headers(text: &str) -> Vec<Problem> {
         .collect()
 }
 
-const RESOLVING_COMMANDS: [&str; 25] = [
-    "b", "bench", "build", "c", "check", "clippy", "d", "doc", "fetch", "fix", "install",
+const RESOLVING_COMMANDS: [&str; 26] = [
+    "b", "bench", "build", "c", "check", "clippy", "d", "deny", "doc", "fetch", "fix", "install",
     "llvm-cov", "metadata", "mutants", "nextest", "package", "publish", "r", "run", "rustc",
     "rustdoc", "t", "test", "tree", "vendor",
 ];
@@ -884,7 +884,6 @@ mod tests {
         let none = BTreeMap::new();
         assert!(invocation_is_locked(&["fmt", "--all", "--check"], &none));
         assert!(invocation_is_locked(&["--version"], &none));
-        assert!(invocation_is_locked(&["deny", "check"], &none));
     }
 
     #[test]
@@ -1038,7 +1037,7 @@ mod tests {
     #[test]
     fn r_sec_1__the_planned_third_party_subcommands_need_locked_too() {
         let none = BTreeMap::new();
-        for subcommand in ["llvm-cov", "mutants", "nextest"] {
+        for subcommand in ["deny", "llvm-cov", "mutants", "nextest"] {
             assert!(!invocation_is_locked(&[subcommand], &none), "{subcommand}");
             assert!(
                 invocation_is_locked(&[subcommand, "--locked"], &none),

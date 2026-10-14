@@ -1,6 +1,6 @@
 # Engineering Principles: Modularisation, Maintainability, Clean Code
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-14.
 
 This document makes "best practices" **verifiable**: every rule states *how* it is enforced. Where possible this happens automatically (compiler, the Cargo crate graph, Clippy, `cargo-deny`, `xtask`, CI), otherwise via the review checklist and the Definition of Done.
 
@@ -53,7 +53,7 @@ Amended 2026-10-12: the mechanisms were converted from Java 27, JavaFX and Gradl
 
 ## 3a. Suppression register
 
-A suppression (`#[allow]` or `#[expect]` with its `reason`, a lint set to `allow` in a `[lints]` table, a `deny.toml` `skip` or `ignore` entry, a `cargo-vet` exemption, an `osv-scanner.toml` exception) is allowed only where the rule is genuinely wrong at that site. It carries a one-sentence `reason` where the mechanism has the field (never a comment), and it gets a row here together with the reasoning in the commit message and the pull request. Advisory and OSV exceptions ([10](10-supply-chain-security.md) S-19) are rows whose "Revisit when" is their expiry date. A row is removed together with its suppression.
+A suppression (`#[allow]` or `#[expect]` with its `reason`, a lint set to `allow` in a `[lints]` table, a `deny.toml` `skip` or `ignore` entry, a `cargo-vet` exemption, an `osv-scanner.toml` exception) is allowed only where the rule is genuinely wrong at that site. For `deny.toml`, `cargo xtask check` enforces this (10 S-6): a `skip`, `skip-tree`, `ignore`, licence `exceptions` or `clarify` entry fails the check unless its row here names `deny.toml` and the entry (the crate spec or advisory ID) in backticks and ends with a revisit date, and unless the entry carries a non-empty `reason` where its key has the field. It carries a one-sentence `reason` where the mechanism has the field (never a comment), and it gets a row here together with the reasoning in the commit message and the pull request. Advisory and OSV exceptions ([10](10-supply-chain-security.md) S-19) are rows whose "Revisit when" is their expiry date. A row is removed together with its suppression.
 
 The `unsafe` code of the platform adapter is registered here too. Edition 2024 marks `std::env::set_var` as `unsafe`, and the app is its own launcher (ADR-0005 Consequences), so the call that sets `ORT_DISABLE_TELEMETRY` before the first ONNX Runtime call is the one planned `unsafe` site. Clippy's `undocumented_unsafe_blocks` is not enabled, because it demands a comment; the site sits in a small safe function whose rustdoc carries the contract (`# Safety` reasoning, why no other thread reads the environment yet). Any further platform FFI of the adapter (D1) gets its own row.
 
@@ -61,7 +61,7 @@ The `unsafe` code of the platform adapter is registered here too. Edition 2024 m
 |---|---|---|---|---|
 | `adapter-platform`, the `set_var` call for `ORT_DISABLE_TELEMETRY` (planned, does not exist yet) | `unsafe_code` | `set_var` is `unsafe` in edition 2024; the variable must be set before the first ONNX Runtime call and before other threads read the environment (R-NF-12, O-13) | 2026-10-12 (planned) | when ONNX Runtime or `ort` offers a way to switch telemetry off without the environment, or the M0 telemetry spike removes the need |
 
-| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `guard`, `negative`, `vendor`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
+| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `deny`, `denygate`, `guard`, `negative`, `vendor`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
 
 No other suppression exists yet.
 
