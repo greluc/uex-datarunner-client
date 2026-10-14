@@ -258,10 +258,15 @@ Source code
   section 6) lapse. The detailed entry is in the history of this file.
 
 2.10 Microsoft Visual C++ runtime and Universal C Runtime (Windows only)
-  Files         vcruntime140*.dll, msvcp140*.dll, ucrtbase.dll and
-                api-ms-win-*.dll that the ONNX Runtime library imports
-                [whether they are shipped or the installer requires the
-                Visual C++ Redistributable is decided in the O-12 review]
+  Files         msvcp140.dll, msvcp140_1.dll, vcruntime140.dll and
+                vcruntime140_1.dll, version 14.44 or newer, the Visual C++
+                runtime DLLs that the ONNX Runtime library imports (M0 import
+                analysis, 2026-10-14) [file versions, SHA-256 and the
+                licensed installation they come from: decided in the O-12
+                review; if it forbids shipping them, the installer requires
+                the Visual C++ Redistributable instead]. The Universal C
+                Runtime (ucrtbase.dll, api-ms-win-crt-*.dll) is part of
+                Windows 10 and 11 and is not shipped.
   Licence       Microsoft's redistribution terms [text not obtained yet;
                 unverified; O-12, O-82]
   Status        if shipped, redistributed unmodified. For now the project
