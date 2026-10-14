@@ -143,7 +143,9 @@ function Invoke-SpikeRun([string] $Name, [string] $Variant, [switch] $LateTrace)
         if ($null -eq $provider) { continue }
         $guid = Get-NormalisedGuid $provider.GetAttribute('Guid')
         $processId = if ($null -ne $execution) { $execution.GetAttribute('ProcessID') } else { '' }
-        $fromProbe = ($processId -eq $probeId) -or ((Get-EventDataValue $record 'PID') -eq $probeId)
+        $dataProcessId = Get-EventDataValue $record 'PID'
+        $owner = if ($null -ne $dataProcessId) { $dataProcessId.Trim() } else { $processId }
+        $fromProbe = $owner -eq $probeId
         if ($guid -eq $OrtProvider) {
             $ortEvents.Add([pscustomobject]@{ Name = Get-EventName $record; FromProbe = $fromProbe; Xml = $record.OuterXml })
         }

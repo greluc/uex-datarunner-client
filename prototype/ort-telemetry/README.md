@@ -54,6 +54,41 @@ cargo build --release --locked --manifest-path prototype/ort-telemetry/Cargo.tom
 
 It takes about twelve minutes (five runs of about 130 to 140 s). `summary.md` in the output directory is the result to hand back; it holds counts, event names and relative paths only. `trace.etl`, `trace.xml`, `ort-events.xml` and `network-events.csv` per run stay local, because the system-wide network trace also records other processes of the machine. Running `none` and `api` lets ONNX Runtime emit its events on that machine, which Windows forwards to Microsoft only if its diagnostic-data settings collect them; that is what the measurement is about.
 
-## Result
+## Result (2026-10-14)
 
-Pending: the CI run on both OSes and the owner's Windows run.
+Measured in CI run 38591511090 (commit `000cf80`, `ubuntu-latest` and `windows-latest`) and on the owner's Windows 11 machine (build 26300, elevated, commit `e3ca4c5`). The probe ran both sessions in every variant on both OSes; the library was the pinned 1.31.0 file on both.
+
+### Linux: `ORT_DISABLE_TELEMETRY=1` removes the telemetry, the API alone does not
+
+| Variant | Remote connections per run (both runs) | Files left in the isolated `HOME` |
+|---|---|---|
+| `env` | none | none |
+| `env-only` | none | none |
+| `api` | one HTTPS connection to a Microsoft address (`4.150.223.102`, `4.150.223.113`), after a DNS query naming `microsoft` | `.cache/Microsoft/DeveloperTools/.onnxruntime/deviceid` (36 bytes) and `onnxruntime.db` (24,576 bytes) |
+| `none` | one HTTPS connection to a Microsoft address (`40.79.141.156`, `20.184.175.12`), after a DNS query naming `microsoft` | the same two files |
+
+The variable alone is enough (`env-only` is as clean as `env`), and `with_telemetry(false)` alone still uploads and writes the device ID. The probe ran with `env -i`, so no CI variable suppressed the uploader; the `cargo test` runs of the same job, with `GITHUB_ACTIONS` set, are no measurement.
+
+### Windows: no connection from the process, but ETW events remain with every mitigation
+
+The probe process opened no connection in any variant on either machine (no Kernel-Network, DNS-Client or WinHttp event names its PID) and wrote nothing to `LOCALAPPDATA`, `APPDATA` or the device-ID key. Its ETW events, from the owner's machine (CI had the same counts, without `DriverInfo`):
+
+| Variant | Events of `Microsoft.ML.ONNXRuntime` from the probe |
+|---|---|
+| `env` | 4: `ProcessInfo`, `DriverInfo`, `RegisterEpLibraryStart`, `RegisterEpLibraryEnd` |
+| `api` | the same 4 |
+| `api`, trace session started after the first session | 12: the full session set again (`SessionCreationStart`, `SessionCreation`, `SessionCreationEnd`, `ModelLoadStart`/`End`, `EvaluationStart`/`Stop`, `EpAutoSelection`, `EpDeviceUsage`, `ProviderOptions`, `RuntimePerf`) |
+| `env-only` | 28, the same as `none` |
+| `none` | 28: the 4 initialisation events and two sets of session, model-load, evaluation and execution-provider events |
+
+- `with_telemetry(false)` suppresses the session events but not the 4 events of environment creation, and any ETW session that enables the provider afterwards switches all events on again, as read at source.
+- `ORT_DISABLE_TELEMETRY` has no effect on the Windows library (`env-only` equals `none`).
+- **On the owner's machine the events are collected:** the `DiagTrack` service runs, the diagnostic-data level is 1 (Required, `AllowTelemetry` under `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection`), and the `Diagtrack-Listener` session enables the ONNX Runtime provider by its GUID. Whether DiagTrack uploads these events at that level is Windows' decision and was not observed; the events reach Windows' local collector on that machine. On the CI runner DiagTrack is disabled.
+- Another process on the owner's machine also uses ONNX Runtime (about 256 `EvaluationStart`/`EvaluationStop` events per run from other PIDs); not ours.
+- The first version of the script counted Kernel-Network events by the process context in which they were logged; that context is arbitrary, and the event's `PID` field names the owner. Recounted by that field, every reported "network event of the probe" belonged to another process; the script now uses the field.
+
+### Consequence for R-NF-12 and O-13
+
+- Linux: the mitigation works; `ORT_DISABLE_TELEMETRY=1` set by our own code before the first ONNX Runtime call is required, the API setting is not sufficient.
+- Windows: telemetry remains with the mitigation (initialisation events always, all events once any session enables the provider), and on a machine with default diagnostic-data settings Windows' collector subscribes to them. Per R-NF-12 that requires the decision on an ONNX Runtime build with `--no_telemetry` before M2; whether such a build removes the TraceLogging provider or only its telemetry option has to be verified at source and by repeating this measurement against it.
+- The M2 smoke test of R-NF-12 must start the app without the CI variables, or it measures nothing on Linux.
