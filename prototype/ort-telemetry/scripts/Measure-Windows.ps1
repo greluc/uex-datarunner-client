@@ -188,7 +188,7 @@ $summary.Add("- onnxruntime.dll SHA-256: $((Get-FileHash (Join-Path $OrtDir 'onn
 $diagTrack = Get-Service DiagTrack -ErrorAction SilentlyContinue
 $summary.Add("- DiagTrack service: $(if ($diagTrack) { "$($diagTrack.Status), start type $($diagTrack.StartType)" } else { 'not present' })")
 foreach ($policy in 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection', 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\DataCollection') {
-    $value = (Get-ItemProperty $policy -Name AllowTelemetry -ErrorAction SilentlyContinue).AllowTelemetry
+    $value = try { Get-ItemPropertyValue $policy -Name AllowTelemetry } catch { $null }
     $summary.Add("- AllowTelemetry under $($policy -replace '^HKLM:\\', 'HKLM\'): $(if ($null -ne $value) { $value } else { 'not set' })")
 }
 $listener = (& logman query Diagtrack-Listener -ets 2>&1) -join "`n"
