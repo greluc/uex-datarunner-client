@@ -90,7 +90,7 @@ Reading UEX (GET) is allowed. Every write that an agent makes or triggers – `d
 | Credential store | `keyring` | 4.2.0 (ADR-0001) |
 | Money and time | a decimal type for money, chosen in M0; time through `std::time` or a crate chosen in M0, always behind a `Clock` trait | verified in M0 |
 | Format and lint | `rustfmt` (`cargo fmt`), Clippy (`cargo clippy -- -D warnings`, `disallowed_types`/`disallowed_methods`), `#![deny(missing_docs)]` | with the pinned toolchain |
-| Tests | the built-in test harness, `proptest`, `wiremock`, an egui UI test harness (candidate `egui_kittest`, unverified, O-114) | verified in M0 |
+| Tests | the built-in test harness, `proptest`, `wiremock`, the egui UI test harness `egui_kittest` with its `wgpu` and `snapshot` features (O-114) | `egui_kittest` `=0.36.2` (verified 2026-10-14); the others verified in M0 |
 | Mutation testing and coverage | `cargo-mutants`, `cargo-llvm-cov` | verified in M0 |
 | Architecture rules | an `xtask` test over `cargo metadata` (context map, adapter leaves), Clippy, `cargo-deny` `bans` (ADR-0005 D13) | – |
 | Supply chain | `Cargo.lock` with `--locked`; `cargo-deny`; `cargo-audit` and OSV-Scanner (release binary, SHA-256 pinned, 10 S-19); `cargo-vet`; `cargo vendor`; an SBOM generator (CycloneDX); GitHub Actions `actions/checkout`, `actions/attest`, `actions/upload-artifact`, `actions/download-artifact` and a Rust toolchain installer step | chosen and verified in M0 (actions pinned by SHA, tags in `docs/dependency-pins.md`) |
@@ -266,7 +266,7 @@ cargo xtask package             # installer for the current OS (cargo-packager)
   - Never regenerate `expected.json` from a recognition run to make a diff go away. Change only the entries you mean to change, settle a disputed field against the pixels of the capture, and leave `verified` at `false`; only a human sets it to `true`. `tools/ocr-eval annotate` writes proposals to a separate file.
   - A change to locate, anchors, panel normalisation or crop geometry is verified with the crop dump over the whole corpus (public and, locally, private), looked at before the golden sweep: a wrong crop can still yield plausible values.
 - **"Silently wrong" metric** (wrong and marked as confident): regressions are blockers.
-- **UI:** an egui UI test harness (candidate `egui_kittest`, unverified, O-114) only for critical flows (onboarding, submission block, the Fan Kit unit's placements). Coverage is measured with `cargo-llvm-cov`.
+- **UI:** the egui UI test harness `egui_kittest` (O-114) only for critical flows (onboarding, submission block, the Fan Kit unit's placements). Coverage is measured with `cargo-llvm-cov`.
 - A change to the UI, the crate graph or its feature flags, the ONNX Runtime library handling, the graphics backend, resources or packaging is verified by launching the app (`cargo run`; for packaging the installed package or the unpacked archive), not only by tests. Report what was launched and what was seen.
 - Bug fixes always come with a test that reproduces the bug first.
 
