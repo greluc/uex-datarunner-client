@@ -42,4 +42,4 @@ The spike lives on the branch `prototype/ort-link-mode` (never merged; full reco
 
 - 09 §3b, 09 §12, 10 S-2 and §2.5, 02 §8, `NOTICE` 2.3, `docs/dependency-pins.md`, the 04 risk table and `CLAUDE.md` name rc.14 and 1.31.0.
 - An `ort` or ONNX Runtime update changes the pins, `NOTICE` and the hashes in the code together, and repeats the load test.
-- The Linux run of the spike, the import analysis of the Windows library (O-12) and the telemetry spike (O-13) are still open; `with_telemetry(false)` is set by the spike but is not yet shown to be enough.
+- The spike passed on Windows and Linux in CI on 2026-10-14 (10 §2.5). The import analysis of the Windows library (O-12) and the telemetry spike (O-13) are still open; `with_telemetry(false)` is set by the spike but is not yet shown to be enough.
