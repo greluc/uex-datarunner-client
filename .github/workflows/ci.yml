@@ -45,5 +45,11 @@ jobs:
           test -n "$pinned"
           test "$pinned" = "$actual"
 
+      - name: Guard the supply-chain configuration
+        run: cargo xtask guard
+
+      - name: Verify the vendor hash list against a clean vendor
+        run: cargo xtask vendor-hashes verify
+
       - name: Run the gate
         run: cargo xtask check

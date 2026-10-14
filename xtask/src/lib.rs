@@ -7,7 +7,17 @@
 
 pub mod check;
 pub mod exit;
+pub mod guard;
+pub mod hashlist;
 pub mod listing;
+pub mod lockfile;
 pub mod registry;
 pub mod requirement;
+pub mod sources;
 pub mod tags;
+pub mod vendor;
+
+#[cfg(test)]
+mod negative;
+#[cfg(test)]
+mod scratch;

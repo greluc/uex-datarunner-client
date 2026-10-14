@@ -2,7 +2,7 @@
 
 **Tallyline** (the product name, decided 2026-10-12, O-8; the GitHub repository is still `uex-datarunner-client`) is a desktop client (Windows + Linux) for capturing Star Citizen commodity terminal data – **manually or via screenshot OCR** – and submitting it to the **UEX API 2.0** (`POST /data_submit`). Current UEX data (terminals, commodities, latest prices, status levels, tolerances) are **constraints and default values** for recognition and selection.
 
-**Status:** planning phase, milestone M0 in `docs/plan/04-roadmap.md` has started. The only code so far is the `xtask` crate (`cargo xtask check`, `rust-toolchain.toml`, workspace lints); every other crate is created with its first test. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
+**Status:** planning phase, milestone M0 in `docs/plan/04-roadmap.md` has started. The only code so far is the `xtask` crate (`cargo xtask check`, the supply-chain guard and the vendor hash list, `rust-toolchain.toml`, workspace lints); every other crate is created with its first test. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
 
 ## Language
 
@@ -44,7 +44,7 @@
 - Directly below its title, every document under `docs/` carries `> **Doc type:** <type> — <status>. Last reviewed: YYYY-MM-DD.` Types: `Living spec` (01, 02, 06, 07, 09, 10, 11, release process), `Living plan` (04), `Living reference` (05 bug analysis, open-points register, dependency pins, CLA roster, `docs/README.md`), `Decision record` (ADRs, 03 as ADR-0001), `Historical record` (08: corrections are new dated sections), `Prompt` (`docs/prompts/*`, with run status). A shipped plan becomes `Historical plan` and points to its successor.
 - `README.md`, the user guide under `docs/user/` (R-DOC-1, from M1) and `CHANGELOG.md` change with every user-visible change, in the same commit; release step 5 only checks them.
 - Diagrams are Mermaid or plain-text trees; no binary diagram files. Images in `docs/` are only redacted user-guide screenshots and the Fan Kit logo files.
-- Every top-level directory (`docs/`, `corpus/`, `tools/`, `xtask/` and any other once created) has a `README.md` saying what belongs there; a workspace crate's purpose lives in its crate-level `//!` documentation and 02 §2.
+- Every top-level directory (`docs/`, `corpus/`, `tools/`, `xtask/`, `supply-chain/` and any other once created) has a `README.md` saying what belongs there; a workspace crate's purpose lives in its crate-level `//!` documentation and 02 §2.
 - This file is kept current like every other document; from M0 the tech-stack table follows the workspace `Cargo.toml` and `Cargo.lock` in the same commit.
 
 ## Requirements, decisions and open points
@@ -158,10 +158,13 @@ This site is not endorsed by or affiliated with the Cloud Imperium or Roberts Sp
 
 ## Commands
 
-Valid from M0 once the build exists. They are the intended interface; `cargo xtask check` exists today (format, Clippy, rustdoc, tests and the requirement-tag check; the other gates join it with their tickets), the other flags are fixed in M0, so check the tree before you rely on one:
+Valid from M0 once the build exists. They are the intended interface; `cargo xtask check` exists today (the supply-chain guard, format, Clippy, rustdoc, tests and the requirement-tag check; the other gates join it with their tickets), the other flags are fixed in M0, so check the tree before you rely on one:
 
 ```bash
-cargo xtask check               # format check, Clippy, rustdoc lints, all tests, architecture rules, cargo-deny, coverage gate
+cargo xtask check               # supply-chain guard, format check, Clippy, rustdoc lints, all tests, architecture rules, cargo-deny, coverage gate
+cargo xtask guard               # the CI guard of 10 S-4 over Cargo.lock, manifests, Cargo config, toolchain pin and .github
+cargo xtask vendor-hashes write # regenerate supply-chain/vendor-hashes.txt (network; run in the lockfile commit)
+cargo xtask vendor-hashes verify # compare a clean vendor with the hash list (network; CI runs it)
 cargo fmt                       # format
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked # all tests
