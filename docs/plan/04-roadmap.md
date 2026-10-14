@@ -1,6 +1,6 @@
 # Roadmap
 
-> **Doc type:** Living plan — active. Last reviewed: 2026-10-13.
+> **Doc type:** Living plan — active. Last reviewed: 2026-10-14.
 
 Amended 2026-10-12 ([ADR-0005](../adr/0005-rust-and-egui.md)): the milestones now build a Rust and egui application. "Module" reads as "Cargo workspace crate" (the context cut of ADR-0002 is unchanged), M0 is rewritten for the Rust toolchain, the supply chain and the new spikes, and the Java-specific items (JDK 27 toolchain check, jlink and ONNX Runtime merge, JavaFX screen-reader spike, JVM heap limits) are gone. The acceptance criteria keep their meaning.
 
@@ -162,9 +162,9 @@ Amended 2026-10-12 (ADR-0005): R-UI-17 is split. R-UI-17 (contrast, keyboard ope
 
 | Requirement | Verified by |
 |---|---|
-| R-SEC-1 | CI job with the M0 negative test: a git or unlisted-registry dependency, or a build with `--locked` against a stale `Cargo.lock`, makes the build fail (`cargo-deny` sources; 10 S-1…S-3) |
-| R-SEC-2 | CI job with the M0 negative test: a tampered vendored crate (changed hash) makes the build fail; `CODEOWNERS` covers the files of 10 S-5 |
-| R-SEC-3 | CI toolchain check: `rust-toolchain.toml` names an exact version and the installed toolchain matches it, verified by checksum (10 S-10, S-11) |
+| R-SEC-1 | CI job with the M0 negative test: a git or unlisted-registry dependency, or a build with `--locked` against a stale `Cargo.lock`, makes the build fail (`cargo xtask guard` and the `xtask` tests tagged R-SEC-1, which run a real offline `cargo build --locked`, in the CI matrix; `cargo-deny` sources joins them with its ticket; 10 S-1…S-4) |
+| R-SEC-2 | CI job with the M0 negative test: a tampered vendored crate (changed hash) makes the build fail (`cargo xtask vendor-hashes verify` against a clean vendor with an empty Cargo home, and the `xtask` tests tagged R-SEC-2); `CODEOWNERS` covers the files of 10 S-5 |
+| R-SEC-3 | CI toolchain check: `rust-toolchain.toml` names an exact version (`cargo xtask guard`, tests tagged R-SEC-3) and the installed toolchain matches it, verified by checksum (10 S-10, S-11) |
 | R-SEC-4 | CI lint: every `uses:` is pinned by a 40-character commit SHA and every workflow declares `permissions`; release only from protected tags (10 S-13…S-15) |
 | R-SEC-5 | `.github/dependabot.yml` with the 7-day cooldown; OSV-Scanner job (10 S-7, S-19) |
 | R-SEC-6 | Release checklist steps 6–7 ([release process](../release-process.md)): SHA256SUMS, SBOM, `gh attestation verify` |
