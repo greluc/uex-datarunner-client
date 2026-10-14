@@ -17,8 +17,6 @@ pub struct PinnedRuntime {
     pub file_name: &'static str,
     /// Lower-case hex SHA-256 of the library file.
     pub sha256: &'static str,
-    /// ONNX Runtime version the file belongs to.
-    pub version: &'static str,
     /// Abbreviated commit of the release tag, as the library reports it in its build information.
     pub git_commit: &'static str,
 }
@@ -27,7 +25,6 @@ pub struct PinnedRuntime {
 pub const WINDOWS_X64: PinnedRuntime = PinnedRuntime {
     file_name: "onnxruntime.dll",
     sha256: "4d2774a5f64e4a230b16b74b167171e92f65b0683c19680c1d04fb284b92a6e2",
-    version: "1.28.3",
     git_commit: "0d68ff6",
 };
 
@@ -35,7 +32,6 @@ pub const WINDOWS_X64: PinnedRuntime = PinnedRuntime {
 pub const LINUX_X64: PinnedRuntime = PinnedRuntime {
     file_name: "libonnxruntime.so.1.28.3",
     sha256: "5a1ce74e56e8c4b278d5a9e9d12b7192d9f70811084dde9616da4fa1710efc5a",
-    version: "1.28.3",
     git_commit: "0d68ff6",
 };
 
@@ -76,6 +72,13 @@ pub enum LoadError {
     SearchPath(io::Error),
     /// `ort` could not load the verified library.
     Ort(ort::LoadDynamicError),
+    /// `ort` already holds a runtime that the process mapped from another path; the verified file was not used.
+    LoadedElsewhere {
+        /// The verified file.
+        verified: PathBuf,
+        /// The path the process mapped the runtime from, if it could be read.
+        mapped: Option<PathBuf>,
+    },
 }
 
 impl fmt::Display for LoadError {
@@ -96,6 +99,15 @@ impl fmt::Display for LoadError {
             }
             Self::SearchPath(source) => write!(f, "cannot restrict the DLL search path: {source}"),
             Self::Ort(source) => write!(f, "{source}"),
+            Self::LoadedElsewhere { verified, mapped } => match mapped {
+                Some(mapped) => write!(
+                    f,
+                    "the runtime was loaded from `{}` instead of `{}`",
+                    mapped.display(),
+                    verified.display()
+                ),
+                None => write!(f, "the runtime is not mapped from `{}`", verified.display()),
+            },
         }
     }
 }
@@ -128,7 +140,14 @@ pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<PathBuf, LoadError> {
         });
     }
     platform::restrict_library_search().map_err(LoadError::SearchPath)?;
-    ort::init_from(&path).map_err(LoadError::Ort)?.commit();
+    let _ = ort::init_from(&path).map_err(LoadError::Ort)?.commit();
+    let mapped = platform::loaded_module_path(pinned.file_name);
+    if !same_file(mapped.as_deref(), &path) {
+        return Err(LoadError::LoadedElsewhere {
+            verified: path,
+            mapped,
+        });
+    }
     Ok(path)
 }
 
@@ -136,6 +155,13 @@ pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<PathBuf, LoadError> {
 #[must_use]
 pub fn loaded_runtime_path(pinned: &PinnedRuntime) -> Option<PathBuf> {
     platform::loaded_module_path(pinned.file_name)
+}
+
+fn same_file(mapped: Option<&Path>, verified: &Path) -> bool {
+    match (mapped.map(fs::canonicalize), fs::canonicalize(verified)) {
+        (Some(Ok(mapped)), Ok(verified)) => mapped == verified,
+        (Some(Ok(_) | Err(_)) | None, Ok(_) | Err(_)) => false,
+    }
 }
 
 fn hex(bytes: &[u8]) -> String {

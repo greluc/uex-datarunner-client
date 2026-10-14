@@ -6,12 +6,13 @@
 use std::fs;
 use std::path::PathBuf;
 
-use tallyline_ort_link_mode_spike::{LoadError, PinnedRuntime, load, loaded_runtime_path};
+use tallyline_ort_link_mode_spike::{
+    LoadError, PinnedRuntime, load, loaded_runtime_path, pinned_for_target,
+};
 
 const FAKE: PinnedRuntime = PinnedRuntime {
     file_name: "tallyline-spike-runtime.bin",
     sha256: "0000000000000000000000000000000000000000000000000000000000000000",
-    version: "0.0.0",
     git_commit: "0000000",
 };
 
@@ -44,9 +45,11 @@ fn a_missing_file_is_refused() -> Result<(), std::io::Error> {
 
 #[test]
 fn a_file_with_another_hash_is_refused_before_it_is_loaded() -> Result<(), std::io::Error> {
+    let pinned = pinned_for_target()
+        .ok_or_else(|| std::io::Error::other("no pinned runtime for this target"))?;
     let dir = scratch_dir("tampered")?;
-    fs::write(dir.join(FAKE.file_name), b"not the pinned runtime")?;
-    let outcome = load(&dir, &FAKE);
+    fs::write(dir.join(pinned.file_name), b"not the pinned runtime")?;
+    let outcome = load(&dir, pinned);
     let Err(LoadError::HashMismatch { actual, .. }) = outcome else {
         fs::remove_dir_all(&dir)?;
         return Err(std::io::Error::other(format!(
@@ -54,7 +57,7 @@ fn a_file_with_another_hash_is_refused_before_it_is_loaded() -> Result<(), std::
         )));
     };
     assert_eq!(actual.len(), 64);
-    assert_ne!(actual, FAKE.sha256);
-    assert!(loaded_runtime_path(&FAKE).is_none());
+    assert_ne!(actual, pinned.sha256);
+    assert!(loaded_runtime_path(pinned).is_none());
     fs::remove_dir_all(dir)
 }

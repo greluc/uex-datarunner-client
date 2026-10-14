@@ -6,10 +6,10 @@ Spike code for the M0 ONNX Runtime link-mode item ([04](../../docs/plan/04-roadm
 
 A standalone crate (its own `[workspace]` and `Cargo.lock`) on `ort` `=2.0.0-rc.13` with `default-features = false` and the features `load-dynamic` and `api-28`, plus `sha2` for the hash check. It:
 
-- holds the pinned library of each shipped target (file name, SHA-256, ONNX Runtime version, release commit);
+- holds the pinned library of each shipped target (file name, SHA-256, release commit);
 - refuses a directory that is not absolute, a missing file and a file with another SHA-256, before anything is loaded;
 - on Windows restricts the process DLL search path with `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS)` (application directory, `System32`, added directories; no current directory, no `PATH`);
-- loads the verified file with `ort::init_from(<absolute path>)` and commits the environment;
+- loads the verified file with `ort::init_from(<absolute path>)`, commits the environment and then checks that the module the process mapped is the verified file;
 - runs a hand-encoded ONNX model (one `Identity` node, float `[3]`) to prove the loaded runtime works.
 
 ## Commands
@@ -26,7 +26,8 @@ The workflow `.github/workflows/ort-link-mode-spike.yml` runs the same on `windo
 
 | File | What it pins |
 |---|---|
-| `tests/refuse.rs` | a relative directory, a missing file and a file whose SHA-256 differs are refused, and the library is not mapped into the process afterwards |
+| `tests/refuse.rs` | a relative directory, a missing file and a file under the pinned name whose SHA-256 differs are refused, and no module of that name is mapped into the process afterwards |
+| `tests/preloaded.rs` (ignored without `TALLYLINE_ORT_DIR`) | a runtime that `ort` loaded from another path before the verified load makes the load fail with `LoadedElsewhere` instead of being accepted |
 | `tests/load.rs` (ignored without `TALLYLINE_ORT_DIR`) | the pinned file loads from its absolute path; the module the process mapped is that file; `ort::info()` names the release commit; the `Identity` model returns its input; no ONNX Runtime file or other `.dll`/`.so` appears in the temp directory |
 
 ## The pinned library
@@ -50,13 +51,14 @@ The archives also hold `LICENSE` (MIT), `ThirdPartyNotices.txt` and `Privacy.md`
 
 ### `load-dynamic` works and needs no build-time download
 
-- With `load-dynamic`, `ort-sys` gets `disable-linking`, and its build script returns before linking or downloading anything. The resolved graph is `ort`, `ort-sys`, `libloading` 0.9.0, `smallvec` and (Windows) `windows-link`. `ort-sys` keeps `links = "onnxruntime"`, so the 09 §3b architecture check sees it.
+- With `load-dynamic`, `ort-sys` gets `disable-linking`, and its build script returns before linking or downloading anything. The compiled graph (`cargo tree --target all -e normal`) is `ort`, `ort-sys`, `libloading` 0.9.0, `smallvec`, `windows-link` on Windows and `libc` on Linux; `Cargo.lock` also lists the optional dependencies of `ort` (`ndarray`, `tracing` and theirs), which these features do not compile. `ort-sys` keeps `links = "onnxruntime"`, so the 09 §3b architecture check sees it.
 - On Windows, the official `onnxruntime.dll` loaded from an absolute path in a directory that held nothing else, after `SetDefaultDllDirectories`, and ran the model. `onnxruntime_providers_shared.dll` was not present and not needed for the CPU execution provider. The dependent `MSVCP140*.dll`/`VCRUNTIME140*.dll` were found in `System32`, because the Visual C++ redistributable is installed on the test machine; whether they ship is the import-analysis item (O-12).
 - `api-28` makes `ort` refuse a library older than 1.28 (`LoadDynamicError::BadVersion`) and log, not refuse, a newer one.
 - Linux has not run locally (no Rust toolchain in the available WSL distribution); the workflow covers it once the branch is pushed.
 
 ### Behaviour of `ort` that the adapter must respect
 
+- `ort` keeps the loaded library in a process-wide `OnceLock`: once a library is loaded, a later `init_from` with another path returns `Ok` without loading anything. The verified load therefore checks afterwards which file the process mapped (`tests/preloaded.rs`).
 - If any `ort` API runs before `init_from`, `ort` loads the library itself from the environment variable `ORT_DYLIB_PATH` or, failing that, from the bare name `onnxruntime.dll` / `libonnxruntime.so` (resolved next to the executable if it exists there, otherwise through the system search path), **without a hash check**, and panics if that fails. `adapter-ocr` must therefore call the verified load before any other `ort` call, and be the only crate that names `ort`.
 - `init_from` resolves a relative path against the executable's directory; the adapter passes an absolute path anyway.
 - `libloading` calls `LoadLibraryExW(path, NULL, 0)`, so the library's own imports follow the process's default DLL search order; `SetDefaultDllDirectories` is what removes the current directory and `PATH` from it. It is an `unsafe` FFI call and belongs to `adapter-platform` (09 §3a).
