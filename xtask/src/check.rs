@@ -10,6 +10,8 @@ pub enum Step {
     SupplyChainGuard,
     /// The justification rule of 10 S-6 over the suppressions in `deny.toml`.
     DenySuppressions,
+    /// The bootstrap rule of 10 S-6 over the `cargo-vet` exemptions in `supply-chain/`.
+    VetExemptions,
     /// A Cargo invocation that must exit successfully.
     Cargo {
         /// The name shown in the report.
@@ -33,6 +35,7 @@ impl Step {
         match self {
             Self::SupplyChainGuard => "supply-chain guard",
             Self::DenySuppressions => "cargo-deny suppressions",
+            Self::VetExemptions => "cargo-vet exemptions",
             Self::Cargo { name, .. } => name,
             Self::RequirementTags { .. } => "requirement tags",
         }
@@ -57,6 +60,7 @@ pub fn plan() -> Vec<Step> {
             &["deny", "--locked", "check", "licenses", "sources", "bans"],
         ),
         Step::DenySuppressions,
+        Step::VetExemptions,
         cargo("format", &["fmt", "--all", "--check"]),
         cargo(
             "clippy",
@@ -101,7 +105,7 @@ mod tests {
         match step {
             Step::Cargo { args, .. } => args.iter().map(String::as_str).collect(),
             Step::RequirementTags { list } => list.iter().map(String::as_str).collect(),
-            Step::SupplyChainGuard | Step::DenySuppressions => Vec::new(),
+            Step::SupplyChainGuard | Step::DenySuppressions | Step::VetExemptions => Vec::new(),
         }
     }
 
@@ -109,7 +113,7 @@ mod tests {
     fn rustdoc_runs_with_warnings_denied_through_the_environment() {
         let plan = plan();
         assert_eq!(
-            plan[5],
+            plan[6],
             Step::Cargo {
                 name: "rustdoc",
                 args: ["doc", "--workspace", "--no-deps", "--locked"]
@@ -130,6 +134,7 @@ mod tests {
                 "supply-chain guard",
                 "cargo-deny",
                 "cargo-deny suppressions",
+                "cargo-vet exemptions",
                 "format",
                 "clippy",
                 "rustdoc",
@@ -141,9 +146,9 @@ mod tests {
             cargo_args(&plan[1]),
             ["deny", "--locked", "check", "licenses", "sources", "bans"]
         );
-        assert_eq!(cargo_args(&plan[3]), ["fmt", "--all", "--check"]);
+        assert_eq!(cargo_args(&plan[4]), ["fmt", "--all", "--check"]);
         assert_eq!(
-            cargo_args(&plan[4]),
+            cargo_args(&plan[5]),
             [
                 "clippy",
                 "--workspace",
@@ -154,9 +159,9 @@ mod tests {
                 "warnings"
             ]
         );
-        assert_eq!(cargo_args(&plan[6]), ["test", "--workspace", "--locked"]);
+        assert_eq!(cargo_args(&plan[7]), ["test", "--workspace", "--locked"]);
         assert_eq!(
-            cargo_args(&plan[7]),
+            cargo_args(&plan[8]),
             ["test", "--workspace", "--locked", "--", "--list"]
         );
     }

@@ -5,8 +5,10 @@ Committed records of the supply-chain measures of `docs/plan/10-supply-chain-sec
 | File | What it is |
 |---|---|
 | `vendor-hashes.txt` | The per-package hash list of the vendored dependency tree (10 S-4, O-120). The tree itself is never committed; CI regenerates it and compares it with this list |
-
-The `cargo-vet` audit, configuration and import files (10 S-6) will be added here by their own ticket.
+| `config.toml` | The `cargo-vet` configuration: the audit sources we import from and the exemptions (10 S-6) |
+| `audits.toml` | The audits we certify ourselves with `cargo vet certify`; empty until the first one |
+| `imports.lock` | The audits imported from the sources of `config.toml`, as fetched when `cargo vet regenerate imports` last ran |
+| `bootstrap-exemptions.txt` | The crates that the bootstrap exemptions of `config.toml` cover; the set only shrinks (10 S-6) |
 
 ## `vendor-hashes.txt`
 
@@ -20,6 +22,28 @@ name version archive-sha256 tree-sha256
 
 `cargo xtask vendor-hashes verify` vendors the locked dependencies into `target/xtask-vendor` with an empty Cargo home and fails when a package is missing from the list, is not in the lockfile, has another archive checksum or has other files.
 
-## Changing a dependency
+## `cargo-vet`
 
-A pull request that changes a dependency has the `Cargo.toml` and `Cargo.lock` change as one commit and the output of `cargo xtask vendor-hashes write` as the next (10 S-5). Review the diff of this file together with the new transitive crates (10 S-9): every added line is a new crate version that enters the build.
+`cargo-vet` 0.10.2 (`docs/dependency-pins.md`) checks that every crate of the dependency graph is audited by us, covered by an audit we import, or exempted. CI runs `cargo vet --locked`, which neither fetches nor rewrites anything and fails on a crate that none of the three covers.
+
+- **`config.toml`** holds `[imports.<name>]` sections (the sources we trust) and `[[exemptions.<crate>]]` entries. The sources are named here and in the pull request that adds them: `bytecode-alliance`, `embark-studios`, `google` and `mozilla`, each by the URL that the `cargo-vet` registry lists. An import widens whom we trust, so a new one is a deliberate, reviewed change.
+- **Bootstrap exemptions.** The crates that no import covered when the store was created (2026-10-14) are exempt with the shared `notes` text `initial adoption, not yet audited` and one shared row in the suppression register (`docs/plan/09-engineering-principles.md` §3a) with the revisit date 2027-04-13, before release 1.0. The set only shrinks: `bootstrap-exemptions.txt` names exactly the crates the exemptions cover, `cargo xtask check` fails when `config.toml` and the file differ, and a pull request that adds a line to the file violates 10 S-6. Auditing a crate removes its exemption and its line in the same commit; when the last one goes, the register row goes too.
+- **Other exemptions** are for a crate that cannot be audited. Such an exemption carries its own `notes` that say why, and has its own register row that names `supply-chain/config.toml` and the crate in backticks and ends with a revisit date. They are never a way to skip the audit of a crate that can be read.
+- **Tool-written header comments.** `cargo vet` writes a one-line header comment into `config.toml`, `audits.toml` and `imports.lock` and its `--locked` format check rejects a store without them, so these three files keep that comment although configuration files carry none otherwise. They are the only comments of this directory.
+- **Updating the store.** Run `cargo vet` without `--locked` only to change the store on purpose (`cargo vet certify`, `cargo vet regenerate imports`, `cargo vet regenerate exemptions`); it fetches the imported audit files and rewrites `imports.lock`. Review the diff of `imports.lock` like a lockfile.
+
+## Adding or updating a dependency
+
+The steps below apply to every pull request that adds a crate or moves a version, by hand or through Dependabot (10 S-5, S-8, S-9). A new dependency is audited or imported, never added to the bootstrap exemptions.
+
+1. **Justify it** in the pull request (the section "Dependencies and keys" of the template): purpose, SPDX licence and where you read it, crates.io owners and last release, the repository the crate links to, whether it has a `build.rs`, a procedural macro, `unsafe` or native code (10 S-29, 09 §3b), and its `cargo-vet` status. Check the version against the 7-day cooldown of 10 S-7.
+2. **Commit the change:** `Cargo.toml` (once in `[workspace.dependencies]`) and `Cargo.lock` as one commit, then `cargo xtask vendor-hashes write` and the changed `supply-chain/vendor-hashes.txt` as the next commit. Read the vendor diff, the new transitive crates, and every new `build.rs` and procedural macro.
+3. **Run `cargo vet`.** It lists the crates and versions that are not covered. For each one, in this order:
+   1. **Import.** `cargo vet suggest` shows which unaudited crates an imported source could cover. If one of the four sources already audited the crate or a version it can be reached from by a delta, nothing is needed.
+   2. **Another source.** If a source we do not import audited it, add its `[imports.<name>]` section to `config.toml` (the URL from the `cargo-vet` registry or the source's own repository), name it in the pull request and run `cargo vet regenerate imports`.
+   3. **Audit it yourself.** Read the crate with `cargo vet inspect <crate> <version>` and record the result with `cargo vet certify <crate> <version>` (or `cargo vet certify <crate> <from> <to>` for a delta between two versions you have audited), criteria `safe-to-deploy`, with `notes` that say what you read. The entry lands in `audits.toml`.
+   4. **A crate that cannot be audited** gets a justified exemption (see above) with its register row, and the pull request names the reason.
+4. **Run `cargo xtask check`** (it checks the exemption rule without network) and **`cargo vet --locked`** with the `cargo-vet` version of `docs/dependency-pins.md`. CI runs both, plus `cargo audit` and the OSV scan, and the licence gate (`cargo-deny`) for the new licences.
+5. **Name the result in the pull request:** which crates were imported, audited or exempted, and which sources. Commit the store files in the same pull request as the dependency change (10 S-5).
+
+A version bump of a crate that is in `bootstrap-exemptions.txt` may move its exemption to the new version: `cargo vet regenerate exemptions` writes the entry without `notes`, so add the shared text again by hand. The crate stays in the baseline and nothing new enters it; an audit or an import of the new version is better and shrinks the baseline.

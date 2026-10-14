@@ -13,11 +13,13 @@ pub mod hashlist;
 pub mod listing;
 pub mod lockfile;
 pub mod osv;
+pub mod register;
 pub mod registry;
 pub mod requirement;
 pub mod sources;
 pub mod tags;
 pub mod vendor;
+pub mod vet;
 
 #[cfg(test)]
 mod denygate;

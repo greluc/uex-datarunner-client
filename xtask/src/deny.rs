@@ -3,6 +3,8 @@
 
 //! The justification rule for the suppressions in `deny.toml` (10 S-6).
 
+use crate::register::{self, Row};
+
 /// Names the suppression entries of `deny_toml` that lack a `reason`, or a row with a revisit date
 /// in the suppression register `register` (09 §3a).
 ///
@@ -15,7 +17,7 @@ pub fn unjustified_suppressions(deny_toml: &str, register: &str) -> Vec<String> 
         Ok(table) => table,
         Err(error) => return vec![format!("deny.toml is not valid TOML: {error}")],
     };
-    let rows = register_rows(register);
+    let rows = register::rows(register);
     entries(&table)
         .into_iter()
         .flat_map(|entry| problems(&entry, &rows))
@@ -34,11 +36,6 @@ struct Entry {
     name: String,
     reason: Option<String>,
     reason_required: bool,
-}
-
-struct Row<'a> {
-    text: &'a str,
-    dated: bool,
 }
 
 fn entries(table: &toml::Table) -> Vec<Entry> {
@@ -85,47 +82,6 @@ fn entry(key: String, value: &toml::Value, reason_required: bool) -> Entry {
     }
 }
 
-const REGISTER_HEADING: &str = "## 3a.";
-
-fn register_rows(register: &str) -> Vec<Row<'_>> {
-    let section: Vec<&str> = if register
-        .lines()
-        .any(|line| line.starts_with(REGISTER_HEADING))
-    {
-        register
-            .lines()
-            .skip_while(|line| !line.starts_with(REGISTER_HEADING))
-            .enumerate()
-            .take_while(|(index, line)| *index == 0 || !line.starts_with("## "))
-            .map(|(_, line)| line)
-            .collect()
-    } else {
-        register.lines().collect()
-    };
-    section
-        .into_iter()
-        .filter(|line| line.trim_start().starts_with('|'))
-        .map(|line| Row {
-            text: line,
-            dated: line
-                .trim()
-                .trim_matches('|')
-                .rsplit('|')
-                .next()
-                .is_some_and(contains_iso_date),
-        })
-        .collect()
-}
-
-fn contains_iso_date(text: &str) -> bool {
-    text.as_bytes().windows(10).any(|window| {
-        window.iter().enumerate().all(|(index, byte)| match index {
-            4 | 7 => *byte == b'-',
-            _ => byte.is_ascii_digit(),
-        })
-    })
-}
-
 fn problems(entry: &Entry, rows: &[Row<'_>]) -> Vec<String> {
     let subject = format!("deny.toml {} entry {}", entry.key, entry.name);
     let mut problems = Vec::new();
@@ -145,7 +101,7 @@ fn problems(entry: &Entry, rows: &[Row<'_>]) -> Vec<String> {
         problems.push(format!(
             "{subject}: no row in the suppression register (09 §3a) naming `deny.toml` and {marker}"
         ));
-    } else if !named.iter().any(|row| row.dated) {
+    } else if !named.iter().any(|row| row.dated()) {
         problems.push(format!(
             "{subject}: its suppression register row has no revisit date"
         ));

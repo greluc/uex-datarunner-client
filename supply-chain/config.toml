@@ -1,0 +1,157 @@
+
+# cargo-vet config file
+
+[cargo-vet]
+version = "0.10"
+
+[imports.bytecode-alliance]
+url = "https://raw.githubusercontent.com/bytecodealliance/wasmtime/main/supply-chain/audits.toml"
+
+[imports.embark-studios]
+url = "https://raw.githubusercontent.com/EmbarkStudios/rust-ecosystem/main/audits.toml"
+
+[imports.google]
+url = "https://raw.githubusercontent.com/google/supply-chain/main/audits.toml"
+
+[imports.mozilla]
+url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
+
+[[exemptions.block-buffer]]
+version = "0.12.1"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.cfg-if]]
+version = "1.0.5"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.cpufeatures]]
+version = "0.3.1"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.crypto-common]]
+version = "0.2.2"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.digest]]
+version = "0.11.3"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.equivalent]]
+version = "1.0.3"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.hashbrown]]
+version = "0.17.1"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.hybrid-array]]
+version = "0.4.15"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.indexmap]]
+version = "2.14.2"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.itoa]]
+version = "1.0.18"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.libc]]
+version = "0.2.190"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.memchr]]
+version = "2.8.3"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.proc-macro2]]
+version = "1.0.107"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.serde]]
+version = "1.0.229"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.serde_core]]
+version = "1.0.229"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.serde_derive]]
+version = "1.0.229"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.serde_json]]
+version = "1.0.151"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.serde_spanned]]
+version = "1.1.2"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.sha2]]
+version = "0.11.0"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.syn]]
+version = "3.0.9"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.toml]]
+version = "1.1.6+spec-1.1.0"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.toml_datetime]]
+version = "1.1.2+spec-1.1.0"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.toml_parser]]
+version = "1.1.5+spec-1.1.0"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.toml_writer]]
+version = "1.1.3+spec-1.1.0"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.typenum]]
+version = "1.20.1"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.unicode-ident]]
+version = "1.0.27"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.winnow]]
+version = "1.0.4"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
+
+[[exemptions.zmij]]
+version = "1.0.23"
+criteria = "safe-to-deploy"
+notes = "initial adoption, not yet audited"
