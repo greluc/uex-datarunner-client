@@ -38,7 +38,7 @@ Order by risk and benefit: first the API uncertainties are clarified. Then follo
   - The game's frame time with and without the app, and the app while in use, stay with the M4 resource measurement.
   - The scripts `measure-footprint.ps1` and `sample-gpu.ps1` are delivered with the prototype.
   - Done 2026-10-14, ticked by @greluc's decision with two known deviations: the widgets are our own instead of the Tallyline widgets, and Linux was not run. The icon rendering check below is a separate item and stays open.
-- [ ] **Icon rendering check** at display scale 100, 125 and 150 %: the Tallyline icons stay crisp and aligned to the pixel grid in the prototype (adoption of the `tallyline-egui` crate: O-112). Status 2026-10-14 (#22): the check and its tests exist (`tests/icons.rs` on `prototype/review-table`), but they ran only on stand-in glyphs from egui's default fonts, so this item stays open until the crate is imported.
+- [ ] **Icon rendering check** at display scale 100, 125 and 150 %: the Tallyline icons stay crisp and aligned to the pixel grid in the prototype (adoption of the `tallyline-egui` crate: O-112). Status 2026-10-14 (#22): the check and its tests exist (`tests/icons.rs` on `prototype/review-table`), but they ran only on stand-in glyphs from egui's default fonts, so this item stays open until the crate is imported; the check is an acceptance criterion of the import issue #32.
   - Every glyph quad lands on the physical pixel grid at 100, 125 and 150 %.
   - egui does no hinting, so at 125 and 150 % some vertical one-unit strokes cover two pixel columns and look softer.
   - The real icon font (1.0 px strokes at 16 px, O-107) must be checked with the same test and the magnified renders.
