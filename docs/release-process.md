@@ -42,7 +42,7 @@ The release duties that follow from the project licence (GPL-3.0-or-later, [ADR-
   | 3.11.2 | none (WiX 3 has no maintenance-fee EULA, ADR-0005 D7) | – | – |
 
 - **`.deb`.** The default `copyright` file of the packager is replaced with a DEP-5 file that lists the bundled components and their licences; the mechanism, and the plain ZIP and `tar.gz` built by `xtask`, are verified in the M1 spike (O-116).
-- **Before the first release only:** a legal review of the Microsoft C/C++ runtime DLLs that the ONNX Runtime library needs in the Windows packages (our own binary can link the C runtime statically). Until then the project relies on the GPL-3.0 System Library definition. Whether a narrow GPL-3.0 §7 additional permission is added is decided before the first external contribution (O-12).
+- **Before the first release only:** a legal review of the Windows app's dependency on the Microsoft C/C++ runtime DLLs that the ONNX Runtime library needs (our own binary can link the C runtime statically). The packages do not ship them; the Visual C++ Redistributable is a prerequisite (ADR-0009, R-NF-13). Until then the project relies on the GPL-3.0 System Library definition. Whether a narrow GPL-3.0 §7 additional permission is added is decided before the first external contribution (O-12).
 - **Star Citizen Fan Kit.** `NOTICE` §4 records the checked kit version (`Fankit_2025_11_19`). The Fankit Agreement lets Cloud Imperium change its documents (clause 11, as recorded in basetool); when a newer kit is published, the project owner re-checks the unit (R-UI-19) against it before the next release.
 
 ## Security release
