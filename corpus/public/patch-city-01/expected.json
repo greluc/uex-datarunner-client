@@ -1,0 +1,1150 @@
+{
+  "schemaVersion": 2,
+  "id": "patch-city-01",
+  "verified": false,
+  "transcription": "Transcribed by Claude from the original screenshots on 2026-10-14; must be independently checked by a human before it counts as golden data.",
+  "source": {
+    "uploadedBy": "project owner",
+    "provided": "original files from the game's screenshot folder (file names kept in conditions.originalFile)",
+    "redaction": "Lossless block wipe with jpegtran -wipe (libjpeg-turbo 2.1.5) over the CURRENT BALANCE value and over the Session line of the r_DisplayInfo overlay; every pixel outside the two rectangles is identical to the original."
+  },
+  "location": {
+    "displayedText": "SELECT LOCATION",
+    "note": "The YOUR INVENTORIES location field shows its placeholder, not the station name, in every capture.",
+    "expectedTerminal": "Admin - Patch City (Pyro)"
+  },
+  "expectedTerminalId": 453,
+  "theme": "orange/red, mixed-case rounded font (Pyro style)",
+  "gameVersion": "4.10.2",
+  "localisation": {
+    "file": "global.ini",
+    "sha256": "a9e6e4b126c61a97fd6ccbe7ad846f2d6522534eb347a90cab276853c36023ec",
+    "bytes": 10715737,
+    "language": "English",
+    "note": "The game's language file in use when the captures were taken. It is game content and is not committed; it lives in the private corpus next to the originals."
+  },
+  "measured": {
+    "priceCapHeightPx": null,
+    "displayHeightFraction": null,
+    "textHeightBand": null
+  },
+  "captures": {
+    "buy-1.jpg": {
+      "side": "BUY",
+      "capturedAt": "2026-10-14T16:40:12+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-12-B78.jpg",
+        "originalSha256": "fa1607c1f6d7d7928374760f5e8e7e6c4803423d41ff86c265e55910370994d0",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [
+        {
+          "name": "IN STOCK",
+          "expanded": true,
+          "beforeCard": 1
+        },
+        {
+          "name": "OUT OF STOCK",
+          "expanded": false,
+          "beforeCard": null
+        }
+      ],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN STOCK",
+          "name": "Omnapoxy",
+          "status": "High Inventory",
+          "scu": 601,
+          "pricePerScu": 3237,
+          "containerSizes": null,
+          "expectedCommodityId": 115
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN STOCK",
+          "name": "Human Food Bars",
+          "status": "Max Inventory",
+          "scu": 6000,
+          "pricePerScu": 416,
+          "containerSizes": null,
+          "expectedCommodityId": 97
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN STOCK",
+          "name": "Fluorine",
+          "status": "Very Low Inventory",
+          "scu": 58,
+          "pricePerScu": 987,
+          "containerSizes": null,
+          "expectedCommodityId": 31
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN STOCK",
+          "name": "DynaFlex",
+          "status": "Very Low Inventory",
+          "scu": 45,
+          "pricePerScu": 1468,
+          "containerSizes": null,
+          "expectedCommodityId": 93
+        }
+      ]
+    },
+    "sell-1.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:15+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-15-7E0.jpg",
+        "originalSha256": "9caea1678d53b494e9bc7593492de99d3e95a78727a66d0f0f1f2d327d3cbd81",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [
+        {
+          "name": "SELLABLE CARGO",
+          "expanded": false,
+          "beforeCard": 1
+        },
+        {
+          "name": "IN DEMAND",
+          "expanded": true,
+          "beforeCard": 1
+        }
+      ],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "name": "[!] SLAM",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 36000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 68
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Silicon",
+          "status": "Out of Stock",
+          "scu": 1744,
+          "pricePerScu": 2900,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 100
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Scrap",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3700,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 67
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Recycled Material Composite",
+          "note": "name, status, SCU and price visible; the container-size row is below the viewport"
+        }
+      ]
+    },
+    "sell-2.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:18+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-18-28A.jpg",
+        "originalSha256": "f6750dab020990d81918c9370fc72a60ab80b535015a3ec6a0b0e27d1da53e99",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Scrap) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Recycled Material Composite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 7700,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 63,
+          "note": "the right-aligned '0 SCU' is drawn over the end of the name (F6)"
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Riccite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 67000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 124
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Quartz",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 4600,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 60
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Processed Food",
+          "note": "the container-size boxes are cut by the viewport"
+        }
+      ]
+    },
+    "sell-3.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:20+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-20-BBF.jpg",
+        "originalSha256": "b72d87b336afcceddc39f18d207dfcabe088c3179df33f3551f5e044fbaefa15",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Quartz) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Processed Food",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 1400,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 56
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Pressurized Ice",
+          "status": "Low Inventory",
+          "scu": 456,
+          "pricePerScu": 5200,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 101,
+          "note": "no commodity icon is drawn"
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Nitrogen",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 106
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "[!] Neon",
+          "note": "the container-size row is below the viewport"
+        }
+      ]
+    },
+    "sell-4.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:22+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-22-35E.jpg",
+        "originalSha256": "442bb0c778e6f9d986a5723ede0e41038ad7c1b3d4cdbc8b9dfa0eb7583864b4",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Nitrogen) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "[!] Neon",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 19000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 52
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Methane",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3500,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 114
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Medical Supplies",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 5200,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 51
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Laranite",
+          "note": "the container-size row is below the viewport"
+        }
+      ]
+    },
+    "sell-5.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:24+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-24-A61.jpg",
+        "originalSha256": "f63ba596d4764007da9e13d411f345990498ab573864d72cde003375fefd2e34",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the lower edge of the container-size boxes of the card above (Medical Supplies) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Laranite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 8700,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 47
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Iron",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3200,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 44
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Hydrogen",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 1000,
+          "containerSizes": [
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 41
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Hephaestanite",
+          "note": "the container-size boxes are cut by the viewport"
+        }
+      ]
+    },
+    "sell-6.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:26+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-26-17B.jpg",
+        "originalSha256": "5b097e27ef8388190081d34ceb988bef830d2cf61bccae1e4a7605232acadbb9",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Hydrogen) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Hephaestanite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 4600,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 39
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Helium",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 1000,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 38
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "[!] E'tam",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 23000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 29
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Copper",
+          "note": "the container-size row is below the viewport"
+        }
+      ]
+    },
+    "sell-7.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:28+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-28-8BB.jpg",
+        "originalSha256": "99b5361cd57e32249ec1d2bf9a3a98153ad711e13183d0f6867b32df8646b17b",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size boxes of the card above (E'tam) are visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Copper",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3700,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 20
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Carbon-Silk",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 21000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 113
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Borase",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 27000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 15
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Bexalite",
+          "note": "the container-size boxes are cut by the viewport"
+        }
+      ]
+    },
+    "sell-8.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:32+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-32-7B4.jpg",
+        "originalSha256": "fe1f3eaa7ebe079b49b947dc4b5c62a79cc00baecea4742e749ea04ac4158a6e",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Borase) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Bexalite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 30000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 13
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Beryl",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 19000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 11
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "[!] Revenant Tree Pollen",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 1200,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 66
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "[!] Altruciatoxin",
+          "note": "the container-size row is below the viewport"
+        }
+      ]
+    },
+    "sell-9.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:33+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-33-DC2.jpg",
+        "originalSha256": "5ef7e254b1b028fe51bff7a0d21fdb541f3f603f69a59ad9f85881371f32c976",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "only the container-size row of the card above (Revenant Tree Pollen) is visible"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "[!] Altruciatoxin",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 6400,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 4
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Agricium",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 9200,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 1
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Stims",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 5000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 70
+        },
+        {
+          "screenOrder": 5,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "bottom",
+          "name": "Taranite",
+          "note": "the container-size boxes are below the viewport"
+        }
+      ]
+    },
+    "sell-10.jpg": {
+      "side": "SELL",
+      "capturedAt": "2026-10-14T16:40:43+02:00",
+      "conditions": {
+        "originalFile": "ScreenShot-2026-10-14_16-40-43-31A.jpg",
+        "originalSha256": "5b06e25b326d087fa3f5b557410b31f9d610b46d9d194ba2fadccec0477da143",
+        "fileResolution": "3840x2160",
+        "gameResolution": null,
+        "displayResolution": null,
+        "windowMode": null,
+        "fovSetting": null,
+        "renderer": "Vulkan",
+        "upscaler": "DLAA 100%",
+        "gammaBrightnessContrast": null,
+        "windowsHdr": null,
+        "gameHdr": null,
+        "refWhiteNits": null,
+        "peakNits": null,
+        "windowsSdrContentBrightness": null,
+        "captureMethod": null,
+        "captureToolVersion": null,
+        "captureToolOptions": null,
+        "os": null,
+        "channel": "LIVE",
+        "gameVersion": "4.10.2",
+        "container": "jpeg",
+        "transfer": null,
+        "sourceFidelity": "original-redacted-lossless",
+        "ladder": null
+      },
+      "sectionHeaders": [
+        {
+          "name": "NO DEMAND",
+          "expanded": false,
+          "beforeCard": null
+        }
+      ],
+      "cards": [
+        {
+          "screenOrder": 1,
+          "section": "IN DEMAND",
+          "partial": true,
+          "partialEdge": "top",
+          "note": "status, price and container sizes of the card above (Stims) are visible, its name is not"
+        },
+        {
+          "screenOrder": 2,
+          "section": "IN DEMAND",
+          "name": "Taranite",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 25000,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 73
+        },
+        {
+          "screenOrder": 3,
+          "section": "IN DEMAND",
+          "name": "Tin",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 3800,
+          "containerSizes": [
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 103
+        },
+        {
+          "screenOrder": 4,
+          "section": "IN DEMAND",
+          "name": "Titanium",
+          "status": "Out of Stock",
+          "scu": 0,
+          "pricePerScu": 8300,
+          "containerSizes": [
+            1,
+            2,
+            4,
+            8,
+            16,
+            24,
+            32
+          ],
+          "expectedCommodityId": 75
+        }
+      ]
+    }
+  },
+  "observations": [
+    "The r_DisplayInfo debug overlay is on in every capture; its lower lines run across the shop panel's header and tab row, but no card.",
+    "The location field reads SELECT LOCATION, so this entry has no location text: the terminal must come from the assortment check or the user (R-OCR-8).",
+    "The buy cards show no AVAILABLE CARGO SIZE row at this terminal; Ruin Station's buy cards do.",
+    "The sell tab is labelled 'Local Market Value'. Above IN DEMAND it shows a collapsed SELLABLE CARGO header, and a collapsed NO DEMAND header follows the last IN DEMAND card inside the shop panel (A21).",
+    "Silicon is listed under IN DEMAND with 1,744 SCU and the status 'Out of Stock', against the screen rule 'Out of Stock => 0 SCU' (O-131).",
+    "Recycled Material Composite: the right-aligned '0 SCU' overlaps the end of the name (F6) in sell-1 and sell-2.",
+    "Every sell capture scrolls by less than one page: the last card of one capture is partial and complete in the next, so consecutive captures overlap by about one card.",
+    "The order of the IN DEMAND cards is not alphabetical by displayed name.",
+    "Two prices differ from UEX's latest values recorded on 2026-10-10 (Laranite 8,700 against 8,200; DynaFlex 1,468 against 1,460); both were rechecked at 4x zoom.",
+    "The [!] prefix of SLAM, Neon, E'tam, Revenant Tree Pollen and Altruciatoxin is part of the game's display name (global.ini wraps it in an <EM3> tag)."
+  ]
+}

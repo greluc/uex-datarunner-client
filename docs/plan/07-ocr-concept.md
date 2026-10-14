@@ -9,7 +9,7 @@ The five screenshots supplied by the project owner (2000×1125, Buy and Local Ma
 | Element | Observation | Consequence |
 |---|---|---|
 | Header | "COMMODITIES" at the top left; "CURRENT BALANCE: ¤9,484,456 aUEC" at the top right | "COMMODITIES" serves only as a locate anchor. **The balance is never stored or transmitted:** every crop excludes the header band (R-SUB-7, R-CAP-7). |
-| Left panel "YOUR INVENTORIES" | Dropdown with the current location ("PATCH CITY"), below it IN DEMAND / NO DEMAND / CANNOT SELL | **Location field = best source for the terminal assignment** (text in capital letters, letter-spaced) |
+| Left panel "YOUR INVENTORIES" | Dropdown with the current location ("PATCH CITY"), below it IN DEMAND / NO DEMAND / CANNOT SELL | **Location field = best source for the terminal assignment** (text in capital letters, letter-spaced). Corrected 2026-10-14: the field shows the selected inventory and can show the placeholder "SELECT LOCATION" instead of any location (§1c); it stays the first source when it names a location, never the only one |
 | Right panel "SHOP INVENTORY" | Tabs "Buy" and "Local Market Value"; the active tab is filled with a strong orange-red, the inactive one is dark | Determine the side (BUY/SELL) by comparing the two tab fills (relative luminance and saturation, §2.1 item 7), with the section and label text as witness |
 | Sections | Buy: "IN STOCK" (expanded), below "OUT OF STOCK" (collapsed, "+"). Sell: "SELLABLE CARGO", "IN DEMAND" | Section per card from headers inside the shop panel, inherited across captures only when they are contiguous (§2.3, §2.5b); consistency rules |
 | Card | Icon · vertical status bar (colour/fill level) · name · status text (coloured) · on the right "SHOP QUANTITY" (Buy only) · "333 SCU" · "¤3,237/SCU" · "AVAILABLE CARGO SIZE (SCU)" with boxes [1][2][4][8][16][24][32] | Field positions relative to the card; status-bar witness from bar and colour |
@@ -37,6 +37,23 @@ Five more screenshots (4× Buy scrolled, 1× Sell) are stored as the first publi
 | Status colours | Buy: "VERY LOW INVENTORY" **red**; Sell: "VERY LOW INVENTORY" **green** | The colour is inverted between the sides (consistent with `commodities_status`). The status-bar witness must know the side. |
 | Sell side | Quantity without "SHOP QUANTITY", but with stock status (1,482 SCU, VERY LOW INVENTORY) | Indication that the number means the terminal's stock level (A10: rather `scu_sell_stock` than `scu_sell` – clarify with UEX). Verified 2026-10-09: the number is submitted as `scu_sell` and compared with the prior's `scu_sell_stock` (1,482 = UEX `scu_sell_stock`; [06](06-uex-api.md) open point 8) |
 | Maximum values | Many goods 12,000 SCU, Argon 24,000 SCU at "MAX INVENTORY" | No check against UEX values. Verified 2026-10-09: UEX has no capacity field (`scu_*_max` are maxima of reported values) and level 7 covers 86–100 %, so an SCU below the recorded maximum is normal at that level. Decided 2026-10-09 (O-94): the planned MAX INVENTORY consistency check is removed; the status mapping still depends on A5 |
+
+## 1c. Observations: original captures at Patch City and Ruin Station (2026-10-14)
+
+The project owner supplied 38 original screenshots (3840×2160 JPEG, game 4.10.2 LIVE, Vulkan with DLAA) together with the game's language file `global.ini` in use at the time. They are the public entries `corpus/public/patch-city-01/` (1× Buy, 10× Sell) and `corpus/public/ruin-station-01/` (5× Buy, 22× Sell), redacted losslessly; the transcriptions are **not yet** verified by a human. The language file is game content and stays in the private corpus; the entries record its SHA-256.
+
+| Element | Observation | Consequence |
+|---|---|---|
+| Location field | Ruin Station shows "RUIN STATION"; Patch City shows the placeholder "SELECT LOCATION" in every capture, although the chat uploads of §1 showed "PATCH CITY" there | The field shows the selected inventory, not the terminal, and may hold no location at all. The placeholder is recognised as "no location text" and never fuzzy-matched; it yields no candidate, so the terminal selection is mandatory (§2.5 item 2, R-OCR-16) |
+| Debug overlay | `r_DisplayInfo` is on in every capture; its lines run across the shop panel's header and tab row and over the balance, but over no card | Locate and the side decision must tolerate foreign text on the tab row. The overlay's `Session:` line is an identifier and is redacted like the balance (`corpus/README.md`) |
+| Sections | Buy: IN STOCK (expanded), OUT OF STOCK (collapsed) after the last card. Sell: SELLABLE CARGO (collapsed) above IN DEMAND, and **NO DEMAND (collapsed) inside the shop panel** after the last IN DEMAND card | Answers one point of A21: NO DEMAND does appear in the shop panel. `global.ini` names the SELLABLE CARGO header `shop_ui_CommodityKiosk_InDemandInVehicle`, which suggests the player's vehicle cargo; no card under it was seen, so A21's rule stays |
+| Status texts | `global.ini` maps the texts per side: sell (`Demand_*`): Critical "Out of Stock", VeryHigh "Very Low Inventory", High "Low Inventory", Medium "Medium Inventory", Low "High Inventory", VeryLow "Very High Inventory", None "Max Inventory"; buy (`Supply_*`): None "No Inventory", VeryLow "Very Low Inventory" … VeryHigh "Very High Inventory", Critical "Max Inventory"; both sides have Emergent "Inventory Updating" | The status text → level mapping is per side, and the same text means opposite ends on the two sides. Input for A5; the mapping to UEX's codes stays to be verified. Two IN DEMAND cards show "Out of Stock" with stock (Silicon 1,744 SCU at Patch City, Hydrogen Fuel 4 SCU at Ruin Station), against the screen rule of §2.5 item 4 (O-131) |
+| Scrolling **with overlap** | Consecutive captures usually overlap by about one card (the partial card at the bottom of one capture is complete in the next), unlike Pyro Gateway (§1b). Exception: Pitambu (ruin-station-01 sell-16/17) is cut at the bottom of one capture and at the top of the next, although every field is legible in both | Stitching handles both. Pitambu is complete in no capture, so it produces no row; with overlapping captures the scrollbar shows no gap, and only a UEX assortment entry names it in the gap check (§2.5b item 3). Whether that is enough is O-132 |
+| Cargo-size row | Patch City's buy cards show no AVAILABLE CARGO SIZE row; Ruin Station's buy cards and all sell cards do | The row is optional per terminal; its absence is no finding by itself |
+| Icons | Pressurized Ice, Savrilium, Lindinium, Torite and Aslarite are drawn without an icon | Card layout must not depend on the icon |
+| Prices | From 1 to 4,600,000 UEC per SCU (HexaPolyMesh Coating, Luminalia Gift); seven-digit prices carry two thousands separators | Price parser and digit model cover seven digits |
+| Card order | The IN DEMAND order is not alphabetical by displayed name | Order between captures comes from the scrollbar and the stitching, never from sorting |
+| Dimmed card | Silicon on the Buy side at Ruin Station: 2 SCU, smallest container 8 | Supports A14 |
 
 ## 2. Pipeline in detail
 
@@ -410,22 +427,24 @@ Corrected 2026-10-08: basetool-sc-extractor is GPL-3.0-or-later. Since [ADR-0003
 ## 4. Measurement and test concept
 
 - **Corpus structure:** `corpus/public/<id>/` (or `$TALLYLINE_CORPUS_DIR/<id>/` for the private part) with the images and one `expected.json` (source and redaction info, location, theme, game version, per capture: side, section, cards with all fields and `screenOrder`, partial/dimmed flags, `verified` flag). Schema version 1: see `corpus/public/pyro-gateway-stanton-01/expected.json`.
-- **Schema version 2** (introduced in M2) adds a `conditions` object **per capture** (not per entry, because a pair or ladder entry mixes conditions); entry-level values such as `gameVersion` are defaults that a capture may override. Fields:
+- **Schema version 2** (read by the eval from M2; entries added since 2026-10-14 already use it, so the M0 schema test accepts versions 1 and 2) adds a `conditions` object **per capture** (not per entry, because a pair or ladder entry mixes conditions); entry-level values such as `gameVersion` are defaults that a capture may override. Fields:
   - `fileResolution`, `gameResolution`, `displayResolution`, `windowMode` (fullscreen/borderless/windowed), `fovSetting`;
   - `renderer` (DX11/Vulkan), `upscaler` (with percentage), `gammaBrightnessContrast`;
   - `windowsHdr` (on/off), `gameHdr` (on/off/unavailable), `refWhiteNits`, `peakNits`, `windowsSdrContentBrightness`;
   - `captureMethod` (`sc-key`, `gamebar-png`, `win-prtscn`, `snipping-tool`, `nvidia-overlay`, `steam`, `sharex`, `obs`, `spectacle`, `gamescope`, `other`) with `captureToolVersion` and `captureToolOptions` (e.g. HDR color corrector on);
   - `os`, `channel`, `gameVersion`;
   - `container` (jpeg/png8/png16/bmp), `transfer` (sRGB/PQ/scRGB), `sourceFidelity` (`original`, `original-redacted-lossless`, `reencoded-unknown`);
+  - `originalFile` and `originalSha256`: the file name and SHA-256 of the unredacted original, which stays in the private corpus;
   - `ladder` (`{"id": …, "factor": …, "step": …}`).
 
   Outside `conditions`, schema version 2 also adds:
   - per capture `capturedAt` (ISO 8601 with offset, `null` if unknown);
   - per entry `expectedTerminalId` (UEX `id_terminal`) and per card `expectedCommodityId` (UEX `id_commodity`); the read names stay as displayed text. An entry without `gameVersion` or without IDs counts only as smoke for prior-dependent metrics;
+  - per entry `localisation`: the game's language file in use at capture time (`file`, `sha256`, `bytes`, `language`); the file itself is game content and stays in the private corpus;
   - a `reference/` directory with recorded, anonymised raw UEX responses (same rules as the adapter-uex contract-test recordings): `/commodities`, `/terminals?type=commodity`, the location endpoints, `/commodities_status`, `/data_parameters`, `/game_versions` and `/commodities_prices` for the candidate terminals, plus `fetchedAt` and `priorProvenance` (`pre-capture`, or `post-capture` = may already contain the captured values). Until [06](06-uex-api.md) open point 7 allows publishing recorded UEX responses, `reference/` exists only in the private corpus.
 
   A `measured` object holds `priceCapHeightPx` (smallest complete card, source pixels, R-OCR-17), `displayHeightFraction` and `textHeightBand`. `tools/ocr-eval annotate` proposes these values from hand-placed anchors; a human confirms them. Unknown values are `null`, never guessed. The eval refuses captures without `conditions`; schema-1 entries are migrated with unknown fields set to `null`. Schema version 2 also moves the section to the card:
-  - per capture, `sectionHeaders`: the headers actually visible, each with `name`, `expanded` and its screen position;
+  - per capture, `sectionHeaders`: the headers actually visible, top to bottom, each with `name`, `expanded` and its screen position: `beforeCard` (the `screenOrder` of the first card below it, `null` if no card follows; headers above the same card keep their top-to-bottom order) and, once `tools/ocr-eval annotate` measures it, `y` (source pixels);
   - per card, the true `section` after stitching (§2.5b item 4);
   - for partial cards, `partialEdge` (`top` or `bottom`).
 
@@ -494,4 +513,4 @@ Corrected 2026-10-08: basetool-sc-extractor is GPL-3.0-or-later. Since [ADR-0003
   - **silently wrong** (wrong and classified as confident) – the most important metric, target ≈ 0
   - runtime, peak heap and peak process memory (per resolution class, R-NF-3)
 - **CI** checks the public, redacted partial corpus. Its images are Git LFS objects (O-43): the jobs that read them check out with LFS and cache the objects, and an LFS pointer file in place of an image fails the run visibly. The private corpus is included locally via an environment variable (`TALLYLINE_CORPUS_DIR`).
-- The first public entry is `pyro-gateway-stanton-01` (unverified, `sourceFidelity: reencoded-unknown`; its reference snapshot can only be recorded `post-capture`). The **Patch City screenshots** still have to be supplied as files (redact the balance first) or stored in the private corpus.
+- The first public entry is `pyro-gateway-stanton-01` (unverified, `sourceFidelity: reencoded-unknown`; its reference snapshot can only be recorded `post-capture`). Since 2026-10-14 the public corpus also holds `patch-city-01` and `ruin-station-01` (original captures, `original-redacted-lossless`, unverified, schema version 2; §1c). Their reference snapshots can only be recorded `post-capture`: UEX's Ruin Station values were updated within minutes of the captures.
