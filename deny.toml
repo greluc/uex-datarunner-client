@@ -47,3 +47,9 @@ allow-git = []
 github = []
 gitlab = []
 bitbucket = []
+
+[advisories]
+yanked = "deny"
+unmaintained = "none"
+unsound = "none"
+ignore = []

@@ -16,6 +16,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   DENY_VERSION: 0.20.2
+  VET_VERSION: 0.10.2
 
 jobs:
   check:
@@ -76,3 +77,35 @@ jobs:
 
       - name: Run the gate
         run: cargo xtask check
+
+  vet:
+    name: cargo-vet
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Guard the supply-chain configuration
+        run: cargo xtask guard
+
+      - name: Install cargo-vet at the pinned version
+        run: cargo install --locked --version "=${VET_VERSION}" cargo-vet
+
+      - name: Verify cargo-vet reports the pinned version
+        run: test "$(cargo vet --version)" = "cargo-vet ${VET_VERSION}"
+
+      - name: Check the dependency graph against the audits
+        run: cargo vet --locked

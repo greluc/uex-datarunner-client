@@ -14,6 +14,7 @@ use std::process::{Command, ExitCode};
 
 use xtask::check::{Step, plan};
 use xtask::deny::unjustified_suppressions;
+use xtask::dependabot;
 use xtask::exit::exit_code;
 use xtask::guard::scan;
 use xtask::listing::check_listing;
@@ -92,6 +93,7 @@ fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
         Step::SupplyChainGuard => guard_passes(root),
         Step::DenySuppressions => deny_suppressions_pass(root),
         Step::VetExemptions => vet_exemptions_pass(root),
+        Step::Dependabot => dependabot_passes(root),
         Step::Cargo { args, env, .. } => Ok(Command::new(cargo_program())
             .args(args)
             .envs(env.iter().copied())
@@ -195,6 +197,14 @@ fn deny_suppressions_pass(root: &Path) -> io::Result<bool> {
         &fs::read_to_string(root.join(DENY_CONFIG))?,
         &fs::read_to_string(root.join(ENGINEERING_PRINCIPLES))?,
     );
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn dependabot_passes(root: &Path) -> io::Result<bool> {
+    let findings = dependabot::violations(&collect(root)?);
     for finding in &findings {
         writeln!(io::stderr(), "{finding}")?;
     }

@@ -1,0 +1,136 @@
+name: Advisories
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    - cron: "23 4 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  AUDIT_VERSION: 0.22.2
+  AUDIT_SHA256: 7fb9497f8594b389e5fce5ef9b92db08432996895b2e0c5a0167a69ed445c428
+  DENY_VERSION: 0.20.2
+  DENY_SHA256: 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f
+  OSV_VERSION: 2.6.0
+  OSV_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+
+jobs:
+  cargo-audit:
+    name: cargo-audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned cargo-audit
+        run: |
+          archive="cargo-audit-x86_64-unknown-linux-musl-v${AUDIT_VERSION}.tgz"
+          curl --fail --retry 3 --retry-all-errors --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/rustsec/rustsec/releases/download/cargo-audit%2Fv${AUDIT_VERSION}/$archive"
+          echo "$AUDIT_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/cargo-audit"
+          tar --extract --gzip --file "$RUNNER_TEMP/$archive" --directory "$RUNNER_TEMP/cargo-audit" --strip-components=1
+          echo "$RUNNER_TEMP/cargo-audit" >> "$GITHUB_PATH"
+
+      - name: Verify cargo-audit reports the pinned version
+        run: test "$(cargo-audit --version)" = "cargo-audit ${AUDIT_VERSION}"
+
+      - name: Audit the lockfile against the RustSec database
+        run: cargo-audit audit --file Cargo.lock
+
+  cargo-deny-advisories:
+    name: cargo-deny advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Guard the supply-chain configuration
+        run: cargo xtask guard
+
+      - name: Install cargo-deny at the pinned version
+        run: |
+          archive="cargo-deny-${DENY_VERSION}-x86_64-unknown-linux-musl.tar.gz"
+          curl --fail --retry 3 --retry-all-errors --silent --show-error --location --output "$RUNNER_TEMP/$archive" \
+            "https://github.com/EmbarkStudios/cargo-deny/releases/download/${DENY_VERSION}/$archive"
+          echo "$DENY_SHA256  $RUNNER_TEMP/$archive" | sha256sum --check --strict
+          mkdir "$RUNNER_TEMP/cargo-deny"
+          tar --extract --gzip --file "$RUNNER_TEMP/$archive" --directory "$RUNNER_TEMP/cargo-deny" --strip-components=1
+          echo "$RUNNER_TEMP/cargo-deny" >> "$GITHUB_PATH"
+
+      - name: Verify cargo-deny reports the pinned version
+        run: test "$(cargo-deny --version)" = "cargo-deny ${DENY_VERSION}"
+
+      - name: Check the dependency graph against the advisories
+        run: cargo deny --locked check advisories
+
+  osv-scanner:
+    name: OSV-Scanner
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Guard the supply-chain configuration
+        run: cargo xtask guard
+
+      - name: Install the pinned OSV-Scanner
+        run: |
+          mkdir "$RUNNER_TEMP/osv-scanner"
+          curl --fail --retry 3 --retry-all-errors --silent --show-error --location --output "$RUNNER_TEMP/osv-scanner/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "$OSV_SHA256  $RUNNER_TEMP/osv-scanner/osv-scanner" | sha256sum --check --strict
+          chmod +x "$RUNNER_TEMP/osv-scanner/osv-scanner"
+          echo "$RUNNER_TEMP/osv-scanner" >> "$GITHUB_PATH"
+
+      - name: Verify OSV-Scanner reports the pinned version
+        run: |
+          test "$(osv-scanner --version | head -n 1)" = "osv-scanner version: ${OSV_VERSION}"
+
+      - name: Scan the lockfile
+        run: |
+          status=0
+          osv-scanner scan source --format json --output-file "$RUNNER_TEMP/osv-report.json" --no-call-analysis rust --lockfile Cargo.lock || status=$?
+          test "$status" -le 1
+
+      - name: Judge the report
+        run: cargo xtask osv-gate "$RUNNER_TEMP/osv-report.json"

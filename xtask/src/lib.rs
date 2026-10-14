@@ -7,6 +7,7 @@
 
 pub mod check;
 pub mod deny;
+pub mod dependabot;
 pub mod exit;
 pub mod guard;
 pub mod hashlist;
