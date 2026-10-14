@@ -8,7 +8,7 @@ use std::io::Cursor;
 use image::ImageDecoder;
 use image::codecs::bmp::BmpDecoder;
 
-use crate::intake::{Encoding, IntakeLimits, SetAsideReason};
+use crate::intake::{Encoding, IntakeLimits, SetAsideReason, SrgbRaster};
 
 const FILE_HEADER_LEN: usize = 14;
 const V4_HEADER_LEN: u32 = 108;
@@ -52,10 +52,7 @@ fn check_colour_space(bytes: &[u8]) -> Result<(), SetAsideReason> {
 /// # Errors
 ///
 /// The [`SetAsideReason`] when the file is set aside.
-pub(crate) fn read(
-    bytes: &[u8],
-    limits: &IntakeLimits,
-) -> Result<(u32, u32, Vec<u8>), SetAsideReason> {
+pub(crate) fn read(bytes: &[u8], limits: &IntakeLimits) -> Result<SrgbRaster, SetAsideReason> {
     check_colour_space(bytes)?;
     let failed = |e: image::ImageError| SetAsideReason::DecodeFailed(e.to_string());
     let decoder = BmpDecoder::new(Cursor::new(bytes)).map_err(failed)?;
@@ -64,5 +61,9 @@ pub(crate) fn read(
         return Err(SetAsideReason::TooManyPixels);
     }
     let image = image::DynamicImage::from_decoder(decoder).map_err(failed)?;
-    Ok((width, height, image.into_rgb8().into_raw()))
+    Ok(SrgbRaster {
+        width,
+        height,
+        rgb: image.into_rgb8().into_raw(),
+    })
 }

@@ -7,21 +7,16 @@
 
 mod common;
 
-use common::{HEIGHT, WIDTH, decoded, jpeg, source};
+use common::{HEIGHT, WIDTH, decoded, jpeg, read_default, source};
 use jpeg_encoder::SamplingFactor;
-use tallyline_decoder_check_spike::decode::read;
 use tallyline_decoder_check_spike::intake::{
-    Encoding, HdrContainer, Intake, IntakeLimits, SetAsideReason, SrgbRaster,
+    Encoding, HdrContainer, Intake, SetAsideReason, SrgbRaster,
 };
 
 const LCS_SRGB: u32 = 0x7352_4742;
 const LCS_WINDOWS_COLOR_SPACE: u32 = 0x5769_6e20;
 const LCS_CALIBRATED_RGB: u32 = 0;
 const PROFILE_EMBEDDED: u32 = 0x4d42_4544;
-
-fn read_default(bytes: &[u8]) -> Intake {
-    read(bytes, &IntakeLimits::default())
-}
 
 fn bmp_v5(src: &SrgbRaster, cs_type: u32, gamma: u32) -> Vec<u8> {
     let row_len = (src.width * 3).div_ceil(4) * 4;

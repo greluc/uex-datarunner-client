@@ -347,6 +347,20 @@ pub fn jpeg(
     out
 }
 
+pub fn read_default(bytes: &[u8]) -> Intake {
+    tallyline_decoder_check_spike::decode::read(
+        bytes,
+        &tallyline_decoder_check_spike::intake::IntakeLimits::default(),
+    )
+}
+
+pub fn set_aside(bytes: &[u8]) -> tallyline_decoder_check_spike::intake::SetAsideReason {
+    match read_default(bytes) {
+        Intake::SetAside(reason) => reason,
+        Intake::Decoded(_) => panic!("expected the file to be set aside"),
+    }
+}
+
 pub fn decoded(intake: Intake) -> SrgbRaster {
     match intake {
         Intake::Decoded(raster) => raster,

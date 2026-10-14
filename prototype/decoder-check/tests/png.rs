@@ -10,21 +10,10 @@ mod common;
 use common::{
     DISPLAY_P3_D50, PngSpec, SRGB_D50, Trc, be_samples, bt709_chromaticities, decoded,
     exact_srgb_of_p3, icc_matrix_trc, map_samples_8, map_samples_16, max_abs_diff,
-    p3_chromaticities, source, srgb_eotf, to_display_p3_8,
+    p3_chromaticities, read_default, set_aside, source, srgb_eotf, to_display_p3_8,
 };
 use tallyline_decoder_check_spike::decode::read;
 use tallyline_decoder_check_spike::intake::{Encoding, Intake, IntakeLimits, SetAsideReason};
-
-fn read_default(bytes: &[u8]) -> Intake {
-    read(bytes, &IntakeLimits::default())
-}
-
-fn set_aside(bytes: &[u8]) -> SetAsideReason {
-    match read_default(bytes) {
-        Intake::SetAside(reason) => reason,
-        Intake::Decoded(_) => panic!("expected the file to be set aside"),
-    }
-}
 
 fn sixteen_bit_of_source() -> Vec<u8> {
     be_samples(&map_samples_16(&source(), |v| v))
@@ -153,6 +142,18 @@ fn any_other_cicp_is_set_aside() {
             "cICP {cicp:?}"
         );
     }
+}
+
+#[test]
+fn a_cicp_with_non_zero_matrix_coefficients_is_not_read_as_srgb() {
+    let src = source();
+    let png = PngSpec::rgb8(&src.rgb)
+        .chunk(b"cICP", &[1, 13, 1, 1])
+        .encode();
+    assert!(matches!(
+        read_default(&png),
+        Intake::SetAside(SetAsideReason::DecodeFailed(_))
+    ));
 }
 
 #[test]

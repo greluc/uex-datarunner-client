@@ -8,25 +8,14 @@
 mod common;
 
 use common::{
-    DISPLAY_P3_D50, SRGB_D50, Trc, decoded, icc_matrix_trc, jpeg, mean_abs_diff, source,
-    to_display_p3_8,
+    DISPLAY_P3_D50, SRGB_D50, Trc, decoded, icc_matrix_trc, jpeg, mean_abs_diff, read_default,
+    set_aside, source, to_display_p3_8,
 };
 use jpeg_encoder::SamplingFactor;
 use tallyline_decoder_check_spike::decode::read;
 use tallyline_decoder_check_spike::intake::{Encoding, Intake, IntakeLimits, SetAsideReason};
 
 const MAX_MEAN_ABS_ERROR: f64 = 3.0;
-
-fn read_default(bytes: &[u8]) -> Intake {
-    read(bytes, &IntakeLimits::default())
-}
-
-fn set_aside(bytes: &[u8]) -> SetAsideReason {
-    match read_default(bytes) {
-        Intake::SetAside(reason) => reason,
-        Intake::Decoded(_) => panic!("expected the file to be set aside"),
-    }
-}
 
 #[test]
 fn baseline_and_progressive_jpegs_decode_to_the_source_within_tolerance() {

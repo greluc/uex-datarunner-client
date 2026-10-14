@@ -34,7 +34,7 @@ Rejected: `qcms` 0.3.0 (MIT, Firefox's colour engine) handles 8-bit data types o
 
 ## Result (2026-10-14)
 
-All 46 tests pass on Windows 11 (local, the pinned toolchain 1.99.0) with `cargo clippy --all-targets -- -D warnings` and `RUSTDOCFLAGS=-D warnings cargo doc` clean. The decoders are pure Rust, so the result does not depend on the OS; the workflow `.github/workflows/decoder-check-spike.yml` repeats it on `ubuntu-latest` and `windows-latest` on a push to this branch.
+All 47 tests pass on Windows 11 (local, the pinned toolchain 1.99.0) with `cargo clippy --all-targets -- -D warnings` and `RUSTDOCFLAGS=-D warnings cargo doc` clean. The decoders are pure Rust, so the result does not depend on the OS; the workflow `.github/workflows/decoder-check-spike.yml` repeats it on `ubuntu-latest` and `windows-latest` on a push to this branch.
 
 ### 07 §4 decode fixtures
 
@@ -42,7 +42,7 @@ All 46 tests pass on Windows 11 (local, the pinned toolchain 1.99.0) with `cargo
 |---|---|---|
 | 1. 8- and 16-bit PNG of one image differ by at most 1 | `eight_and_sixteen_bit_pngs_of_one_image_differ_by_at_most_one`, `sixteen_bit_samples_are_scaled_not_truncated_to_the_high_byte` | Pass. Sample 511 becomes 2, not the high byte 1. A synthetic image, not a corpus image. |
 | 2. 16-bit PNG with a linear `iCCP` within 2 of the plain PNG | `a_16_bit_png_with_a_linear_icc_profile_decodes_to_the_srgb_source_within_two` | Pass, through `moxcms`'s 16-bit transform. |
-| 3. `cICP` 9/16/0/1 (PQ) never read as sRGB | `a_cicp_pq_png_is_never_read_as_srgb`, also HLG 9/18/0/1, narrow range, P3 primaries and linear transfer | Pass; set aside. `cICP` 1/13/0/1 decodes unchanged. |
+| 3. `cICP` 9/16/0/1 (PQ) never read as sRGB | `a_cicp_pq_png_is_never_read_as_srgb`, also HLG 9/18/0/1, narrow range, P3 primaries and linear transfer | Pass; set aside. `cICP` 1/13/0/1 decodes unchanged; 1/13/1/1 (matrix coefficients other than 0, which PNG forbids) fails the decode inside `png` and is set aside. |
 | 4. JPEG with APP2 ICC, progressive, 4:4:4 and 4:2:0 within 3 mean absolute error | `jpeg.rs` | Pass at quality 95. |
 | 5. JPEG XR, AVIF, OpenEXR stubs by magic bytes; JPEG in `.png` decoded as JPEG | `format.rs`, `hdr_container_stubs_are_set_aside_with_the_hdr_format_reason`, `jpeg_data_in_a_file_named_png_is_decoded_as_jpeg` | Pass, HEIF included. `read` never sees a file name. |
 | 6. Pixel budget: reduction at decode time, 7680×4320 within the heap limit | – | **Not run.** Needs the R-OCR-17 budget and the downscale path; stays for M2 (see "Not covered"). |
@@ -52,14 +52,15 @@ Tone fixtures (07 §4) checked here: PNG with a Display P3 `iCCP` and with `gAMA
 
 ### Gaps found, and how the spike closes them
 
-Each guard was checked by switching it off: the fixtures named fail without it.
+Each guard was checked locally by switching it off (a temporary edit, not committed): the fixtures named fail without it. Re-running that check is the M2 mutation test's job (`cargo-mutants`).
 
 1. **`png` drops malformed colour chunks silently, and the file then reads as plain sRGB.** `parse_iccp` ignores the result of `parse_iccp_raw` (`let _ = …`), an ancillary chunk of the wrong length is rejected without an error, and a format error in an ancillary chunk (for example `gAMA` 0, a duplicate, `cICP` after `PLTE`) becomes `Decoded::BadAncillaryChunk` (`decoder/stream.rs`). With the guard off, `cICP` of 3 bytes, `iCCP` with a broken zlib stream, `gAMA` 0 and `cHRM` of 31 bytes all decoded unchanged. **Guard:** a chunk walk before `IDAT` lists every colour chunk (`cICP`, `iCCP`, `sRGB`, `gAMA`, `cHRM`, `mDCV`, `cLLI`); each one present must appear in `png::Info`, and none may appear twice, otherwise the file is set aside as malformed colour metadata (`colour_chunks_the_decoder_drops_as_malformed_are_set_aside`). The same walk reads the `IHDR` dimensions and the `iCCP` chunk length before the decoder runs.
 2. **`zune-jpeg` decodes a truncated file without an error by default.** Its default options are error-tolerant (`decoder_error_tolerance_mode`); a JPEG cut at two thirds, baseline or progressive, returned a full-size buffer. **Guard:** `set_strict_mode(true)`, which returns "Premature end of buffer" (baseline) or "Exhausted data in the image" (progressive) (`a_truncated_jpeg_is_set_aside`).
 3. **`zune-jpeg` reports a corrupt APP2 ICC profile as no profile.** `icc_profile()` returns `None` for a zero or duplicate sequence number or a missing segment, the same as for a file without a profile. **Guard:** a marker walk up to `SOS` counts the `ICC_PROFILE` APP2 segments; if there are any and no profile assembles, the file is set aside (`a_corrupt_app2_profile_sequence_is_set_aside`).
 4. **`image`'s BMP decoder ignores the colour space of a V4/V5 header** (`bV5CSType`, calibration endpoints and gammas, a linked or embedded profile). **Guard in the spike:** `sRGB` and `Win ` decode; `LCS_CALIBRATED_RGB` with all endpoints and gammas zero counts as sRGB; every other colour space is set aside. The zero-calibration rule is an assumption about what common writers emit and is unverified; R-CAP-8 does not mention BMP colour spaces.
 5. **A PQ or HLG ICC profile is recognised only by its `cicp` tag** (ICC v4.4). A profile that describes PQ through its curves or a LUT without that tag would be converted and clipped like an SDR profile. Not tested; it needs a detection rule (for example from the `lumi` tag or the curve shape) and a fixture in M2.
-6. **R-CAP-8 does not say what `mDCV` or `cLLI` without `cICP` means.** Both are HDR mastering metadata; the spike sets such a file aside as "HDR or unsupported colour encoding" (`hdr_metadata_without_cicp_is_set_aside`). This is a requirement decision for @greluc.
+6. **R-CAP-8 does not say what `mDCV` or `cLLI` without `cICP` means.** Both are HDR mastering metadata; the spike sets such a file aside as "HDR or unsupported colour encoding" (`hdr_metadata_without_cicp_is_set_aside`), and it checks them before `iCCP`, so a file with an SDR `iCCP` and `cLLI` is set aside too. This is a requirement decision for @greluc.
+8. **The spike is stricter than R-CAP-8 on narrow range.** R-CAP-8 accepts `cICP` with BT.709 primaries (1) and sRGB transfer (13); the spike also requires the full-range flag and sets 1/13/0/0 aside (`any_other_cicp_is_set_aside`), because narrow-range samples read as full range lose contrast. Whether R-CAP-8 should say so is a decision for @greluc.
 7. **`png`'s `Limits` is one byte budget shared by the decompressed `iCCP`, text chunks and the image buffer** (default 64 MiB). The adapter has to set it from its own limits (the spike: pixel limit × 8 bytes plus the profile limit) and check the inflated profile length itself: a 4 MiB profile from a 4 KB chunk passes `png`'s budget and is caught by the profile limit after the header, before pixels are decoded. The spike's profile limit is 1 MiB; 02 §9 fixes the start value in M2.
 
 ### Findings for 07 §4

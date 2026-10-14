@@ -8,7 +8,7 @@ use std::io::Cursor;
 use png::{BitDepth, ColorType, Transformations};
 
 use crate::colour::{self, Samples};
-use crate::intake::{Encoding, IntakeLimits, SetAsideReason};
+use crate::intake::{Encoding, IntakeLimits, SetAsideReason, SrgbRaster};
 
 const SIGNATURE_LEN: usize = 8;
 const CHUNK_OVERHEAD: usize = 12;
@@ -211,10 +211,7 @@ fn to_rgb(buf: &[u8], color: ColorType, depth: BitDepth) -> Result<Samples, SetA
 /// # Errors
 ///
 /// The [`SetAsideReason`] when the file is set aside.
-pub(crate) fn read(
-    bytes: &[u8],
-    limits: &IntakeLimits,
-) -> Result<(u32, u32, Vec<u8>), SetAsideReason> {
+pub(crate) fn read(bytes: &[u8], limits: &IntakeLimits) -> Result<SrgbRaster, SetAsideReason> {
     let walk = walk(bytes);
     if u64::from(walk.width) * u64::from(walk.height) > limits.max_pixels {
         return Err(SetAsideReason::TooManyPixels);
@@ -249,5 +246,9 @@ pub(crate) fn read(
         Plan::Profile(profile) => colour::apply_profile(&profile, samples).map_err(unsupported)?,
         Plan::FileGamma(gamma) => colour::apply_file_gamma(gamma, samples),
     };
-    Ok((frame.width, frame.height, rgb))
+    Ok(SrgbRaster {
+        width: frame.width,
+        height: frame.height,
+        rgb,
+    })
 }

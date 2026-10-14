@@ -10,7 +10,7 @@ use zune_core::options::DecoderOptions;
 use zune_jpeg::JpegDecoder;
 
 use crate::colour::{self, Samples};
-use crate::intake::{Encoding, IntakeLimits, SetAsideReason};
+use crate::intake::{Encoding, IntakeLimits, SetAsideReason, SrgbRaster};
 
 const ICC_SIGNATURE: &[u8] = b"ICC_PROFILE\0";
 const MARKER_APP2: u8 = 0xe2;
@@ -65,10 +65,7 @@ fn icc_segments_before_scan(bytes: &[u8]) -> usize {
 /// # Errors
 ///
 /// The [`SetAsideReason`] when the file is set aside.
-pub(crate) fn read(
-    bytes: &[u8],
-    limits: &IntakeLimits,
-) -> Result<(u32, u32, Vec<u8>), SetAsideReason> {
+pub(crate) fn read(bytes: &[u8], limits: &IntakeLimits) -> Result<SrgbRaster, SetAsideReason> {
     let failed =
         |e: zune_jpeg::errors::DecodeErrors| SetAsideReason::DecodeFailed(format!("{e:?}"));
     let options = DecoderOptions::default()
@@ -108,5 +105,5 @@ pub(crate) fn read(
         Some(p) => colour::apply_profile(&p, Samples::Eight(pixels))
             .map_err(SetAsideReason::HdrOrUnsupportedEncoding)?,
     };
-    Ok((width, height, rgb))
+    Ok(SrgbRaster { width, height, rgb })
 }

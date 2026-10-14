@@ -4,7 +4,7 @@
 //! The intake entry point: detect the format by content, then decode or set aside (R-CAP-8).
 
 use crate::format::{Format, detect};
-use crate::intake::{Intake, IntakeLimits, SetAsideReason, SrgbRaster};
+use crate::intake::{Intake, IntakeLimits, SetAsideReason};
 use crate::{bmp_input, jpeg_input, png_input};
 
 /// Reads one file's bytes into an 8-bit sRGB raster or sets it aside; the file name is never consulted.
@@ -21,7 +21,7 @@ pub fn read(bytes: &[u8], limits: &IntakeLimits) -> Intake {
         Format::Unknown => Err(SetAsideReason::UnsupportedFormat),
     };
     match decoded {
-        Ok((width, height, rgb)) => Intake::Decoded(SrgbRaster { width, height, rgb }),
+        Ok(raster) => Intake::Decoded(raster),
         Err(reason) => Intake::SetAside(reason),
     }
 }
