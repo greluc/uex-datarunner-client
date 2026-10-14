@@ -1,13 +1,13 @@
 # Documentation
 
-> **Doc type:** Living reference — current. Last reviewed: 2026-10-12.
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-14.
 
 `docs/` is the project's single source of truth ([`CLAUDE.md`](../CLAUDE.md), "The documentation is the project"). This file says what belongs where. A new directory or top-level file under `docs/` gets its row here in the same commit.
 
 | Path | What belongs there |
 |---|---|
 | [`plan/`](plan/) | The plan, numbered 01–11: requirements (01), architecture (02), language decision ADR-0001 (03, superseded by ADR-0005), roadmap (04), bug analysis of the predecessor (05), UEX API notes (06), OCR concept (07), plan reviews (08), engineering principles (09), supply-chain security (10), DDD and TDD (11) |
-| [`adr/`](adr/) | `0000-open-points.md`, the single register of open owner decisions and open verifications, and the decision records `NNNN-kebab-title.md` (ADR-0001 lives in `plan/03-language-decision.md`; ADR-0005 `0005-rust-and-egui.md` is the current implementation-language, toolkit, supply-chain and packaging decision) |
+| [`adr/`](adr/) | `0000-open-points.md`, the single register of open owner decisions and open verifications, and the decision records `NNNN-kebab-title.md` (ADR-0001 lives in `plan/03-language-decision.md`; ADR-0005 `0005-rust-and-egui.md` is the current implementation-language, toolkit, supply-chain and packaging decision; ADR-0006 `0006-tls-provider-ring.md` chooses the `rustls` crypto provider) |
 | [`agents/`](agents/) | Per-repository configuration for the engineering agent skills: where issues are tracked (GitHub, writes need approval), the triage label vocabulary and how the domain documents are read |
 | [`prompts/`](prompts/) | Prompts for AI tools, each with its run status |
 | [`design-system/`](design-system/) | The design system Tallyline as the repository holds it: token documentation, states, accessibility report; the tokens themselves are in `ui/design-tokens/`; the JavaFX parts are historical since ADR-0005, and what of the egui rendition enters the repository is O-112 |

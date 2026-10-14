@@ -1,6 +1,6 @@
 # Release and hotfix process
 
-> **Doc type:** Living spec — binding; followed from release 0.1 on. Last reviewed: 2026-10-12.
+> **Doc type:** Living spec — binding; followed from release 0.1 on. Last reviewed: 2026-10-14.
 
 Implements R-NF-11 and the release-related parts of [10-supply-chain-security.md](plan/10-supply-chain-security.md). This is a plan; it is followed from release 0.1 on and refined with experience. Amended 2026-10-12: the implementation language is Rust ([ADR-0005](adr/0005-rust-and-egui.md)), so the Java, Gradle, jlink and jpackage steps became their Rust equivalents (`cargo xtask`, `cargo-packager`, the Rust toolchain pin); commands and tool versions that ADR-0005 does not name are chosen and verified in M0.
 
@@ -51,7 +51,7 @@ Users get fixes for the linked crates and native libraries only through our rele
 
 1. **Triggers:**
    - a security fix in the Rust compiler, the standard library or the toolchain's bundled components that affects the shipped binary: rebuild with the fixed stable toolchain (the pin is raised in its own pull request, ADR-0005 D10; the scheduled pin check flags a pin that has fallen behind);
-   - a blocking OSV or `cargo-audit` finding (S-19) against the latest release tag, or an advisory for a linked crate or a bundled native component (ONNX Runtime, SQLite, the TLS provider `ring` or `aws-lc-rs`, `rustls`);
+   - a blocking OSV or `cargo-audit` finding (S-19) against the latest release tag, or an advisory for a linked crate or a bundled native component (ONNX Runtime, SQLite, the TLS provider `ring`, `rustls`);
    - a confirmed report via `.github/SECURITY.md` (S-31).
 2. **Procedure:** a PATCH release from `main` with the full release checklist, including the corpus evaluation (a toolchain, image-crate or ONNX Runtime update can change image decoding or recognition). Target: published within 7 days of the advisory or of the confirmed report (start value). The CHANGELOG and the release notes get a 'Security' entry; a confirmed vulnerability in our own code also gets a GitHub Security Advisory.
 
