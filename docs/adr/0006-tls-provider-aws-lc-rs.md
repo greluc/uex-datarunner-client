@@ -1,9 +1,9 @@
-# ADR-0006: `ring` as the `rustls` crypto provider
+# ADR-0006: `aws-lc-rs` as the `rustls` crypto provider
 
-> **Doc type:** Decision record — Proposed. Last reviewed: 2026-10-14.
+> **Doc type:** Decision record — Accepted. Last reviewed: 2026-10-14.
 
-- **Status:** Proposed (2026-10-14). It is the M0 TLS provider check that [ADR-0005](0005-rust-and-egui.md) D2 and D4 and O-110 call for; the plan applies it as the default until @greluc confirms or changes it in the pull request.
-- **Decider:** @greluc (open); the check was run by Claude on 2026-10-14.
+- **Status:** Accepted (2026-10-14)
+- **Decider:** @greluc, in chat on 2026-10-14, after the M0 TLS provider check that [ADR-0005](0005-rust-and-egui.md) D2 and D4 and O-110 call for. The check first recommended `ring`; @greluc objected to its release gap on a security-critical component, and the recommendation was changed to `aws-lc-rs`.
 - **Related:** O-110 and O-126 in [the register](0000-open-points.md), [09](../plan/09-engineering-principles.md) §3b, [10](../plan/10-supply-chain-security.md) S-6, S-26, S-34, [02](../plan/02-architecture.md) §8 and §9, [01](../plan/01-requirements.md) R-API-3
 
 ## Context
@@ -32,29 +32,39 @@ Read at source on 2026-10-14: the published crates `ring` 0.17.14, `aws-lc-rs` 1
 | `cargo-vet` for the provider itself | no import audits 0.17.x (Google has only a 0.16.12 to 0.16.20 delta) | no import audits `aws-lc-rs` or `aws-lc-sys` |
 | `cargo-audit` | no finding | no finding |
 | Advisory history | RUSTSEC-2025-0009 (patched at 0.17.12); the unmaintained notice RUSTSEC-2025-0007 was withdrawn on 2025-02-22 | five advisories in March 2026 (RUSTSEC-2026-0044 to -0048: X.509 name constraints, AES-CCM timing, PKCS7 and CRL logic), all patched at 0.39.0 or earlier; none is reachable through `rustls`, which verifies certificates with `rustls-webpki` or the operating system |
-| Maintenance | latest release 0.17.14 on 2025-03-11, none since; `main` receives commits (latest 2026-07-22); the `rustls` team has had access since February 2025 | releases weekly (latest 2026-10-12), Amazon-maintained |
-| Key exchange | X25519, secp256r1, secp384r1 | adds the hybrid X25519MLKEM768, which `rustls` prefers by default |
+| Maintenance | latest release 0.17.14 on 2025-03-11, none since; `main` receives commits (latest 2026-07-22); 0.17.15 is "TBD" in `RELEASES.md`; in issue 2840 ("Request for new release", opened 2026-05-12) the maintainer announced a release "in the next couple of weeks" on 2026-05-19 and was still asking for help debugging issue 2868 on 2026-07-16; the `rustls` team has had access since February 2025 | releases weekly (latest 2026-10-12), Amazon-maintained |
+| Key exchange | X25519, secp256r1, secp384r1 | adds the hybrid X25519MLKEM768 groups, which `rustls` prefers when its `prefer-post-quantum` feature is on |
 
 `rustls-platform-verifier` 0.7.1 (MIT OR Apache-2.0) has no native code of its own and takes the provider from `reqwest`, which passes it in (`Verifier::new(provider)`). On Windows it calls the operating system's certificate chain engine through `windows-sys` (an OS API, not a bundled library), checks revocation of the end certificate with a 10 second URL retrieval timeout, and so lets Windows contact the issuing CA's OCSP and CRL endpoints (errors about an unknown revocation status are ignored, so an unreachable responder delays a handshake by up to the timeout but does not fail it); that destination is not in the data-flow inventory (O-126). On Linux it loads the roots once at start through `rustls-native-certs` and `openssl-probe` (`SSL_CERT_FILE`, `SSL_CERT_DIR`, then the usual distribution bundles such as `/etc/ssl/certs/ca-certificates.crt` and `/etc/pki/tls/certs/ca-bundle.crt`) and verifies with `rustls-webpki`, without revocation checking. `reqwest` 0.13.5 offers `rustls` (provider `aws-lc-rs`) and `rustls-no-provider`; with the latter the application must install the provider before the first client is built, or `reqwest` panics at construction.
 
+## Alternatives considered
+
+Read on crates.io and the projects' repositories on 2026-10-14:
+
+- **`ring`:** see the table. Not rejected on licence, build or audit state, but on the release gap: a fix for a vulnerability would depend on one maintainer's next release, which has been announced for months.
+- **`graviola` with `rustls-graviola`** (0.4.x, June 2026, by a `rustls` maintainer; Apache-2.0 OR ISC OR MIT-0): Rust plus formally verified s2n-bignum assembly, no C compiler. x86-64 and aarch64 only, with CPU feature requirements (AVX2 and others on x86-64), described by its own README as "very new, exercise due caution"; no audit found. It is still assembler, so D1 would apply. Too young now; a candidate for the revisit.
+- **Operating-system cryptography** (`reqwest` with `native-tls`: SChannel on Windows, OpenSSL on Linux): updates arrive through Windows Update and the distribution, but it replaces `rustls` (ADR-0005 D4) and the platform verifier, needs a system `libssl` on Linux and so affects the ZIP, `tar.gz` and `.deb` packages.
+- **`rustls-cng`, `rustls-symcrypt`** (Windows-only providers): two providers, one per operating system, for no clear gain.
+- **`rustls-rustcrypto`:** "do not use in production" by its own authors.
+
 ## Decision
 
-Use `ring` as the `rustls` provider: `reqwest` with `default-features = false` and `rustls-no-provider`, and `rustls` with the `ring` feature, both pinned in the M0 dependency pull request. The `adapter-uex` composition installs the provider exactly once at start-up, a test builds a client and fails if none is installed, and `rustls-platform-verifier` provides the system store.
+Use `aws-lc-rs` as the `rustls` provider: `reqwest` with `default-features = false` and `rustls-no-provider`, and `rustls` with the `aws-lc-rs` feature (without the default `prefer-post-quantum`, unless a later decision wants it), both pinned in the M0 dependency pull request. The explicit variant locks 142 crates against 155 for `reqwest`'s own `rustls` feature, which would add `quinn` and its dependencies that are never compiled. The `adapter-uex` composition installs the provider exactly once at start-up, a test builds a client and fails if none is installed, and `rustls-platform-verifier` provides the system store.
 
 Reasons:
 
-- Every compiled component is on the licence allowlist for both candidates, so the licence does not decide. `ring` has the shorter list (ISC, Apache-2.0, MIT) and one `NOTICE` text per licence; `aws-lc-sys` adds a BSD-style text with an alternative GPL clause, CC0 code and four more upstream projects.
-- The native surface to vendor, review (10 S-9, S-12) and audit is about a seventh of the packed size (1.5 against 9.7 MB), and the lock contains no second provider. `aws-lc-sys` cannot be audited in a meaningful way by reading (68 MB), and `ring` is also locked when `aws-lc-rs` is chosen.
-- The build needs only a C compiler on Windows, whatever else is installed; `aws-lc-sys` builds from different sources depending on NASM and on a system library.
-- The properties `aws-lc-rs` has over `ring` (FIPS, hybrid post-quantum key exchange) are not requirements of this product.
+- Both candidates are clean on the licence allowlist, `cargo-audit` and the build, so those do not decide; the maintenance cadence does. `aws-lc-rs` released on 2026-10-12 and ships fixes within the advisory cycle (all five 2026 advisories are patched), while `ring` has had no release for 19 months.
+- The size argument against `aws-lc-sys` (68 MB unpacked) is weak: only the per-package hash list is committed, not the vendor tree (O-120). `ring` is locked and vendored when `aws-lc-rs` is chosen anyway.
+- On Windows `rustls` enables `prebuilt-nasm`, so a C compiler is the only prerequisite, as for `ring`.
 
-Accepted costs: `ring` has had no release since March 2025; an advisory for `ring` may therefore wait for a release longer than for `aws-lc-sys`. The mitigations are the `cargo-audit` and OSV gates (10 S-19), the exception register's revisit date and the fallback described below; switching later is a change of two feature flags and one line in `adapter-uex`.
+Accepted costs: a larger native surface that cannot be audited by reading; five advisories in March 2026 show the exposure, although none is reachable through `rustls`; the build depends on a system AWS-LC and on NASM when present, so CI and packaging set `AWS_LC_SYS_USE_SYSTEM=0`; more `NOTICE` entries.
 
 ## Consequences
 
-- 09 §3b registers `ring` (native part, reason, licence, revisit 2027-04-13); the row for "`ring` or `aws-lc-rs`" is replaced. `NOTICE` gets the `ring` entry when the dependency enters the build: the licence files `LICENSE`, `LICENSE-other-bits`, `LICENSE-BoringSSL` and the `once_cell` and `fiat` licences from the published crate.
-- No `cargo-vet` import covers `ring` 0.17.14, and 10 S-6 forbids adding a new dependency to the bootstrap exemptions. When the dependency is added, `ring` gets either our own audit in `supply-chain/audits.toml` or a justified exemption with a row in the suppression register (09 §3a) and a revisit date; the same holds for every other crate of the `reqwest` stack (118 in the spike), which is O-123's verification, not this decision's.
-- The vendor review (10 S-9) lists the 17 prebuilt `.o` files of `ring`; they are rebuilt from the adjacent `.asm` files with NASM and compared before the first release, or the review records why not.
+- 09 §3b registers `aws-lc-rs` with `aws-lc-sys` (native part, reason, licence, revisit 2027-04-13). `NOTICE` gets the entries when the dependency enters the build: the `aws-lc-sys` `LICENSE` with its Apache-2.0, ISC, MIT, BSD-3-Clause and MIT-0 texts, the jitterentropy notice (BSD-3-Clause elected over the GPL-2.0 alternative), and the notices of s2n-bignum, mlkem-native, mldsa-native, fiat and the CC0 reference code.
+- No `cargo-vet` import covers `aws-lc-rs` or `aws-lc-sys`, and 10 S-6 forbids adding a new dependency to the bootstrap exemptions. When the dependency is added, both get either our own audit in `supply-chain/audits.toml` or a justified exemption with a row in the suppression register (09 §3a) and a revisit date; the same holds for every other crate of the `reqwest` stack (138 in the spike), which is O-123's verification, not this decision's. `ring` stays in the lock as an optional dependency of `rustls-webpki` and needs the same treatment, and the native-code register test sees its `links` key: 09 §3b lists it as a locked, never compiled package.
+- The vendor review (10 S-9) lists the 26 prebuilt NASM objects of `aws-lc-sys`; they are rebuilt from source with NASM and compared before the first release, or the review records why not.
+- CI and packaging set `AWS_LC_SYS_USE_SYSTEM=0`, and a check fails the build if the build script reports an auto-detected system AWS-LC.
 - The Linux prerequisites (a C compiler on `ubuntu-latest`) are confirmed by the first CI run of the dependency pull request.
 - The Linux certificate locations in 02 §8 are the ones `rustls-native-certs` reads, including the `SSL_CERT_FILE` and `SSL_CERT_DIR` overrides.
-- Revisit on 2027-04-13, or earlier when `ring` has an unpatched advisory without a release after 30 days, when `rustls` drops its `ring` feature, or when the product needs FIPS or post-quantum key exchange. The fallback is `aws-lc-rs` with `AWS_LC_SYS_USE_SYSTEM=0` set in CI and packaging, the `aws-lc-rs` and `aws-lc-sys` native parts registered in 09 §3b instead of `ring`, and the extra `NOTICE` entries named under "Against the allowlist" in the Findings table.
+- Revisit on 2027-04-13, or earlier when an `aws-lc-sys` advisory that affects `rustls` use is unpatched after 30 days, or when `graviola` has an independent audit and a stable release.
