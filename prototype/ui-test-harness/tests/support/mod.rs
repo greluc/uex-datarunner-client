@@ -1,14 +1,14 @@
 // SPDX-FileCopyrightText: 2026 Lucas Greuloch
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! Shared helpers of the spike tests: a texture-recording renderer, hashing and the Fan Kit unit check.
+//! Shared helpers of the spike tests: a texture-recording renderer, hashing and the Fan Kit unit checks.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use egui::accesskit::Role;
-use egui::epaint::{ImageData, Shape, TextureId, textures::TexturesDelta};
-use egui::{ColorImage, Rect};
+use egui::epaint::{ImageData, Shape, TextShape, TextureId, textures::TexturesDelta};
+use egui::{Color32, ColorImage, Pos2, Rect};
 use egui_kittest::kittest::{NodeT, Queryable};
 use egui_kittest::{Harness, TestRenderer};
 use sha2::{Digest, Sha256};
@@ -29,8 +29,16 @@ pub const TRADEMARK_LINE_SHA256: &str =
 pub const AGREEMENT_NOTICE_SHA256: &str =
     "703b53f047769fe1a5299b53454cc79a36e2b3a09129291baf2c6948ce740933";
 
-/// The lower bound for the notice font size this spike checks against, in egui points.
-pub const MIN_NOTICE_FONT_SIZE: f32 = 10.0;
+/// 10 typographic points in egui points at a scale of 100 % (96 logical pixels per inch).
+pub const MIN_NOTICE_FONT_SIZE: f32 = 10.0 * 96.0 / 72.0;
+
+/// The largest gap between two neighbouring parts of the unit, in egui points; a value chosen for the spike.
+pub const MAX_PART_GAP: f32 = 16.0;
+
+/// The smallest contrast ratio of a notice against its background (WCAG 2 AA for body text).
+pub const MIN_CONTRAST: f32 = 4.5;
+
+const UV_TOLERANCE: f32 = 1e-4;
 
 /// Lower-case hex SHA-256 of the bytes.
 pub fn sha256_hex(bytes: &[u8]) -> String {
@@ -104,27 +112,113 @@ impl TestRenderer for RecordingRenderer {
     }
 }
 
-fn flatten<'a>(shape: &'a Shape, out: &mut Vec<&'a Shape>) {
+struct Painted<'a> {
+    clip: Rect,
+    shape: &'a Shape,
+}
+
+fn flatten<'a>(clip: Rect, shape: &'a Shape, out: &mut Vec<Painted<'a>>) {
     if let Shape::Vec(shapes) = shape {
         for inner in shapes {
-            flatten(inner, out);
+            flatten(clip, inner, out);
         }
     } else {
-        out.push(shape);
+        out.push(Painted { clip, shape });
     }
 }
 
-fn painted_shapes<'h, State>(harness: &'h Harness<'_, State>) -> Vec<(Rect, &'h Shape)> {
+fn painted_shapes<'h, State>(harness: &'h Harness<'_, State>) -> Vec<Painted<'h>> {
     let mut out = Vec::new();
     for clipped in &harness.output().shapes {
-        let mut flat = Vec::new();
-        flatten(&clipped.shape, &mut flat);
-        out.extend(flat.into_iter().map(|shape| (clipped.clip_rect, shape)));
+        flatten(clipped.clip_rect, &clipped.shape, &mut out);
     }
     out
 }
 
-/// Checks that the Fan Kit unit is shown completely, byte-exact and together in the current frame.
+struct LogoPaint {
+    index: usize,
+    clip: Rect,
+    texture: TextureId,
+    rect: Rect,
+}
+
+fn relative_luminance(colour: Color32) -> f32 {
+    let channel = |value: u8| {
+        let c = f32::from(value) / 255.0;
+        if c <= 0.039_28 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+    0.2126 * channel(colour.r()) + 0.7152 * channel(colour.g()) + 0.0722 * channel(colour.b())
+}
+
+fn contrast(a: Color32, b: Color32) -> f32 {
+    let (la, lb) = (relative_luminance(a), relative_luminance(b));
+    (la.max(lb) + 0.05) / (la.min(lb) + 0.05)
+}
+
+fn over(foreground: Color32, opacity: f32, background: Color32) -> Color32 {
+    let alpha = f32::from(foreground.to_srgba_unmultiplied()[3]) / 255.0 * opacity;
+    let [fr, fg, fb, _] = foreground.to_srgba_unmultiplied();
+    let mix = |f: u8, b: u8| (f32::from(f) * alpha + f32::from(b) * (1.0 - alpha)).round() as u8;
+    Color32::from_rgb(
+        mix(fr, background.r()),
+        mix(fg, background.g()),
+        mix(fb, background.b()),
+    )
+}
+
+fn text_colours(text: &TextShape) -> Vec<Color32> {
+    text.galley
+        .job
+        .sections
+        .iter()
+        .map(|section| {
+            text.override_text_color
+                .unwrap_or(if section.format.color == Color32::PLACEHOLDER {
+                    text.fallback_color
+                } else {
+                    section.format.color
+                })
+        })
+        .collect()
+}
+
+fn background_behind(
+    shapes: &[Painted<'_>],
+    index: usize,
+    area: Rect,
+    fallback: Color32,
+) -> Color32 {
+    shapes
+        .iter()
+        .take(index)
+        .rev()
+        .find_map(|painted| match painted.shape {
+            Shape::Rect(rect) if rect.fill.a() == 255 && rect.rect.contains_rect(area) => {
+                Some(rect.fill)
+            }
+            _ => None,
+        })
+        .unwrap_or(fallback)
+}
+
+fn gap(a: Rect, b: Rect) -> f32 {
+    let dx = (a.min.x - b.max.x).max(b.min.x - a.max.x).max(0.0);
+    let dy = (a.min.y - b.max.y).max(b.min.y - a.max.y).max(0.0);
+    dx.max(dy)
+}
+
+fn occluder(shapes: &[Painted<'_>], index: usize, area: Rect) -> Option<Rect> {
+    shapes.iter().skip(index + 1).find_map(|painted| {
+        let bounds = painted.shape.visual_bounding_rect().intersect(painted.clip);
+        (bounds.is_positive() && bounds.intersects(area)).then_some(bounds)
+    })
+}
+
+/// Checks that the Fan Kit unit is shown completely, byte-exact, legible and together in the current frame.
 ///
 /// # Errors
 /// Returns the first deviation found, as a message for the assertion.
@@ -133,6 +227,8 @@ pub fn check_fan_kit_unit<State>(
     textures: &RecordedTextures,
 ) -> Result<(), String> {
     let screen = harness.ctx.content_rect();
+    let zoom = harness.ctx.zoom_factor();
+    let panel_fill = harness.ctx.style_of(harness.ctx.theme()).visuals.panel_fill;
 
     let trademark = single_node(harness, FAN_KIT_TRADEMARK_LINE, "the trademark line")?;
     let agreement = single_node(harness, FAN_KIT_AGREEMENT_NOTICE, "the agreement notice")?;
@@ -175,15 +271,26 @@ pub fn check_fan_kit_unit<State>(
         ));
     }
 
-    for (name, node) in [
-        ("logo", &logo),
-        ("trademark line", &trademark),
-        ("agreement notice", &agreement),
-    ] {
-        let rect = node.rect();
+    let parts = [
+        ("logo", logo.rect()),
+        ("trademark line", trademark.rect()),
+        ("agreement notice", agreement.rect()),
+    ];
+    for (name, rect) in parts {
         if !screen.contains_rect(rect) {
             return Err(format!(
                 "the {name} at {rect:?} is not inside the screen {screen:?}"
+            ));
+        }
+    }
+    for pair in parts.windows(2) {
+        let [(first, a), (second, b)] = pair else {
+            continue;
+        };
+        let distance = gap(*a, *b);
+        if distance > MAX_PART_GAP {
+            return Err(format!(
+                "the {first} and the {second} are {distance} points apart"
             ));
         }
     }
@@ -196,30 +303,47 @@ pub fn check_fan_kit_unit<State>(
     ] {
         let painted: Vec<_> = shapes
             .iter()
-            .filter_map(|(clip, shape)| match shape {
+            .enumerate()
+            .filter_map(|(index, painted)| match painted.shape {
                 Shape::Text(text_shape) if text_shape.galley.job.text == text => {
-                    Some((clip, text_shape))
+                    Some((index, painted.clip, text_shape))
                 }
                 _ => None,
             })
             .collect();
-        let [(clip, text_shape)] = painted.as_slice() else {
+        let [(index, clip, text_shape)] = painted.as_slice() else {
             return Err(format!(
                 "the {name} is painted {} times as one text",
                 painted.len()
             ));
         };
+        if text_shape.galley.elided {
+            return Err(format!("the {name} is truncated"));
+        }
         let bounds = text_shape.visual_bounding_rect();
         if !clip.contains_rect(bounds) {
             return Err(format!("the {name} at {bounds:?} is clipped by {clip:?}"));
         }
         for section in &text_shape.galley.job.sections {
-            if section.format.font_id.size < MIN_NOTICE_FONT_SIZE {
+            let size = section.format.font_id.size * zoom;
+            if size < MIN_NOTICE_FONT_SIZE {
                 return Err(format!(
-                    "the {name} uses font size {}",
-                    section.format.font_id.size
+                    "the {name} uses font size {size} egui points at zoom {zoom}"
                 ));
             }
+        }
+        let background = background_behind(&shapes, *index, bounds, panel_fill);
+        for colour in text_colours(text_shape) {
+            let seen = over(colour, text_shape.opacity_factor, background);
+            let ratio = contrast(seen, background);
+            if ratio < MIN_CONTRAST {
+                return Err(format!(
+                    "the {name} has contrast {ratio:.2} ({seen:?} on {background:?})"
+                ));
+            }
+        }
+        if let Some(cover) = occluder(&shapes, *index, bounds) {
+            return Err(format!("the {name} is covered by a shape at {cover:?}"));
         }
     }
 
@@ -230,31 +354,57 @@ pub fn check_fan_kit_unit<State>(
             .meta(id)
             .is_some_and(|meta| meta.name == FAN_KIT_LOGO_TEXTURE_NAME)
     };
-    let logo_paints: Vec<_> = shapes
-        .iter()
-        .filter_map(|(clip, shape)| match shape {
-            Shape::Rect(rect) => rect.brush.as_ref().and_then(|brush| {
-                is_logo(brush.fill_texture_id).then_some(LogoPaint {
-                    clip: *clip,
+    let full_uv = Rect::from_min_max(Pos2::ZERO, egui::pos2(1.0, 1.0));
+    let mut logo_paints = Vec::new();
+    for (index, painted) in shapes.iter().enumerate() {
+        match painted.shape {
+            Shape::Rect(rect) => {
+                let Some(brush) = rect.brush.as_ref() else {
+                    continue;
+                };
+                if !is_logo(brush.fill_texture_id) {
+                    continue;
+                }
+                if rect.fill != Color32::WHITE {
+                    return Err(format!("the logo is tinted {:?}", rect.fill));
+                }
+                if brush.uv != full_uv {
+                    return Err(format!(
+                        "the logo is cropped or flipped by uv {:?}",
+                        brush.uv
+                    ));
+                }
+                logo_paints.push(LogoPaint {
+                    index,
+                    clip: painted.clip,
                     texture: brush.fill_texture_id,
                     rect: rect.rect,
-                    uv: brush.uv,
-                    tint: rect.fill,
-                })
-            }),
-            Shape::Mesh(mesh) if is_logo(mesh.texture_id) => Some(LogoPaint {
-                clip: *clip,
-                texture: mesh.texture_id,
-                rect: mesh.calc_bounds(),
-                uv: Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                tint: mesh
-                    .vertices
-                    .first()
-                    .map_or(egui::Color32::WHITE, |vertex| vertex.color),
-            }),
-            _ => None,
-        })
-        .collect();
+                });
+            }
+            Shape::Mesh(mesh) if is_logo(mesh.texture_id) => {
+                let bounds = mesh.calc_bounds();
+                for vertex in &mesh.vertices {
+                    if vertex.color != Color32::WHITE {
+                        return Err(format!("the logo is tinted {:?}", vertex.color));
+                    }
+                    let expected = ((vertex.pos - bounds.min) / bounds.size()).to_pos2();
+                    if (vertex.uv - expected).length() > UV_TOLERANCE {
+                        return Err(format!(
+                            "the logo is rotated, flipped or cropped: vertex {:?} has uv {:?}, expected {expected:?}",
+                            vertex.pos, vertex.uv
+                        ));
+                    }
+                }
+                logo_paints.push(LogoPaint {
+                    index,
+                    clip: painted.clip,
+                    texture: mesh.texture_id,
+                    rect: bounds,
+                });
+            }
+            _ => {}
+        }
+    }
     let [paint] = logo_paints.as_slice() else {
         return Err(format!(
             "the logo texture is painted {} times",
@@ -270,18 +420,12 @@ pub fn check_fan_kit_unit<State>(
     if !paint.rect.contains(logo.rect().center()) {
         return Err("the painted logo is not where the logo node is".to_owned());
     }
-    if paint.tint != egui::Color32::WHITE {
-        return Err(format!("the logo is tinted {:?}", paint.tint));
-    }
-    if paint.uv != Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)) {
-        return Err(format!(
-            "the logo is cropped or flipped by uv {:?}",
-            paint.uv
-        ));
-    }
     let aspect = paint.rect.width() / paint.rect.height();
     if (aspect - 1.0).abs() > f32::EPSILON {
         return Err(format!("the logo is distorted to aspect ratio {aspect}"));
+    }
+    if let Some(cover) = occluder(&shapes, paint.index, paint.rect) {
+        return Err(format!("the logo is covered by a shape at {cover:?}"));
     }
     let Some(uploaded) = textures.get(paint.texture) else {
         return Err("the logo texture was never uploaded in full".to_owned());
@@ -302,12 +446,48 @@ pub fn check_fan_kit_unit<State>(
     Ok(())
 }
 
-struct LogoPaint {
-    clip: Rect,
-    texture: TextureId,
-    rect: Rect,
-    uv: Rect,
-    tint: egui::Color32,
+/// Activates every interactive node outside the unit, one at a time, and checks the unit after each.
+///
+/// # Errors
+/// Returns the first control whose activation hides or breaks the unit.
+pub fn check_fan_kit_unit_survives_every_control<State>(
+    harness: &mut Harness<'_, State>,
+    textures: &RecordedTextures,
+) -> Result<(), String> {
+    check_fan_kit_unit(harness, textures)?;
+    let controls: Vec<_> = harness
+        .query_all_by(|node| {
+            matches!(
+                node.role(),
+                Role::Button
+                    | Role::CheckBox
+                    | Role::RadioButton
+                    | Role::Link
+                    | Role::ComboBox
+                    | Role::Tab
+                    | Role::MenuItem
+            )
+        })
+        .map(|node| {
+            (
+                node.accesskit_node().id(),
+                node.accesskit_node().label().unwrap_or_default(),
+            )
+        })
+        .collect();
+    if controls.is_empty() {
+        return Ok(());
+    }
+    for (id, label) in controls {
+        let Some(control) = harness.query_by(|node| node.id() == id) else {
+            continue;
+        };
+        control.click();
+        harness.run();
+        check_fan_kit_unit(harness, textures)
+            .map_err(|error| format!("activating {label:?} breaks the unit: {error}"))?;
+    }
+    Ok(())
 }
 
 fn single_node<'h, State>(

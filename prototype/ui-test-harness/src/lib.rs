@@ -46,6 +46,11 @@ pub struct FanKitUnit {
 }
 
 impl FanKitUnit {
+    /// The uploaded logo texture; the probes of the spike draw it in broken ways.
+    pub fn logo_texture(&self) -> &TextureHandle {
+        &self.logo
+    }
+
     /// Uploads the logo texture and returns the unit with the pinned notices.
     ///
     /// # Errors

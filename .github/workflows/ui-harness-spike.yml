@@ -56,11 +56,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends mesa-vulkan-drivers
 
-      - name: Run the wgpu pixel test
+      - name: Run the wgpu pixel tests
         shell: bash
-        run: cargo test --locked --manifest-path "$SPIKE_MANIFEST" --features wgpu --test render -- the_logo_is_rendered_into_pixels --nocapture
+        run: cargo test --locked --manifest-path "$SPIKE_MANIFEST" --features wgpu --test render -- logo --nocapture --test-threads 1
 
       - name: Compare the snapshot taken on Windows
-        continue-on-error: true
         shell: bash
         run: cargo test --locked --manifest-path "$SPIKE_MANIFEST" --features wgpu --test render -- about_view_snapshot --nocapture
