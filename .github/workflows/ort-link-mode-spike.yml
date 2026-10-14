@@ -11,7 +11,7 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   SPIKE_MANIFEST: prototype/ort-link-mode/Cargo.toml
-  ORT_RELEASE: https://github.com/microsoft/onnxruntime/releases/download/v1.28.3
+  ORT_RELEASE: https://github.com/microsoft/onnxruntime/releases/download/v1.31.0
 
 jobs:
   spike:
@@ -23,13 +23,13 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            asset: onnxruntime-win-x64-1.28.3.zip
-            asset_sha256: 1d6fab48e85f948436af7c8c971d2c145cf224e2c444755dec894f8b0de11a83
-            library: onnxruntime-win-x64-1.28.3/lib/onnxruntime.dll
+            asset: onnxruntime-win-x64-1.31.0.zip
+            asset_sha256: 3958d8a44984160692c1b4ffd0de3cb48f8c39f9d34bb31e433db06e30b82195
+            library: onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll
           - os: ubuntu-latest
-            asset: onnxruntime-linux-x64-1.28.3.tgz
-            asset_sha256: db14e4863bd37893fc59729d986ab2a0d043d10b7d44da1913c4982b7e3d009c
-            library: onnxruntime-linux-x64-1.28.3/lib/libonnxruntime.so.1.28.3
+            asset: onnxruntime-linux-x64-1.31.0.tgz
+            asset_sha256: cc5c72baf5ae5c8238a6841f0897227be2d02826b9cf98eaf02fdefaeeb03a57
+            library: onnxruntime-linux-x64-1.31.0/lib/libonnxruntime.so.1.31.0
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

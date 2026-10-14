@@ -21,18 +21,18 @@ pub struct PinnedRuntime {
     pub git_commit: &'static str,
 }
 
-/// `onnxruntime.dll` from `onnxruntime-win-x64-1.28.3.zip`.
+/// `onnxruntime.dll` from `onnxruntime-win-x64-1.31.0.zip`.
 pub const WINDOWS_X64: PinnedRuntime = PinnedRuntime {
     file_name: "onnxruntime.dll",
-    sha256: "4d2774a5f64e4a230b16b74b167171e92f65b0683c19680c1d04fb284b92a6e2",
-    git_commit: "0d68ff6",
+    sha256: "0c42dc4e278f0968fdf9ebf1b1e54a74c657a9942e70803e453c91993451cf4c",
+    git_commit: "402979a",
 };
 
-/// `libonnxruntime.so.1.28.3` from `onnxruntime-linux-x64-1.28.3.tgz`.
+/// `libonnxruntime.so.1.31.0` from `onnxruntime-linux-x64-1.31.0.tgz`.
 pub const LINUX_X64: PinnedRuntime = PinnedRuntime {
-    file_name: "libonnxruntime.so.1.28.3",
-    sha256: "5a1ce74e56e8c4b278d5a9e9d12b7192d9f70811084dde9616da4fa1710efc5a",
-    git_commit: "0d68ff6",
+    file_name: "libonnxruntime.so.1.31.0",
+    sha256: "469849977cb60744ea160927e1a3a0643fd4c55c0aff743251c6d293402e334e",
+    git_commit: "402979a",
 };
 
 /// Returns the pinned library for the compilation target, or `None` for a target that ships none.
@@ -72,6 +72,8 @@ pub enum LoadError {
     SearchPath(io::Error),
     /// `ort` could not load the verified library.
     Ort(ort::LoadDynamicError),
+    /// The ONNX Runtime environment could not be created.
+    Environment(ort::Error),
     /// `ort` already holds a runtime that the process mapped from another path; the verified file was not used.
     LoadedElsewhere {
         /// The verified file.
@@ -99,6 +101,9 @@ impl fmt::Display for LoadError {
             }
             Self::SearchPath(source) => write!(f, "cannot restrict the DLL search path: {source}"),
             Self::Ort(source) => write!(f, "{source}"),
+            Self::Environment(source) => {
+                write!(f, "cannot create the ONNX Runtime environment: {source}")
+            }
             Self::LoadedElsewhere { verified, mapped } => match mapped {
                 Some(mapped) => write!(
                     f,
@@ -114,15 +119,24 @@ impl fmt::Display for LoadError {
 
 impl std::error::Error for LoadError {}
 
-/// Verifies the pinned library in `dir` and loads it by absolute path into `ort`.
-///
-/// Returns the path of the loaded file.
+/// The verified runtime: the file it was loaded from and the one environment of the process.
+#[derive(Debug)]
+pub struct LoadedRuntime {
+    /// The absolute path of the loaded library.
+    pub path: PathBuf,
+    /// The ONNX Runtime environment, created with telemetry events switched off.
+    pub environment: ort::environment::Environment,
+}
+
+/// Verifies the pinned library in `dir`, loads it by absolute path into `ort` and creates the environment.
 ///
 /// # Errors
 ///
 /// [`LoadError::NotAbsolute`], [`LoadError::Read`] and [`LoadError::HashMismatch`] before anything is loaded;
-/// [`LoadError::SearchPath`] and [`LoadError::Ort`] when the verified file cannot be loaded.
-pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<PathBuf, LoadError> {
+/// [`LoadError::SearchPath`] and [`LoadError::Ort`] when the verified file cannot be loaded;
+/// [`LoadError::LoadedElsewhere`] when `ort` already holds a runtime from another path;
+/// [`LoadError::Environment`] when the environment cannot be created.
+pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<LoadedRuntime, LoadError> {
     if !dir.is_absolute() {
         return Err(LoadError::NotAbsolute(dir.to_path_buf()));
     }
@@ -140,7 +154,7 @@ pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<PathBuf, LoadError> {
         });
     }
     platform::restrict_library_search().map_err(LoadError::SearchPath)?;
-    let _ = ort::init_from(&path).map_err(LoadError::Ort)?.commit();
+    let builder = ort::init_from(&path).map_err(LoadError::Ort)?;
     let mapped = platform::loaded_module_path(pinned.file_name);
     if !same_file(mapped.as_deref(), &path) {
         return Err(LoadError::LoadedElsewhere {
@@ -148,7 +162,11 @@ pub fn load(dir: &Path, pinned: &PinnedRuntime) -> Result<PathBuf, LoadError> {
             mapped,
         });
     }
-    Ok(path)
+    let environment = builder
+        .with_telemetry(false)
+        .build()
+        .map_err(LoadError::Environment)?;
+    Ok(LoadedRuntime { path, environment })
 }
 
 /// Returns the path from which the process mapped the pinned library, or `None` when it is not loaded.

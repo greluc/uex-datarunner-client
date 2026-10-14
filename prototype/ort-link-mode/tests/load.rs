@@ -34,7 +34,8 @@ fn the_pinned_runtime_loads_from_its_absolute_path_and_runs_a_model()
     let pinned = pinned_for_target().ok_or("no pinned runtime for this target")?;
     let before = native_files_in_temp()?;
 
-    let path = load(&dir, pinned)?;
+    let runtime = load(&dir, pinned)?;
+    let path = runtime.path.clone();
 
     assert_eq!(path, dir.join(pinned.file_name));
     let loaded = loaded_runtime_path(pinned).ok_or("the runtime is not mapped into the process")?;
@@ -45,7 +46,8 @@ fn the_pinned_runtime_loads_from_its_absolute_path_and_runs_a_model()
         ort::info()
     );
 
-    let mut session = Session::builder()?.commit_from_memory(&identity_model())?;
+    let mut session =
+        Session::builder(&runtime.environment)?.commit_from_memory(&identity_model())?;
     let input = Tensor::from_array(([3_usize], vec![1.5_f32, -2.0, 3.25]))?;
     let outputs = session.run(ort::inputs!["x" => input])?;
     let (shape, values) = outputs["y"].try_extract_tensor::<f32>()?;

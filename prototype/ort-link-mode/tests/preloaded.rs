@@ -20,7 +20,7 @@ fn a_runtime_loaded_from_another_path_first_is_refused() -> Result<(), Box<dyn s
     fs::create_dir_all(&elsewhere)?;
     fs::copy(dir.join(pinned.file_name), elsewhere.join(pinned.file_name))?;
 
-    let _ = ort::init_from(elsewhere.join(pinned.file_name))?.commit();
+    let _environment = ort::init_from(elsewhere.join(pinned.file_name))?.build()?;
     let outcome = load(&dir, pinned);
 
     assert!(
