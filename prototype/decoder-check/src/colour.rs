@@ -32,6 +32,22 @@ pub(crate) fn as_srgb(samples: Samples) -> Vec<u8> {
     }
 }
 
+const NARROW_BLACK_8: f64 = 16.0;
+const NARROW_SPAN_8: f64 = 219.0;
+const SIXTEEN_BIT_SHIFT: f64 = 256.0;
+
+/// Expands narrow-range samples (black 16, white 235 at 8 bits, ITU-T H.273) to full range and returns 8-bit values.
+pub(crate) fn expand_narrow_range(samples: Samples) -> Vec<u8> {
+    let expand = |v: f64, scale: f64| to_u8((v / scale - NARROW_BLACK_8) / NARROW_SPAN_8);
+    match samples {
+        Samples::Eight(v) => v.into_iter().map(|s| expand(f64::from(s), 1.0)).collect(),
+        Samples::Sixteen(v) => v
+            .into_iter()
+            .map(|s| expand(f64::from(s), SIXTEEN_BIT_SHIFT))
+            .collect(),
+    }
+}
+
 fn srgb_oetf(linear: f64) -> f64 {
     let v = linear.clamp(0.0, 1.0);
     if v <= 0.003_130_8 {

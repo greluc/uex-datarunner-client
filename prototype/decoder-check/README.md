@@ -34,7 +34,7 @@ Rejected: `qcms` 0.3.0 (MIT, Firefox's colour engine) handles 8-bit data types o
 
 ## Result (2026-10-14)
 
-All 47 tests pass on Windows 11 (local, the pinned toolchain 1.99.0) with `cargo clippy --all-targets -- -D warnings` and `RUSTDOCFLAGS=-D warnings cargo doc` clean. The decoders are pure Rust, so the result does not depend on the OS; the workflow `.github/workflows/decoder-check-spike.yml` repeats it on `ubuntu-latest` and `windows-latest` on a push to this branch.
+All 49 tests pass on Windows 11 (local, the pinned toolchain 1.99.0) with `cargo clippy --all-targets -- -D warnings` and `RUSTDOCFLAGS=-D warnings cargo doc` clean. The decoders are pure Rust, so the result does not depend on the OS; the workflow `.github/workflows/decoder-check-spike.yml` repeats it on `ubuntu-latest` and `windows-latest` on a push to this branch.
 
 ### 07 §4 decode fixtures
 
@@ -60,7 +60,7 @@ Each guard was checked locally by switching it off (a temporary edit, not commit
 4. **`image`'s BMP decoder ignores the colour space of a V4/V5 header** (`bV5CSType`, calibration endpoints and gammas, a linked or embedded profile). **Guard in the spike:** `sRGB` and `Win ` decode; `LCS_CALIBRATED_RGB` with all endpoints and gammas zero counts as sRGB; every other colour space is set aside. The zero-calibration rule is an assumption about what common writers emit and is unverified; R-CAP-8 does not mention BMP colour spaces.
 5. **A PQ or HLG ICC profile is recognised only by its `cicp` tag** (ICC v4.4). A profile that describes PQ through its curves or a LUT without that tag would be converted and clipped like an SDR profile. Not tested; it needs a detection rule (for example from the `lumi` tag or the curve shape) and a fixture in M2.
 6. **R-CAP-8 does not say what `mDCV` or `cLLI` without `cICP` means.** Both are HDR mastering metadata; the spike sets such a file aside as "HDR or unsupported colour encoding" (`hdr_metadata_without_cicp_is_set_aside`), and it checks them before `iCCP`, so a file with an SDR `iCCP` and `cLLI` is set aside too. This is a requirement decision for @greluc.
-8. **The spike is stricter than R-CAP-8 on narrow range.** R-CAP-8 accepts `cICP` with BT.709 primaries (1) and sRGB transfer (13); the spike also requires the full-range flag and sets 1/13/0/0 aside (`any_other_cicp_is_set_aside`), because narrow-range samples read as full range lose contrast. Whether R-CAP-8 should say so is a decision for @greluc.
+8. **R-CAP-8 does not say what narrow-range `cICP` 1/13 means.** Read as full range, its samples (black 16, white 235) lose about 14 % contrast. Decided by @greluc on 2026-10-14 (O-129 b): such a file is expanded to full range (ITU-T H.273; 8 and 16 bit, out-of-range samples clipped; `a_narrow_range_srgb_cicp_png_is_expanded_to_full_range`, `narrow_range_samples_outside_16_to_235_are_clipped`).
 7. **`png`'s `Limits` is one byte budget shared by the decompressed `iCCP`, text chunks and the image buffer** (default 64 MiB). The adapter has to set it from its own limits (the spike: pixel limit × 8 bytes plus the profile limit) and check the inflated profile length itself: a 4 MiB profile from a 4 KB chunk passes `png`'s budget and is caught by the profile limit after the header, before pixels are decoded. The spike's profile limit is 1 MiB; 02 §9 fixes the start value in M2.
 
 ### Findings for 07 §4
@@ -76,6 +76,13 @@ Each guard was checked locally by switching it off (a temporary edit, not commit
 - 07 §4 item 6 (pixel budget): whether `zune-jpeg` can decode at a reduced scale, and the peak memory of a 7680×4320 decode, were not examined.
 - Greyscale with an ICC profile (set aside in the spike; a grey profile would need `moxcms`'s `Gray` layout), alpha (dropped, not composited), interlaced PNG, palette PNG with `iCCP`, 16-bit greyscale, CMYK JPEG (set aside, no fixture), JPEG with an Ultra HDR gain map (its base image is SDR and is read as such; the gain map is ignored).
 - JPEG XL is not recognised and is set aside as an unsupported format with the generic message; R-CAP-8 names JPEG XR, AVIF, OpenEXR and HEIF only. Folder import lists `.jxr`, `.avif` and `.exr` but not `.heic`/`.heif`, while content detection recognises HEIF.
+
+## Decisions (2026-10-14, @greluc)
+
+- O-128: the crate set above is accepted, with the guards of the spike.
+- O-129: (a) `mDCV`/`cLLI` without `cICP` is set aside; (b) narrow-range `cICP` 1/13 is expanded to full range; (c) the strict BMP rule stays; (d) an unparsable colour chunk or ICC segment sets the file aside; (e) PQ or HLG ICC profiles without a `cicp` tag get a detection rule and a fixture in M2.
+- O-130: `jpeg-encoder` may be used as a test-only dependency.
+- CI run 38614513825 (commit `8b0a3e8`) was green on `ubuntu-latest` and `windows-latest`.
 
 ## Commands
 

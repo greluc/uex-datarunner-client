@@ -71,6 +71,7 @@ fn walk(bytes: &[u8]) -> ChunkWalk {
 
 enum Plan {
     AsSrgb,
+    NarrowRangeSrgb,
     Profile(Box<moxcms::ColorProfile>),
     FileGamma(f64),
 }
@@ -115,11 +116,12 @@ fn check_parsed(walk: &ChunkWalk, info: &png::Info<'_>) -> Result<(), SetAsideRe
 fn plan(info: &png::Info<'_>, limits: &IntakeLimits) -> Result<Plan, SetAsideReason> {
     if let Some(cicp) = info.coding_independent_code_points {
         let (primaries, transfer) = (cicp.color_primaries, cicp.transfer_function);
-        if primaries == CICP_BT709_PRIMARIES
-            && transfer == CICP_SRGB_TRANSFER
-            && cicp.is_video_full_range_image
-        {
-            return Ok(Plan::AsSrgb);
+        if primaries == CICP_BT709_PRIMARIES && transfer == CICP_SRGB_TRANSFER {
+            return Ok(if cicp.is_video_full_range_image {
+                Plan::AsSrgb
+            } else {
+                Plan::NarrowRangeSrgb
+            });
         }
         if transfer == CICP_PQ_TRANSFER || transfer == CICP_HLG_TRANSFER {
             return Err(unsupported(Encoding::CicpHdr {
@@ -243,6 +245,7 @@ pub(crate) fn read(bytes: &[u8], limits: &IntakeLimits) -> Result<SrgbRaster, Se
     let samples = to_rgb(used, frame.color_type, frame.bit_depth)?;
     let rgb = match plan {
         Plan::AsSrgb => colour::as_srgb(samples),
+        Plan::NarrowRangeSrgb => colour::expand_narrow_range(samples),
         Plan::Profile(profile) => colour::apply_profile(&profile, samples).map_err(unsupported)?,
         Plan::FileGamma(gamma) => colour::apply_file_gamma(gamma, samples),
     };

@@ -127,7 +127,7 @@ fn a_cicp_srgb_png_decodes_unchanged() {
 fn any_other_cicp_is_set_aside() {
     let src = source();
     for (cicp, full_range) in [
-        ([1, 13, 0, 0], false),
+        ([12, 13, 0, 0], false),
         ([12, 13, 0, 1], true),
         ([1, 8, 0, 1], true),
     ] {
@@ -142,6 +142,41 @@ fn any_other_cicp_is_set_aside() {
             "cICP {cicp:?}"
         );
     }
+}
+
+#[test]
+fn a_narrow_range_srgb_cicp_png_is_expanded_to_full_range() {
+    let src = source();
+    let eight = map_samples_8(&src, |v| (16.0 + v * 219.0) / 255.0);
+    let png = PngSpec::rgb8(&eight)
+        .chunk(b"cICP", &[1, 13, 0, 0])
+        .encode();
+    let raster = decoded(read_default(&png));
+    assert!(
+        max_abs_diff(&raster, &src) <= 1,
+        "8 bit: {}",
+        max_abs_diff(&raster, &src)
+    );
+    let sixteen = be_samples(&map_samples_16(&src, |v| {
+        (16.0 + v * 219.0) * 256.0 / 65_535.0
+    }));
+    let png = PngSpec::rgb16(&sixteen)
+        .chunk(b"cICP", &[1, 13, 0, 0])
+        .encode();
+    let raster = decoded(read_default(&png));
+    assert!(
+        max_abs_diff(&raster, &src) <= 1,
+        "16 bit: {}",
+        max_abs_diff(&raster, &src)
+    );
+}
+
+#[test]
+fn narrow_range_samples_outside_16_to_235_are_clipped() {
+    let data = [0u8, 16, 255].repeat((common::WIDTH * common::HEIGHT) as usize);
+    let png = PngSpec::rgb8(&data).chunk(b"cICP", &[1, 13, 0, 0]).encode();
+    let raster = decoded(read_default(&png));
+    assert_eq!(&raster.rgb[0..3], &[0, 0, 255]);
 }
 
 #[test]
