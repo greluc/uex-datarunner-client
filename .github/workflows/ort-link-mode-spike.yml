@@ -1,0 +1,67 @@
+name: ONNX Runtime link-mode spike
+
+on:
+  push:
+    branches:
+      - prototype/ort-link-mode
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  SPIKE_MANIFEST: prototype/ort-link-mode/Cargo.toml
+  ORT_RELEASE: https://github.com/microsoft/onnxruntime/releases/download/v1.28.3
+
+jobs:
+  spike:
+    name: spike (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: onnxruntime-win-x64-1.28.3.zip
+            asset_sha256: 1d6fab48e85f948436af7c8c971d2c145cf224e2c444755dec894f8b0de11a83
+            library: onnxruntime-win-x64-1.28.3/lib/onnxruntime.dll
+          - os: ubuntu-latest
+            asset: onnxruntime-linux-x64-1.28.3.tgz
+            asset_sha256: db14e4863bd37893fc59729d986ab2a0d043d10b7d44da1913c4982b7e3d009c
+            library: onnxruntime-linux-x64-1.28.3/lib/libonnxruntime.so.1.28.3
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Rust toolchain
+        shell: bash
+        run: rustup toolchain install
+
+      - name: Verify the compiler reports the pinned version
+        shell: bash
+        run: |
+          pinned=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+          actual=$(rustc --version | cut -d' ' -f2)
+          test -n "$pinned"
+          test "$pinned" = "$actual"
+
+      - name: Fetch and verify the official ONNX Runtime archive
+        shell: bash
+        env:
+          ASSET: ${{ matrix.asset }}
+          ASSET_SHA256: ${{ matrix.asset_sha256 }}
+          LIBRARY: ${{ matrix.library }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/ort-archive" "$RUNNER_TEMP/ort-install"
+          curl --fail --location --proto '=https' --output "$RUNNER_TEMP/ort-archive/$ASSET" "$ORT_RELEASE/$ASSET"
+          echo "$ASSET_SHA256  $RUNNER_TEMP/ort-archive/$ASSET" | sha256sum --check --strict
+          tar -xf "$RUNNER_TEMP/ort-archive/$ASSET" -C "$RUNNER_TEMP/ort-archive" "$LIBRARY"
+          cp "$RUNNER_TEMP/ort-archive/$LIBRARY" "$RUNNER_TEMP/ort-install/"
+          echo "TALLYLINE_ORT_DIR=$RUNNER_TEMP/ort-install" >> "$GITHUB_ENV"
+
+      - name: Run the spike tests
+        shell: bash
+        run: cargo test --locked --manifest-path "$SPIKE_MANIFEST" -- --include-ignored --nocapture
