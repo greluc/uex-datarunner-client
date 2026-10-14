@@ -61,7 +61,7 @@ The cut combines **DDD bounded contexts** with **ports & adapters** (decision an
 - **Core** = one crate per bounded context ([11 §A2](11-ddd-and-tdd.md)), plus `shared-kernel` and `workflows`.
   - Each context crate contains its domain model **and** its application services (use cases).
   - The core knows no technology: no egui, no image codecs, no HTTP or sockets, no SQL, no ONNX, no file system (`std::fs`, `std::net`, `std::process`), no native access or `unsafe` (`#![forbid(unsafe_code)]`), no clock except through an injected `Clock` trait (enforcement in 09 §2, ADR-0005 D13).
-  - Images enter the core as an own immutable raster type (`ImageRaster`: width, height, ARGB `u32` pixels), file locations as a value object (`FolderLocation`); both live in `shared-kernel`. Decoding, encoding (JPEG/PNG for the upload) and file-system access happen only in adapters; the image codec crates are chosen in M0.
+  - Images enter the core as an own immutable raster type (`ImageRaster`: width, height, ARGB `u32` pixels), file locations as a value object (`FolderLocation`); both live in `shared-kernel`. Decoding, encoding (JPEG/PNG for the upload) and file-system access happen only in adapters; the image codec crates are chosen in M0 (proposed by the decoder check: O-128, 07 §4).
 - **Adapters** are cut by **technology** and implement the **ports** (traits) of the context crates. Inside an adapter there is one module per context.
 - **`ui`** uses only the public application API of the context crates and `workflows`.
 - **`app`** is exclusively composition root and packaging.
