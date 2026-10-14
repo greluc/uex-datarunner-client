@@ -138,15 +138,22 @@ Source code
   this file.
 
 2.3 ONNX Runtime
-  Crate         ort =2.0.0-rc.13, a release candidate and a registered
-                exception to "stable releases only" (09 section 3b, O-108)
-                [crate licence read from its Cargo.toml when pinned in M0]
-  Library       the ONNX Runtime shared library that the crate loads or
-                downloads [link mode, library version and the SHA-256 of
-                every file decided in M0, so that it is pinned like the OCR
-                assets (10 S-22); O-108]
-  Upstream      microsoft/onnxruntime at the tag of the pinned library
-                version [tag and commit recorded when pinned]
+  Crate         ort =2.0.0-rc.14 and ort-sys =2.0.0-rc.14, a release
+                candidate and a registered exception to "stable releases
+                only" (09 section 3b, O-108); MIT OR Apache-2.0, used under
+                MIT, read from their Cargo.toml and licence files on
+                2026-10-14; with the features load-dynamic and api-31 and
+                no default features, so the crate downloads and links
+                nothing
+  Library       the official ONNX Runtime 1.31.0 shared library, loaded at
+                run time from the installation directory after its SHA-256
+                check: onnxruntime.dll (win-x64, SHA-256
+                0c42dc4e278f0968fdf9ebf1b1e54a74c657a9942e70803e453c91993451cf4c)
+                and libonnxruntime.so.1.31.0 (linux-x64, SHA-256
+                469849977cb60744ea160927e1a3a0643fd4c55c0aff743251c6d293402e334e);
+                the archives they come from are in docs/dependency-pins.md
+  Upstream      microsoft/onnxruntime at tag v1.31.0, commit
+                402979ac1bef89dcd55add41eaa7277c407599eb
   Licence       MIT
   Copyright     Copyright (c) Microsoft Corporation
   Third party   statically linked into the library and listed in its
@@ -171,9 +178,10 @@ Source code
                 commit 1d8b82b0740839c0de7f1242a3585e3390ff5f33
                 [open point O-81: archiving the other cmake/deps.txt
                 sources]
-  Shipped       the linux-x64 and win-x64 libraries only, on Windows
-                including onnxruntime_providers_shared.dll if the pinned
-                library has it [strip list decided in M0]
+  Shipped       the two library files above only; the release archives
+                also hold onnxruntime_providers_shared, which the CPU
+                execution provider does not need and which is not shipped
+                (link-mode spike, 2026-10-14)
   Privacy       the official libraries contain telemetry (1DS over HTTPS on
                 Linux, ETW TraceLogging on Windows); the app's own code sets
                 ORT_DISABLE_TELEMETRY before the first ONNX Runtime call

@@ -2,7 +2,7 @@
 
 > **Doc type:** Living reference — current. Last reviewed: 2026-10-14.
 
-This file records what the pins in `.github/` cannot say themselves: the tag each pinned GitHub Action resolves to, and the version and checksum of every CI tool that a workflow downloads or installs outside the crate dependency graph. Rust crates are pinned elsewhere: in `Cargo.toml`, `Cargo.lock`, the `cargo vendor` directory and the `cargo-vet` records (S-3 to S-6). Amended 2026-10-12: the Gradle-based pins were replaced by the Cargo-based ones when the implementation language changed to Rust ([ADR-0005](adr/0005-rust-and-egui.md)).
+This file records what the pins in `.github/` cannot say themselves: the tag each pinned GitHub Action resolves to, the version and checksum of every CI tool that a workflow downloads or installs outside the crate dependency graph, and those of the native libraries that ship with the app without coming through Cargo. Rust crates are pinned elsewhere: in `Cargo.toml`, `Cargo.lock`, the `cargo vendor` directory and the `cargo-vet` records (S-3 to S-6). Amended 2026-10-12: the Gradle-based pins were replaced by the Cargo-based ones when the implementation language changed to Rust ([ADR-0005](adr/0005-rust-and-egui.md)).
 
 ## Rule
 
@@ -41,6 +41,15 @@ The Rust toolchain is not installed by an action: the workflow runs `rustup tool
 | `reuse` | 6.2.0 | PyPI source distribution `reuse-6.2.0.tar.gz`, installed with `pip install --require-hashes` into a throwaway virtual environment from `.github/requirements/reuse.txt` (all 11 packages, with the optional `charset-normalizer` encoding detector) after `.github/requirements/reuse-build.txt` (`poetry-core` 2.5.0, from wheels with `--only-binary :all:`); the second install uses `--no-build-isolation`. PyPI lists no wheel that runs on CPython 3.12 for 6.2.0, only one for CPython 3.10 against glibc 2.41, so the source distribution is the pinned file | `4feae057a2334c9a513e6933cdb9be819d8b822f3b5b435a36138bd218897d23` (the source distribution's SHA-256 from PyPI's release metadata, which also matched the downloaded file); the other packages' hashes are in the requirements file, compiled with `uv pip compile --generate-hashes` for CPython 3.12 and `manylinux_2_28` with a cut-off of 2026-10-07 (the 7-day cooldown), which is why the job runs on `ubuntu-24.04` and checks for Python 3.12. The same install ran in an `ubuntu:24.04` container and in a Windows virtual environment, and `reuse lint` passed in both | 2026-10-14 | `.github/workflows/repository-gates.yml` (job `reuse`); runs `reuse lint` (REUSE 3.3) over the whole repository, and the job fails if `reuse --version` is not 6.2.0 |
 
 The row version and the checksum change together, in a reviewed pull request (S-36). No other CI tool is pinned yet.
+
+## Native libraries
+
+Native libraries that ship with the app but do not come through Cargo (10 S-22, 09 §3b). Each row pins the release archive, which is checked before it is extracted, and the library file taken from it, which the app checks again before it loads it. A version bump changes the row, `NOTICE` and the pinned hashes in the code in one reviewed pull request.
+
+| Library | Version | Download | SHA-256 | Checked on | Used in |
+|---|---|---|---|---|---|
+| ONNX Runtime, Windows x64 | 1.31.0 (release `v1.31.0` of `microsoft/onnxruntime`, tag commit `402979ac1bef89dcd55add41eaa7277c407599eb`, published 2026-10-09, not a pre-release; ADR-0007) | `https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-win-x64-1.31.0.zip`; shipped file `lib/onnxruntime.dll` (17,253,176 bytes) | archive `3958d8a44984160692c1b4ffd0de3cb48f8c39f9d34bb31e433db06e30b82195`; `onnxruntime.dll` `0c42dc4e278f0968fdf9ebf1b1e54a74c657a9942e70803e453c91993451cf4c` (the downloaded archive matched the digest GitHub shows for the asset; the DLL carries a valid Authenticode signature of Microsoft Corporation, issuer Microsoft Code Signing PCA 2024, and is byte-identical to `runtimes/win-x64/native/onnxruntime.dll` in the NuGet package `Microsoft.ML.OnnxRuntime` 1.31.0, whose author and repository signatures `dotnet nuget verify` accepts) | 2026-10-14 | the link-mode spike (branch `prototype/ort-link-mode`); `adapter-ocr` and the packaging jobs from M2 (O-108) |
+| ONNX Runtime, Linux x64 | 1.31.0 (same release) | `https://github.com/microsoft/onnxruntime/releases/download/v1.31.0/onnxruntime-linux-x64-1.31.0.tgz`; shipped file `lib/libonnxruntime.so.1.31.0` (29,345,384 bytes) | archive `cc5c72baf5ae5c8238a6841f0897227be2d02826b9cf98eaf02fdefaeeb03a57`; `libonnxruntime.so.1.31.0` `469849977cb60744ea160927e1a3a0643fd4c55c0aff743251c6d293402e334e` (the downloaded archive matched the digest GitHub shows for the asset; the library is byte-identical to `runtimes/linux-x64/native/libonnxruntime.so` in the same signed NuGet package; the GitHub release is the accepted source, O-127) | 2026-10-14 | as above |
 
 ## Dependabot
 
