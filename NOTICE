@@ -377,7 +377,7 @@ Source code
   Crates        aws-lc-rs 1.18.2 with aws-lc-sys 0.46.0 (AWS-LC, C, C++ and
                 assembler, compiled by the build script of aws-lc-sys); a
                 registered exception to the pure-Rust rule (09 section 3b,
-                ADR-0006, O-110). Pulled in by rustls 0.23.45 with its
+                ADR-0006, O-110). Pulled in by rustls 0.23.46 with its
                 aws-lc-rs feature, through the crate tallyline-adapter-uex
   Licence       aws-lc-rs: ISC AND (Apache-2.0 OR ISC); aws-lc-sys: ISC,
                 Apache-2.0, MIT, BSD-3-Clause and MIT-0 as an alternative of a

@@ -191,6 +191,6 @@ Facts verified on 2026-10-12 (ADR-0005) are marked; everything else is chosen an
 | `cargo-deny`, `cargo-vet`, `cargo-audit`, `cargo-llvm-cov`, `cargo-mutants` | to be verified in M0 | Check, supply-chain and coverage tools; installed per 10 S-36 |
 | `proptest`, `wiremock` | to be verified in M0 | Test libraries |
 | `egui_kittest` with the `wgpu` and `snapshot` features | `=0.36.2` (verified at source and in the spike on 2026-10-14) | egui UI test harness, a dev-dependency only (O-114); pixel tests need a software Vulkan driver on the Linux runner |
-| `tokio`, `reqwest`, `rustls` with the `aws-lc-rs` provider and `rustls-platform-verifier` | `aws-lc-rs` 1.18.2, `aws-lc-sys` 0.46.0, `rustls` 0.23.45, `rustls-platform-verifier` 0.7.1, `reqwest` 0.13.5 verified at source on 2026-10-14 (ADR-0006); `tokio` and the rest to be verified in M0 | O-123, O-110 |
+| `tokio`, `reqwest`, `rustls` with the `aws-lc-rs` provider and `rustls-platform-verifier` | `aws-lc-rs` 1.18.2, `aws-lc-sys` 0.46.0, `rustls` 0.23.45, `rustls-platform-verifier` 0.7.1, `reqwest` 0.13.5 verified at source on 2026-10-14 (ADR-0006); `rustls` locked at 0.23.46 the same day for RUSTSEC-2026-0346 to 0349 (delta checked: no new dependency, no build-script change, no new `unsafe`); `tokio` and the rest to be verified in M0 | O-123, O-110 |
 | `rusqlite` | to be verified in M0 | Bundled SQLite (§3b) |
 | Others | see [CLAUDE.md](../../CLAUDE.md) | |
