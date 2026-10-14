@@ -123,7 +123,7 @@ Approach: **Test-Driven Development** and outside-in; rules, exceptions and tool
 | Contract | UEX responses against our DTOs: written against the documented schema; recorded responses only anonymised and only once UEX's terms allow it ([06](06-uex-api.md) open point 7) | `cargo test` |
 | Live API drift (opt-in) | field names and error codes against the recorded contracts, always `is_production=0` | weekly scheduled CI job (04 M1, 10 S-14) or locally via `TALLYLINE_LIVE_TEST=1`; skipped otherwise |
 | Golden/corpus | OCR and pipeline result against expected values, metric "silently wrong" | `tools/ocr-eval`, opt-in via `TALLYLINE_CORPUS_DIR` |
-| UI (few) | Onboarding, submission lock, deviation confirmation, no dialog or focus change on background events (§7), the Fan Kit unit in both placements (R-UI-19) | egui UI test harness (candidate `egui_kittest`, unverified, O-114) |
+| UI (few) | Onboarding, submission lock, deviation confirmation, no dialog or focus change on background events (§7), the Fan Kit unit in both placements (R-UI-19) | `egui_kittest` with its `wgpu` and `snapshot` features (O-114) |
 
 Further test rules:
 
@@ -187,7 +187,8 @@ Facts verified on 2026-10-12 (ADR-0005) are marked; everything else is chosen an
 | `keyring` | 4.2.0 (verified) | Secret storage |
 | `cargo-packager` | 0.11.8 (verified) with pre-installed WiX 3.11.2 | WiX pinned by SHA-256 in `docs/dependency-pins.md` ([10](10-supply-chain-security.md) S-11) |
 | `cargo-deny`, `cargo-vet`, `cargo-audit`, `cargo-llvm-cov`, `cargo-mutants` | to be verified in M0 | Check, supply-chain and coverage tools; installed per 10 S-36 |
-| `proptest`, `wiremock`, an egui UI test harness (candidate `egui_kittest`, O-114) | to be verified in M0 | Test libraries |
+| `proptest`, `wiremock` | to be verified in M0 | Test libraries |
+| `egui_kittest` with the `wgpu` and `snapshot` features | `=0.36.2` (verified at source and in the spike on 2026-10-14) | egui UI test harness, a dev-dependency only (O-114); pixel tests need a software Vulkan driver on the Linux runner |
 | `tokio`, `reqwest`, `rustls` with the `aws-lc-rs` provider and `rustls-platform-verifier` | `aws-lc-rs` 1.18.2, `aws-lc-sys` 0.46.0, `rustls` 0.23.45, `rustls-platform-verifier` 0.7.1, `reqwest` 0.13.5 verified at source on 2026-10-14 (ADR-0006); `tokio` and the rest to be verified in M0 | O-123, O-110 |
 | `rusqlite` | to be verified in M0 | Bundled SQLite (§3b) |
 | Others | see [CLAUDE.md](../../CLAUDE.md) | |

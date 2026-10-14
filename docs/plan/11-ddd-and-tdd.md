@@ -1,6 +1,6 @@
 # Domain-Driven Design and Test-Driven Development
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-13.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-14.
 
 > Amended 2026-10-12 (ADR-0005): the implementation language is Rust. Domain terms, aggregates, invariants, events and the TDD rules are unchanged; the technology terms (Java records, JPMS, JUnit, jqwik, PIT, ArchUnit, TestFX) are replaced by their Rust counterparts of ADR-0005 D13, and command and type names keep their domain spelling in prose (`snake_case` functions in code, 02 §3). Tools not named in ADR-0005 are chosen and verified at source in M0.
 
@@ -197,7 +197,7 @@ Stateless domain logic that belongs to no single aggregate (pure functions):
 | Core crates (context crates, `shared-kernel`, `workflows`) | **TDD mandatory:** Red → Green → Refactor. No production code without a previously failing test. |
 | Adapters (`adapter-uex`, `adapter-storage`, `adapter-files`) | **Test-first, as far as possible:** contract and integration tests (`wiremock`, real SQLite file, real temp directory) first, then the implementation |
 | `adapter-ocr`, `adapter-vlm` and OCR thresholds | **Spike & Stabilise:** exploration in the eval harness is allowed (result: measurements, no merge). Before the merge, the desired behaviour is pinned down with golden and unit tests that fail without the change. |
-| `ui` | View state and command handling via TDD (plain functions, without a window); the drawing code (layout, styling) without TDD, critical flows via the egui UI test harness (candidate `egui_kittest`, O-114) after implementation; exception: the Star Citizen Fan Kit unit's pinning tests (R-UI-19), including the UI tests of both placements, are written first |
+| `ui` | View state and command handling via TDD (plain functions, without a window); the drawing code (layout, styling) without TDD, critical flows via the egui UI test harness (`egui_kittest`, O-114) after implementation; exception: the Star Citizen Fan Kit unit's pinning tests (R-UI-19), including the UI tests of both placements, are written first |
 | `adapter-platform` (platform API with `unsafe`, process list) | Thin wrappers behind ports; the port is tested via a fake, the native side via integration tests on the target OS (CI matrix) |
 | Bugfix (everywhere) | First a test that reproduces the bug |
 
