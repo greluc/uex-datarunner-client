@@ -6,10 +6,11 @@
 use tallyline_ort_telemetry_spike::variant::{EnvironmentOptOut, TelemetryEvents, Variant};
 
 #[test]
-fn the_three_variants_parse_from_their_names() {
+fn the_four_variants_parse_from_their_names() {
     assert_eq!("none".parse(), Ok(Variant::NoMitigation));
     assert_eq!("api".parse(), Ok(Variant::ApiOff));
     assert_eq!("env".parse(), Ok(Variant::EnvironmentAndApiOff));
+    assert_eq!("env-only".parse(), Ok(Variant::EnvironmentOnly));
 }
 
 #[test]
@@ -24,6 +25,7 @@ fn the_name_round_trips() {
         Variant::NoMitigation,
         Variant::ApiOff,
         Variant::EnvironmentAndApiOff,
+        Variant::EnvironmentOnly,
     ] {
         assert_eq!(variant.name().parse(), Ok(variant));
     }
@@ -58,6 +60,18 @@ fn environment_and_api_off_applies_both_mitigations() {
     );
     assert_eq!(
         Variant::EnvironmentAndApiOff.environment_opt_out(),
+        EnvironmentOptOut::Set
+    );
+}
+
+#[test]
+fn environment_only_sets_the_variable_and_keeps_the_events_of_ort() {
+    assert_eq!(
+        Variant::EnvironmentOnly.telemetry_events(),
+        TelemetryEvents::OrtDefault
+    );
+    assert_eq!(
+        Variant::EnvironmentOnly.environment_opt_out(),
         EnvironmentOptOut::Set
     );
 }

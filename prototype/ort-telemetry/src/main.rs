@@ -16,7 +16,7 @@ use tallyline_ort_telemetry_spike::runtime::{
 };
 use tallyline_ort_telemetry_spike::variant::{EnvironmentOptOut, Variant};
 
-const USAGE: &str = "usage: ort-telemetry-probe --variant none|api|env --ort-dir <absolute directory> [--hold <seconds>] [--linger <seconds>]";
+const USAGE: &str = "usage: ort-telemetry-probe --variant none|api|env|env-only --ort-dir <absolute directory> [--hold <seconds>] [--linger <seconds>]";
 const DEFAULT_HOLD_SECONDS: u64 = 10;
 const DEFAULT_LINGER_SECONDS: u64 = 120;
 

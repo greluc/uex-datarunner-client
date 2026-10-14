@@ -8,7 +8,7 @@
 Records ONNX Runtime's ETW telemetry events and the network activity of the telemetry probe, once per variant.
 
 .DESCRIPTION
-Runs the probe in the variants env, api and none with an ETW trace session started before the probe, and once more
+Runs the probe in the variants env, env-only, api and none with an ETW trace session started before the probe, and once more
 in the variant api with the session started after the first inference session. The trace session enables the
 TraceLogging provider of ONNX Runtime and the Kernel-Network, DNS-Client and WinHttp providers. Each run gets empty
 LOCALAPPDATA and APPDATA directories. The script writes summary.md, the ETL and XML traces and the probe output per
@@ -106,6 +106,7 @@ function Invoke-SpikeRun([string] $Name, [string] $Variant, [switch] $LateTrace)
 
     Write-Host "run $Name (variant $Variant): about $($hold + $LingerSeconds) s"
     $traceRunning = $false
+    $process = $null
     try {
         if (-not $LateTrace) { Start-SpikeTrace $etl; $traceRunning = $true }
         $process = Start-Process -FilePath $Probe -ArgumentList $arguments -Environment $environment `
@@ -123,6 +124,7 @@ function Invoke-SpikeRun([string] $Name, [string] $Variant, [switch] $LateTrace)
         $process.WaitForExit()
     }
     finally {
+        if ($null -ne $process -and -not $process.HasExited) { $process.Kill() }
         if ($traceRunning) { Stop-SpikeTrace }
     }
 
@@ -152,7 +154,9 @@ function Invoke-SpikeRun([string] $Name, [string] $Variant, [switch] $LateTrace)
         }
     }
     $ortEvents | ForEach-Object { $_.Xml } | Set-Content -Encoding utf8 (Join-Path $runDir 'ort-events.xml')
-    $networkEvents | Export-Csv -NoTypeInformation -Encoding utf8 (Join-Path $runDir 'network-events.csv')
+    $networkCsv = Join-Path $runDir 'network-events.csv'
+    '"Provider","Name","Fields"' | Set-Content -Encoding utf8 $networkCsv
+    $networkEvents | ConvertTo-Csv -NoTypeInformation | Select-Object -Skip 1 | Add-Content -Encoding utf8 $networkCsv
 
     $lines = [System.Collections.Generic.List[string]]::new()
     $when = if ($LateTrace) { 'after the first inference session' } else { 'before the probe' }
@@ -187,13 +191,17 @@ foreach ($policy in 'HKLM:\SOFTWARE\Policies\Microsoft\Windows\DataCollection', 
     $value = (Get-ItemProperty $policy -Name AllowTelemetry -ErrorAction SilentlyContinue).AllowTelemetry
     $summary.Add("- AllowTelemetry under $($policy -replace '^HKLM:\\', 'HKLM\'): $(if ($null -ne $value) { $value } else { 'not set' })")
 }
+$listener = (& logman query Diagtrack-Listener -ets 2>&1) -join "`n"
+$listenerRunning = $LASTEXITCODE -eq 0
+$summary.Add("- Diagtrack-Listener ETW session running: $listenerRunning; enables the ONNX Runtime provider by GUID: $($listenerRunning -and $listener -match $OrtProvider)")
 $summary.Add("- ONNX Runtime device-ID key in HKCU before the runs: $(Test-Path $DeviceIdKey)")
 $summary.Add('')
 
 $summary.AddRange([string[]] (Invoke-SpikeRun -Name '1-env' -Variant 'env'))
-$summary.AddRange([string[]] (Invoke-SpikeRun -Name '2-api' -Variant 'api'))
-$summary.AddRange([string[]] (Invoke-SpikeRun -Name '3-api-late-trace' -Variant 'api' -LateTrace))
-$summary.AddRange([string[]] (Invoke-SpikeRun -Name '4-none' -Variant 'none'))
+$summary.AddRange([string[]] (Invoke-SpikeRun -Name '2-env-only' -Variant 'env-only'))
+$summary.AddRange([string[]] (Invoke-SpikeRun -Name '3-api' -Variant 'api'))
+$summary.AddRange([string[]] (Invoke-SpikeRun -Name '4-api-late-trace' -Variant 'api' -LateTrace))
+$summary.AddRange([string[]] (Invoke-SpikeRun -Name '5-none' -Variant 'none'))
 
 $summary.Add("ONNX Runtime device-ID key in HKCU after the runs: $(Test-Path $DeviceIdKey)")
 $summaryPath = Join-Path $OutDir 'summary.md'

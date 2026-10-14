@@ -15,6 +15,8 @@ pub enum Variant {
     ApiOff,
     /// `ORT_DISABLE_TELEMETRY=1` set by the probe before the first `ort` call, and events switched off as in [`Variant::ApiOff`].
     EnvironmentAndApiOff,
+    /// `ORT_DISABLE_TELEMETRY=1` set as in [`Variant::EnvironmentAndApiOff`], with `ort`'s default events.
+    EnvironmentOnly,
 }
 
 /// How the environment is built with respect to telemetry events.
@@ -35,13 +37,17 @@ pub enum EnvironmentOptOut {
     Set,
 }
 
-/// The name is none of `none`, `api` and `env`.
+/// The name is none of `none`, `api`, `env` and `env-only`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnknownVariant(pub String);
 
 impl fmt::Display for UnknownVariant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "unknown variant `{}`; expected none, api or env", self.0)
+        write!(
+            f,
+            "unknown variant `{}`; expected none, api, env or env-only",
+            self.0
+        )
     }
 }
 
@@ -55,6 +61,7 @@ impl Variant {
             Self::NoMitigation => "none",
             Self::ApiOff => "api",
             Self::EnvironmentAndApiOff => "env",
+            Self::EnvironmentOnly => "env-only",
         }
     }
 
@@ -62,7 +69,7 @@ impl Variant {
     #[must_use]
     pub fn telemetry_events(self) -> TelemetryEvents {
         match self {
-            Self::NoMitigation => TelemetryEvents::OrtDefault,
+            Self::NoMitigation | Self::EnvironmentOnly => TelemetryEvents::OrtDefault,
             Self::ApiOff | Self::EnvironmentAndApiOff => TelemetryEvents::Off,
         }
     }
@@ -72,7 +79,7 @@ impl Variant {
     pub fn environment_opt_out(self) -> EnvironmentOptOut {
         match self {
             Self::NoMitigation | Self::ApiOff => EnvironmentOptOut::Unset,
-            Self::EnvironmentAndApiOff => EnvironmentOptOut::Set,
+            Self::EnvironmentAndApiOff | Self::EnvironmentOnly => EnvironmentOptOut::Set,
         }
     }
 }
@@ -81,9 +88,14 @@ impl FromStr for Variant {
     type Err = UnknownVariant;
 
     fn from_str(name: &str) -> Result<Self, Self::Err> {
-        [Self::NoMitigation, Self::ApiOff, Self::EnvironmentAndApiOff]
-            .into_iter()
-            .find(|variant| variant.name() == name)
-            .ok_or_else(|| UnknownVariant(name.to_owned()))
+        [
+            Self::NoMitigation,
+            Self::ApiOff,
+            Self::EnvironmentAndApiOff,
+            Self::EnvironmentOnly,
+        ]
+        .into_iter()
+        .find(|variant| variant.name() == name)
+        .ok_or_else(|| UnknownVariant(name.to_owned()))
     }
 }

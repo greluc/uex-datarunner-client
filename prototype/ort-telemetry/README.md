@@ -6,18 +6,19 @@ Spike code for the M0 ONNX Runtime telemetry item ([04](../../docs/plan/04-roadm
 
 A standalone crate (its own `[workspace]` and `Cargo.lock`, the dependency set of the link-mode spike: `ort` `=2.0.0-rc.14` with `load-dynamic` and `api-31`, and `sha2`) with two binaries and two scripts:
 
-- `ort-telemetry-probe --variant none|api|env --ort-dir <absolute dir> [--hold <s>] [--linger <s>]` loads the pinned official ONNX Runtime 1.31.0 library with the verified load of the link-mode spike, builds the one environment, runs an `Identity` model in a first session, waits `--hold` seconds (default 10), runs a second session, then stays alive `--linger` seconds (default 120) so that a batched uploader has time to send. It prints its PID, the variant and the value of `ORT_DISABLE_TELEMETRY` it sees.
+- `ort-telemetry-probe --variant none|api|env|env-only --ort-dir <absolute dir> [--hold <s>] [--linger <s>]` loads the pinned official ONNX Runtime 1.31.0 library with the verified load of the link-mode spike, builds the one environment, runs an `Identity` model in a first session, waits `--hold` seconds (default 10), runs a second session, then stays alive `--linger` seconds (default 120) so that a batched uploader has time to send. It prints its PID, the variant and the value of `ORT_DISABLE_TELEMETRY` it sees.
 - `strace-summary <log>…` lists the IPv4 and IPv6 destinations of every `connect`, `sendto`, `sendmsg` and `sendmmsg` call in an `strace -f` log, split into loopback and remote.
 - `scripts/measure-linux.sh` runs the probe under `strace` once per variant and twice in a row (the second run shares the first run's `HOME`, so events that the first run cached on disk and uploads at the next start are seen), then lists the files ONNX Runtime left in that `HOME`.
-- `scripts/Measure-Windows.ps1` (elevated PowerShell 7.4 or later) runs the probe with an ETW trace session that enables ONNX Runtime's TraceLogging provider and the Kernel-Network, DNS-Client and WinHttp providers, and summarises the events of the probe process per run.
+- `scripts/Measure-Windows.ps1` (elevated PowerShell 7.4 or later) runs the probe with an ETW trace session that enables ONNX Runtime's TraceLogging provider and the Kernel-Network, DNS-Client and WinHttp providers, and summarises the events of the probe process per run. It also records whether the `Diagtrack-Listener` session (Windows' own diagnostic-data collector) is running and names the provider's GUID; a provider group subscription would not show by GUID, so a "no" there is not proof that Windows ignores the events. tracerpt is assumed to put a TraceLogging event's name into `RenderingInfo/Task`; if it does not, the summary shows `EventID 0` and the names have to be read from `ort-events.xml`.
 
 | Variant | `with_telemetry` | `ORT_DISABLE_TELEMETRY` |
 |---|---|---|
 | `none` | not called (`ort` default: on) | not set |
 | `api` | `with_telemetry(false)` | not set |
 | `env` | `with_telemetry(false)` | set to `1` by the probe's own code before the first `ort` call (`std::env::set_var`, `unsafe` in edition 2024) |
+| `env-only` | not called | set as in `env` |
 
-The issue asks for `env` on Linux only; the scripts run it on Windows too, because it costs one run and shows whether the Windows library reads the variable.
+`env` is the mitigation R-NF-12 prescribes; `env-only` separates the effect of the variable from that of the API. The issue asks for the variable on Linux only; the scripts run both on Windows too, because they cost two runs and show whether the Windows library reads the variable. `runtime.rs` and `model.rs` repeat the verified load and the `Identity` model of the link-mode spike on purpose: each spike branch stands alone.
 
 ## Facts read at source before measuring (2026-10-14)
 
@@ -31,7 +32,7 @@ Read in the `v1.31.0` tag of `microsoft/onnxruntime` and in the published `ort` 
 - **1DS suppresses itself in CI.** If any of 13 CI variables is set to a truthy value (among them `CI`, `GITHUB_ACTIONS`, `TF_BUILD`, `GITLAB_CI`, `JENKINS_URL`), or `ORT_RUNNING_UNIT_TESTS` is, the Linux library sends nothing (`IsRunningInCI`). A measurement or smoke test in GitHub Actions is therefore falsely clean unless the app process runs without these variables; `measure-linux.sh` starts the probe with `env -i`. The Windows ETW provider ignores the CI variables and checks only `ORT_RUNNING_UNIT_TESTS`.
 - On this development machine no ONNX Runtime device-ID key (`HKCU\SOFTWARE\Microsoft\DeveloperTools\.onnxruntime`) existed before or after a local `env` run, consistent with the ETW build.
 
-Expected outcome, to be confirmed or refuted by the measurement: on Linux `none` and `api` contact the 1DS collector and write the device ID and cache, `env` contacts nothing and writes nothing; on Windows the probe process opens no connection in any variant, `none` emits ETW events for environment and session creation, `api` emits at least `ProcessInfo`, and `api` with a late trace session emits session events again.
+Expected outcome, to be confirmed or refuted by the measurement: on Linux `none` and `api` contact the 1DS collector and write the device ID and cache, `env` and `env-only` contact nothing and write nothing; on Windows the probe process opens no connection in any variant, `none` emits ETW events for environment and session creation, `env` and `env-only` behave like `api` and `none`, `api` emits at least `ProcessInfo`, and `api` with a late trace session emits session events again.
 
 ## Commands
 
@@ -40,7 +41,7 @@ cargo test --locked --manifest-path prototype/ort-telemetry/Cargo.toml
 cargo build --release --locked --manifest-path prototype/ort-telemetry/Cargo.toml
 ```
 
-The workflow `.github/workflows/ort-telemetry-spike.yml` runs on a push to this branch, on `ubuntu-latest` and `windows-latest` (both runners are elevated): it fetches the official archive, checks it against the pinned SHA-256, runs every test, builds the probe and runs the measurement script of its OS; the summary lands in the job summary. On Linux it installs `strace` from the Ubuntu archive if the image lacks it; that unpinned install is acceptable for a spike that never reaches `main`.
+The workflow `.github/workflows/ort-telemetry-spike.yml` runs on a push to this branch, on `ubuntu-latest` and `windows-latest` (both runners are elevated): it fetches the official archive, checks it against the pinned SHA-256, runs every test, builds the probe and runs the measurement script of its OS; the summary lands in the job summary. The raw logs stay on the runner and are deleted with it: the job summary is the CI evidence, because no artefact upload action is pinned in this repository. On Linux it installs `strace` from the Ubuntu archive if the image lacks it; that unpinned install is acceptable for a spike that never reaches `main`.
 
 ### The owner's Windows run
 
@@ -51,7 +52,7 @@ cargo build --release --locked --manifest-path prototype/ort-telemetry/Cargo.tom
 ./prototype/ort-telemetry/scripts/Measure-Windows.ps1 -Probe ./prototype/ort-telemetry/target/release/ort-telemetry-probe.exe -OrtDir 'D:\path\to\ort-install' -OutDir "$env:TEMP\ort-telemetry-measurement"
 ```
 
-It takes about ten minutes (four runs of about 130 to 140 s). `summary.md` in the output directory is the result to hand back; it holds counts, event names and relative paths only. `trace.etl`, `trace.xml`, `ort-events.xml` and `network-events.csv` per run stay local, because the system-wide network trace also records other processes of the machine. Running `none` and `api` lets ONNX Runtime emit its events on that machine, which Windows forwards to Microsoft only if its diagnostic-data settings collect them; that is what the measurement is about.
+It takes about twelve minutes (five runs of about 130 to 140 s). `summary.md` in the output directory is the result to hand back; it holds counts, event names and relative paths only. `trace.etl`, `trace.xml`, `ort-events.xml` and `network-events.csv` per run stay local, because the system-wide network trace also records other processes of the machine. Running `none` and `api` lets ONNX Runtime emit its events on that machine, which Windows forwards to Microsoft only if its diagnostic-data settings collect them; that is what the measurement is about.
 
 ## Result
 

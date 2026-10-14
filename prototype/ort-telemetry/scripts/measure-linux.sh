@@ -20,7 +20,7 @@ mkdir -p "$out"
 report="$out/summary.txt"
 : > "$report"
 
-for variant in env api none; do
+for variant in env env-only api none; do
   home="$out/home-$variant"
   mkdir -p "$home"
   for run in 1 2; do
@@ -37,7 +37,7 @@ for variant in env api none; do
         echo "stderr:"
         cat "$log.stderr"
       fi
-      "$summary" "$log.strace"
+      "$summary" "$log.strace" || echo "strace-summary failed on $log.strace"
       echo "strace lines naming microsoft: $(grep -c -F microsoft "$log.strace" || true)"
       echo "files under the isolated HOME:"
       find "$home" -type f -printf '  %P (%s bytes)\n' | sort

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Lucas Greuloch
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-//! The verified load of the link-mode spike, with the telemetry setting of the environment as a parameter.
+//! Verified load of the pinned ONNX Runtime library, with the telemetry setting of the environment as a parameter.
 
 use std::fmt;
 use std::fs;
