@@ -1,6 +1,6 @@
 # UEX API 2.0 – working notes
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-12.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-14.
 
 > **Sources.** Corrected 2026-10-09: the earlier notes were written without access to the official documentation and rested on search snippets, third-party copies and open-source clients ([3P]). On 2026-10-09 the official documentation and the live API were checked. Tags:
 >
@@ -9,6 +9,7 @@
 > - **[RN]:** UEX dev notes, `GET /release_notes` (entries from 2026-04-01 to 2026-09-29)
 > - **[TERMS]:** `https://uexcorp.space/about/terms` (updated 2026-07-02)
 > - **[3P-OBS]:** production traffic of other clients, seen in the predecessor's own logs and in responses pasted into its public issue tracker (section "Observed by third parties")
+> - **[SPIKE]:** read-only GET calls of the M0 API spike CLI through `reqwest` on 2026-10-14 (section "M0 API spike")
 > - **[3P]:** third-party clients and copies (`dolejska-daniel/uexcorp-openapi`, `Zamotic/UexCorpDataRunnerClient`, `Hybris95/UEX-Trader`, `ByteCollectiveIO/sc-nav`, PyPI `uex-lib`); a [3P] statement not confirmed by [DOC] or [LIVE] stays unverified
 >
 > Nothing here was verified with a write call: no `data_submit`, `data_edit` or `data_remove` has been sent (`CLAUDE.md`, "External writes"). The review of the plan against these facts is [08](08-review.md) §N.
@@ -173,9 +174,19 @@ Production behaviour seen in the predecessor's own log of one session on 2026-10
 - An undocumented code `user_not_verified` (account not verified with RSI) is handled by one client.
 - During UEX overload, users saw spurious secret-key errors that later went away ([#10](https://github.com/Shebuka/SC-Datarunner-UEX/issues/10), [#29](https://github.com/Shebuka/SC-Datarunner-UEX/issues/29)).
 - A commenter writing as a UEX reviewer said reports **without container sizes often need manual review** ([#13](https://github.com/Shebuka/SC-Datarunner-UEX/issues/13)).
-- One client reports that UEX's bot protection blocks calls from an Electron main process, and another saw a 403 from a GitHub Actions runner; clients that send a browser User-Agent exist. A plain JDK `HttpClient` worked for every GET on 2026-10-09; a write from it is unverified. Amended 2026-10-12: the client is now `reqwest` (ADR-0005 D4), so the same check, GET and write, is repeated with it in the M0 API spike.
+- One client reports that UEX's bot protection blocks calls from an Electron main process, and another saw a 403 from a GitHub Actions runner; clients that send a browser User-Agent exist. A plain JDK `HttpClient` worked for every GET on 2026-10-09; a write from it is unverified. Amended 2026-10-12: the client is now `reqwest` (ADR-0005 D4), so the same check, GET and write, is repeated with it in the M0 API spike. Amended 2026-10-14: the GET check passed with `reqwest` on both hosts (section "M0 API spike"); the write check waits for the test account.
 - `commodity.price_variation` was 60 in a mid-2025 recording and is 25 today; `scu_variation` stayed 5000.
 - The documented Bearer requirement is recent or was ambiguous before: one client released in June 2026 sends only `secret-key`, and a summary of the documentation from July 2026 read "Bearer Token (via `secret-key` header)". The live 403 `not_allowed` is real for `data_info` today.
+
+## M0 API spike, read-only part (2026-10-14)
+
+Tag **[SPIKE]**. The CLI `tallyline-uex-spike` of the crate `tallyline-adapter-uex` (`crates/adapter-uex`, issue #24) ran GET calls only, from Windows 11, through `reqwest` 0.13.5 with `rustls` 0.23.45, the `aws-lc-rs` provider passed in explicitly and `rustls-platform-verifier` 0.7.1 (ADR-0006). Every request carried `User-Agent: tallyline-uex-spike/0.0.0` and `X-Client-Version: 0.0.0` (R-API-7). No real secret key or app token was used; the key check ran with a dummy key. The client's wire tests (`wiremock`) are written from the documented schema; no response was recorded or committed (open point 7).
+
+- **Hosts and TLS:** `api.uexcorp.space` and `api.uexcorp.uk` both answered `GET /game_versions` through the platform verifier; no bot-protection block was seen for the `reqwest` client (compare "Observed by third parties"). The write check from `reqwest` waits for the test account (O-19, O-69).
+- **`/game_versions`:** `{"live":"4.10.2","ptu":""}` on both hosts; the empty `ptu` string is read as "no PTU" as documented.
+- **`/commodities_status`:** seven levels per side as in "Reference data"; the names differ only at level 7 (buy "Maximum Inventory (Full)" / "Maximum" / `MA`, sell "Maximum Inventory (No Demand)" / "Maximum (No Demand)" / `ND`); levels 1 to 6 have the same `name`, `name_short` and `name_abbr` on both sides.
+- **`status_*` and `container_sizes` in `commodities_prices`:** terminal 89 returned 84 rows, all sell side, each with a status 1 to 7 on the traded side and the full set `1,2,4,8,16,24,32`; terminals 2, 10 and 29 returned 12, 12 and 13 rows with both buy and sell rows, every row with exactly one side priced and a non-empty set of the documented sizes. `container_sizes` is a CSV string per row, as in point 9.
+- **Secret key (`/user`):** with the documented `secret-key` header and a dummy key, both hosts answered HTTP 403 `invalid_secret_key` with an empty `message` (point 1). The account fields with a real key and the `data_info` check with the user's app token (`report-access`) are implemented and tested against the documented schema, but were not run live: they need the user's own credentials, which the CLI reads only from `TALLYLINE_UEX_SECRET_KEY` and `TALLYLINE_UEX_APP_TOKEN` and never prints. The token requirement itself stays as read on 2026-10-09 [LIVE] (point 2).
 
 ## Terms of use
 
@@ -185,7 +196,7 @@ Production behaviour seen in the predecessor's own log of one session on 2026-10
 
 Status as of 2026-10-09. **Answered** points keep their number and their answer; a point marked **write** can only be settled with an `is_production=0` write call that @greluc approves per call; **UEX** means asking UEX.
 
-1. **Answered:** the header is `secret-key` [DOC]; `secret_key` reaches the same check [LIVE].
+1. **Answered:** the header is `secret-key` [DOC]; `secret_key` reaches the same check [LIVE]; confirmed through `reqwest` on both hosts [SPIKE].
 2. **Answered:** the app token is required for `data_submit`, `data_edit`, `data_remove` and `data_info` [DOC, LIVE]. Decided 2026-10-09 (O-85): each user creates an app under "My Apps" and enters its token next to the secret key; both are validated before they are saved. Whether one token may be shared is moot, because none is shared.
 3. **Partly answered:** `status_*` is optional (only `id_terminal`, `type`, `is_production` and `id_commodity` are required); `container_sizes` is per report (point 9).
 4. **Partly answered:** both `api.uexcorp.uk` (named by the documentation) and `api.uexcorp.space` serve the API. Open (UEX): which is primary and whether both accept writes; [3P-OBS] points to `.space` as primary with `.uk` as fallback, and `.uk` failed behind some TLS-inspecting proxies. Per endpoint: the reference endpoints need neither credential; `data_*`, `data_monitor`, `commodities_averages`, `user_notifications` need the token; `data_*`, `user`, `user_notifications` need `secret-key`.
