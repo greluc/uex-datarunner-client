@@ -26,10 +26,12 @@ jobs:
             asset: onnxruntime-win-x64-1.31.0.zip
             asset_sha256: 3958d8a44984160692c1b4ffd0de3cb48f8c39f9d34bb31e433db06e30b82195
             library: onnxruntime-win-x64-1.31.0/lib/onnxruntime.dll
+            tar: /c/Windows/System32/tar.exe
           - os: ubuntu-latest
             asset: onnxruntime-linux-x64-1.31.0.tgz
             asset_sha256: cc5c72baf5ae5c8238a6841f0897227be2d02826b9cf98eaf02fdefaeeb03a57
             library: onnxruntime-linux-x64-1.31.0/lib/libonnxruntime.so.1.31.0
+            tar: tar
     steps:
       - name: Check out the repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -54,11 +56,12 @@ jobs:
           ASSET: ${{ matrix.asset }}
           ASSET_SHA256: ${{ matrix.asset_sha256 }}
           LIBRARY: ${{ matrix.library }}
+          TAR: ${{ matrix.tar }}
         run: |
           mkdir -p "$RUNNER_TEMP/ort-archive" "$RUNNER_TEMP/ort-install"
           curl --fail --location --proto '=https' --output "$RUNNER_TEMP/ort-archive/$ASSET" "$ORT_RELEASE/$ASSET"
           echo "$ASSET_SHA256  $RUNNER_TEMP/ort-archive/$ASSET" | sha256sum --check --strict
-          tar -xf "$RUNNER_TEMP/ort-archive/$ASSET" -C "$RUNNER_TEMP/ort-archive" "$LIBRARY"
+          "$TAR" -xf "$RUNNER_TEMP/ort-archive/$ASSET" -C "$RUNNER_TEMP/ort-archive" "$LIBRARY"
           cp "$RUNNER_TEMP/ort-archive/$LIBRARY" "$RUNNER_TEMP/ort-install/"
           echo "TALLYLINE_ORT_DIR=$RUNNER_TEMP/ort-install" >> "$GITHUB_ENV"
 
