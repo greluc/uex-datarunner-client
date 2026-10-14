@@ -5,6 +5,7 @@
 
 #![forbid(unsafe_code)]
 
+use std::collections::BTreeSet;
 use std::ffi::OsString;
 use std::fs;
 use std::io::{self, Write};
@@ -16,6 +17,7 @@ use xtask::deny::unjustified_suppressions;
 use xtask::exit::exit_code;
 use xtask::guard::scan;
 use xtask::listing::check_listing;
+use xtask::osv::{judge, shipped_packages, shipped_roots};
 use xtask::registry::Registry;
 use xtask::sources::collect;
 use xtask::vendor::{actual_list, regenerate, verify};
@@ -27,6 +29,7 @@ const DENY_CONFIG: &str = "deny.toml";
 const LOCKFILE: &str = "Cargo.lock";
 const HASH_LIST: &str = "supply-chain/vendor-hashes.txt";
 const VENDOR_WORK_DIR: &str = "target/xtask-vendor";
+const SHIPPED_TARGETS: [&str; 2] = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"];
 
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -39,6 +42,7 @@ fn main() -> ExitCode {
     {
         ["check"] => run_check(&root),
         ["guard"] => run_guard(&root),
+        ["osv-gate", report] => run_osv_gate(&root, Path::new(report)),
         ["vendor-hashes", "write"] => write_hash_list(&root),
         ["vendor-hashes", "verify"] => verify_hash_list(&root),
         _ => usage(),
@@ -49,7 +53,7 @@ fn main() -> ExitCode {
 fn usage() -> io::Result<ExitCode> {
     writeln!(
         io::stderr(),
-        "usage: cargo xtask check | guard | vendor-hashes write | vendor-hashes verify"
+        "usage: cargo xtask check | guard | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify"
     )?;
     Ok(ExitCode::FAILURE)
 }
@@ -96,6 +100,74 @@ fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
 
 fn run_guard(root: &Path) -> io::Result<ExitCode> {
     Ok(exit_status(guard_passes(root)?))
+}
+
+fn cargo_stdout(root: &Path, args: &[&str]) -> io::Result<String> {
+    let output = Command::new(cargo_program())
+        .args(args)
+        .current_dir(root)
+        .output()?;
+    if !output.status.success() {
+        io::stderr().write_all(&output.stderr)?;
+        return Err(io::Error::other(format!("cargo {} failed", args.join(" "))));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::PackageId>)> {
+    let metadata = cargo_stdout(
+        root,
+        &["metadata", "--locked", "--no-deps", "--format-version", "1"],
+    )?;
+    let roots = shipped_roots(&metadata).map_err(io::Error::other)?;
+    let mut shipped = BTreeSet::new();
+    for name in &roots {
+        for target in SHIPPED_TARGETS {
+            let tree = cargo_stdout(
+                root,
+                &[
+                    "tree",
+                    "--locked",
+                    "--package",
+                    name,
+                    "--target",
+                    target,
+                    "--edges",
+                    "normal",
+                    "--all-features",
+                    "--prefix",
+                    "none",
+                    "--format",
+                    "{p}",
+                ],
+            )?;
+            shipped.extend(shipped_packages(&tree));
+        }
+    }
+    Ok((roots, shipped))
+}
+
+fn run_osv_gate(root: &Path, report: &Path) -> io::Result<ExitCode> {
+    let (roots, shipped) = shipped_graph(root)?;
+    let verdict = judge(&fs::read_to_string(report)?, &shipped).map_err(io::Error::other)?;
+    writeln!(
+        io::stderr(),
+        "shipped packages: {} in {} workspace members ({})",
+        shipped.len(),
+        roots.len(),
+        if roots.is_empty() {
+            "none yet".to_owned()
+        } else {
+            roots.join(", ")
+        }
+    )?;
+    for finding in &verdict.reported {
+        writeln!(io::stderr(), "reported: {finding}")?;
+    }
+    for finding in &verdict.blocking {
+        writeln!(io::stderr(), "BLOCKING: {finding}")?;
+    }
+    Ok(exit_status(verdict.blocking.is_empty()))
 }
 
 fn exit_status(passed: bool) -> ExitCode {

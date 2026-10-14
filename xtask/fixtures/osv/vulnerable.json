@@ -1,0 +1,89 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "Cargo.lock",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "smallvec",
+            "version": "0.6.9",
+            "ecosystem": "crates.io"
+          },
+          "vulnerabilities": [
+            {
+              "id": "RUSTSEC-2018-0018",
+              "aliases": ["CVE-2018-25023", "GHSA-55m5-whcv-c49c", "GHSA-66p5-j55p-32r9"],
+              "summary": "smallvec creates uninitialized value of any type"
+            },
+            {
+              "id": "RUSTSEC-2019-0009",
+              "aliases": ["CVE-2019-15551", "GHSA-mm7v-vpv8-xfc3"],
+              "severity": [{"type": "CVSS_V3", "score": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]
+            },
+            {
+              "id": "RUSTSEC-2019-0012",
+              "aliases": ["CVE-2019-15554", "GHSA-69gw-hgj3-45m7"],
+              "severity": [{"type": "CVSS_V3", "score": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]
+            },
+            {
+              "id": "RUSTSEC-2021-0003",
+              "aliases": ["CVE-2021-25900", "GHSA-43w2-9j62-hq99"],
+              "severity": [{"type": "CVSS_V3", "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"}]
+            }
+          ],
+          "groups": [
+            {
+              "ids": ["RUSTSEC-2018-0018", "GHSA-55m5-whcv-c49c", "GHSA-66p5-j55p-32r9"],
+              "aliases": ["CVE-2018-25023", "GHSA-55m5-whcv-c49c", "GHSA-66p5-j55p-32r9", "RUSTSEC-2018-0018"],
+              "max_severity": "7.5"
+            },
+            {
+              "ids": ["RUSTSEC-2019-0009", "GHSA-mm7v-vpv8-xfc3"],
+              "aliases": ["CVE-2019-15551", "GHSA-mm7v-vpv8-xfc3", "RUSTSEC-2019-0009"],
+              "max_severity": "9.8"
+            },
+            {
+              "ids": ["RUSTSEC-2019-0012", "GHSA-69gw-hgj3-45m7"],
+              "aliases": ["CVE-2019-15554", "GHSA-69gw-hgj3-45m7", "RUSTSEC-2019-0012"],
+              "max_severity": "9.8"
+            },
+            {
+              "ids": ["RUSTSEC-2021-0003", "GHSA-43w2-9j62-hq99"],
+              "aliases": ["CVE-2021-25900", "GHSA-43w2-9j62-hq99", "RUSTSEC-2021-0003"],
+              "max_severity": "9.8"
+            }
+          ]
+        },
+        {
+          "package": {
+            "name": "time",
+            "version": "0.1.43",
+            "ecosystem": "crates.io"
+          },
+          "vulnerabilities": [
+            {
+              "id": "RUSTSEC-2020-0071",
+              "aliases": ["CVE-2020-26235", "GHSA-wcg3-cvx6-7396"]
+            }
+          ],
+          "groups": [
+            {
+              "ids": ["RUSTSEC-2020-0071", "GHSA-wcg3-cvx6-7396"],
+              "aliases": ["CVE-2020-26235", "GHSA-wcg3-cvx6-7396", "RUSTSEC-2020-0071"],
+              "max_severity": "6.2"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "experimental_config": {
+    "licenses": {
+      "summary": false,
+      "allowlist": null
+    }
+  }
+}

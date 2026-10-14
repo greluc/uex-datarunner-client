@@ -12,6 +12,7 @@ pub mod guard;
 pub mod hashlist;
 pub mod listing;
 pub mod lockfile;
+pub mod osv;
 pub mod registry;
 pub mod requirement;
 pub mod sources;

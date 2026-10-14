@@ -61,7 +61,7 @@ The `unsafe` code of the platform adapter is registered here too. Edition 2024 m
 |---|---|---|---|---|
 | `adapter-platform`, the `set_var` call for `ORT_DISABLE_TELEMETRY` (planned, does not exist yet) | `unsafe_code` | `set_var` is `unsafe` in edition 2024; the variable must be set before the first ONNX Runtime call and before other threads read the environment (R-NF-12, O-13) | 2026-10-12 (planned) | when ONNX Runtime or `ort` offers a way to switch telemetry off without the environment, or the M0 telemetry spike removes the need |
 
-| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `deny`, `denygate`, `guard`, `negative`, `vendor`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
+| every `#[cfg(test)]` module of `xtask` that holds tagged tests (`check`, `deny`, `denygate`, `guard`, `negative`, `osv`, `vendor`), as `#[expect(non_snake_case, reason = …)]` | `non_snake_case` | A tagged test name (11 B4) contains a double underscore, which rustc reports as not snake case | 2026-10-14 | the tag mechanism changes, or rustc stops reporting consecutive underscores |
 
 No other suppression exists yet.
 
