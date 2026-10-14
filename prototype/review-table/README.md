@@ -24,6 +24,7 @@ cargo build --release --locked --manifest-path prototype/review-table/Cargo.toml
 prototype/review-table/target/release/review-table-spike --scale 125
 prototype/review-table/scripts/measure-frame-time.ps1
 prototype/review-table/scripts/measure-footprint.ps1 -Label "<3D application running>"
+prototype/review-table/scripts/sample-gpu.ps1 -ProcessName <3D application process> -Label "<state>"
 ```
 
 `--scale` is the effective display scale (physical pixels per point × 100); the app reaches it through egui zoom whatever the OS scale of the monitor. The `wgpu-tests` feature writes the icon sheets (`icons-<scale>.png`, magnified `-x8`) and table renders to `target/icon-check/`.
@@ -67,7 +68,28 @@ After the scripted run the window stays idle for 30 s; the script samples the pr
 
 Without input the window draws 8 frames in the idle window: the settle frames after the last state change and the closing frame; there is no continuous repaint (02 §7). Input reached the window at 100 % and 250 % in this run (the machine was in use), and the frames without new events after it are egui's follow-up frames (tooltip delay and fade after the pointer stops). Earlier runs without input gave 0.07 to 0.39 % of one core at 100 % and 250 % with 8 and 9 frames. A clean measurement needs a machine nobody touches during the run.
 
-### wgpu footprint (script check only)
+### wgpu footprint next to a running 3D application (issue #23)
+
+Measured 2026-10-14 next to Star Citizen. The machine has an NVIDIA GeForce RTX 5090 with 32 GB and an integrated AMD Radeon; the spike ran on the RTX 5090, the same adapter as the game (same LUID in the GPU process-memory counters). The game was in a hangar with the character standing still, GPU-bound at about 99 % load of its busiest engine. The spike ran at 100 % scale and idle, with nobody touching the machine, in one run.
+
+| Measure | Spike next to the game | Spike without a 3D application |
+|---|---|---|
+| First frame after process start | 1.57 s | 0.84 s |
+| Idle CPU, % of one core | 0.47 | 0 |
+| Working set / private memory | 204 MB / 560 MB | 200 MB / 557 MB |
+| GPU memory, dedicated / shared | 289 MB / 47 MB | 289 MB / 46 MB |
+| GPU engine load of the spike | 0 % | 0 % |
+
+`scripts/sample-gpu.ps1` sampled the game itself:
+
+| Game | Dedicated GPU memory, average | Busiest engine load, average / max |
+|---|---|---|
+| Alone, 30 s | 12 244 MB | 99.2 % / 103 % |
+| With the spike open beside it, 26 s | 12 111 MB | 97.3 % / 102 % |
+
+The idle spike adds no measurable GPU load; the game's memory differs by about 130 MB, within its streaming variation. The spike's 289 MB of dedicated memory is about 0.9 % of this card and would be about 3.5 % of an 8 GB card. Not measured: the game's frame time with and without the spike (needs PresentMon or a similar tool, 04 M4), the spike while being used, and Linux.
+
+### wgpu footprint without a 3D application
 
 One run of `measure-footprint.ps1` with no 3D application running, at 100 %: binary 13.0 MB (release, unstripped), first frame 0.84 s after the process start (the marker is written at the start of the first UI pass, just before that frame is presented), idle CPU 0 %, working set 200 MB, private memory 557 MB, GPU dedicated memory 289 MB, GPU shared memory 46 MB, GPU engine load 0 %. The measurement next to a running 3D application is issue #23 and needs a tester with such an application; the script reads the non-localised WMI GPU performance classes, so it works on a non-English Windows. On Linux it reports memory and CPU only.
 
@@ -84,7 +106,6 @@ One run of `measure-footprint.ps1` with no 3D application running, at 100 %: bin
 Open, and not a failure of the toolkit:
 
 - the crispness check of the real Tallyline icon font (O-112 import, then rerun `tests/icons.rs` with the `wgpu-tests` feature);
-- the wgpu footprint next to a running 3D application (#23, with `scripts/measure-footprint.ps1`); the 289 MB of dedicated GPU memory while idle is worth a look there;
+- the game's frame time with and without the app next to it, and the app's footprint while it is used (04 M4 on the reference machine; the idle footprint next to the game is measured above and adds no measurable GPU load);
 - Linux was not measured; the crate builds with the `wayland` and `x11` features but has only run on Windows;
-- the result still has to be recorded as dated sections in 04 (M0 items), O-107, O-112 and O-113 on `main`;
 - what the prototype showed we must build ourselves: an elided cell text (long status values are clipped at the badge), the deviation recalculation after an edit, the detail strip, and a keyboard model that takes Tab and the arrows away from egui's own focus traversal (`Memory::move_focus(FocusDirection::None)` while no editor is open, `EventFilter` on the editor).
