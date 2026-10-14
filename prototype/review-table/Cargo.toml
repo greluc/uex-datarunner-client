@@ -1,0 +1,42 @@
+[package]
+name = "tallyline-review-table-spike"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.99.0"
+license = "GPL-3.0-or-later"
+publish = false
+
+[workspace]
+
+[[bin]]
+name = "review-table-spike"
+path = "src/main.rs"
+
+[dependencies]
+eframe = { version = "=0.36.2", default-features = false, features = ["default_fonts", "wgpu", "wayland", "x11"] }
+egui = { version = "=0.36.2", default-features = false, features = ["default_fonts"] }
+egui_extras = { version = "=0.36.2", default-features = false }
+
+[dev-dependencies]
+egui_kittest = { version = "=0.36.2", default-features = false }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+
+[features]
+wgpu-tests = ["egui_kittest/wgpu", "egui_kittest/snapshot"]
+
+[profile.release]
+debug = false
+
+[lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+indexing_slicing = "deny"
+print_stdout = "deny"
+print_stderr = "deny"
+wildcard_enum_match_arm = "deny"
+match_wildcard_for_single_variants = "deny"
