@@ -1,6 +1,6 @@
 # ADR-0000: Open points register
 
-> **Doc type:** Living reference — current. Last reviewed: 2026-10-13.
+> **Doc type:** Living reference — current. Last reviewed: 2026-10-14.
 
 This is the single register of open owner decisions and open verifications ([`CLAUDE.md`](../../CLAUDE.md), "Requirements, decisions and open points"). No other document keeps its own list; documents link here by ID.
 
@@ -57,7 +57,7 @@ This is the single register of open owner decisions and open verifications ([`CL
 | O-37 | Markdown linting (markdownlint) for `docs/` | open | – | – |
 | O-38 | An `.aiignore` file, as basetool has | open | – | – |
 | O-39 | An explicit rule against Lombok and JetBrains annotations | moot 2026-10-12 (ADR-0005) | Was: optional one-line stack rule. Amended 2026-10-12 (ADR-0005): moot, no Java code | `CLAUDE.md` "Stack rules" |
-| O-40 | Licence-header placement in FXML (after the XML declaration) and in `.properties` files | open | Settled in an M0 spike; until then both are covered by `REUSE.toml`. Amended 2026-10-12 (ADR-0005): FXML and `.properties` no longer exist; the question is now the header placement in the file types that remain without Rust comment syntax (message catalogues, generated token files, SVG, YAML and TOML configuration), settled in the same M0 work; until then they are covered by `REUSE.toml` | `CLAUDE.md` "Licence" |
+| O-40 | Licence-header placement in FXML (after the XML declaration) and in `.properties` files | decided 2026-10-14 (issue #17; @greluc confirms or reopens it in the review of that pull request) | Settled in an M0 spike; until then both are covered by `REUSE.toml`. Amended 2026-10-12 (ADR-0005): FXML and `.properties` no longer exist; the question is now the header placement in the file types that remain without Rust comment syntax (message catalogues, generated token files, SVG, YAML and TOML configuration), settled in the same M0 work; until then they are covered by `REUSE.toml`. Decided 2026-10-14 (issue #17): a Rust file carries the header, checked by the `source headers` step of `cargo xtask check`; a source file in a format with a comment syntax (shell, SVG, XML, HTML) carries the same two lines as its first comment, after a shebang or XML declaration; every other file, in particular each one under the no-comments rule or in a format without comments (TOML, YAML, JSON, message catalogues without comment syntax, generated files, images, models), is annotated in `REUSE.toml`, with no `.license` side files | `CLAUDE.md` "Licence"; 10 S-35 (implementation note) |
 | O-41 | Code of Conduct: who handles a report about the owner, and who the "Community Moderators" and "Community Managers" are while @greluc is the only maintainer | open – default applied | The maintainer holds both roles; a report about the maintainer goes to GitHub's abuse reporting (`CODE_OF_CONDUCT.md` "Reporting an Issue"); a second contact once there is a second maintainer | `CODE_OF_CONDUCT.md` |
 | O-42 | Licence of the CLA text derived from the Apache ICLA | open | Verification; `REUSE.toml` currently names Lucas Greuloch and the Apache Software Foundation with the project licence | `CLA.md`; `REUSE.toml` |
 | O-43 | Corpus storage once the public corpus exceeds 200 MB (Git LFS or a separate corpus repository) | open | Decided when the limit is reached | `corpus/README.md` |

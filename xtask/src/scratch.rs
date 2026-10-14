@@ -6,6 +6,8 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use crate::tracked::git_command;
+
 const MAX_ATTEMPTS: u32 = 10_000;
 
 /// A fresh directory below the system temporary directory, removed when dropped.
@@ -40,6 +42,26 @@ impl Scratch {
     /// The directory.
     pub(crate) fn path(&self) -> &Path {
         &self.root
+    }
+
+    /// Runs `git` with `args` in the directory as Ada Lovelace, ignoring the `GIT_*` variables
+    /// that a Git hook exports, and returns the exit success and standard output.
+    pub(crate) fn git(&self, args: &[&str]) -> (bool, String) {
+        let output = git_command(&self.root)
+            .args([
+                "-c",
+                "user.name=Ada Lovelace",
+                "-c",
+                "user.email=ada@example.org",
+            ])
+            .args(["-c", "commit.gpgsign=false"])
+            .args(args)
+            .output()
+            .unwrap();
+        (
+            output.status.success(),
+            String::from_utf8(output.stdout).unwrap(),
+        )
     }
 
     /// Writes `contents` to `relative` (with `/` separators), creating the directories above it.

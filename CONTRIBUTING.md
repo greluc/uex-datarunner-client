@@ -172,7 +172,7 @@ git commit -s
 
 Forgot it? Before review starts, add it to the last commit with `git commit --amend --signoff --no-edit`, or to every commit since `main` with `git rebase --signoff main`, then update your branch with `git push --force-with-lease`.
 
-From M0 on, a CI check rejects a pull request with a commit whose sign-off is missing or does not match its author. The planning-phase commits already carry a sign-off.
+The CI job `DCO sign-off` (`cargo xtask dco`) rejects a pull request with a commit whose sign-off is missing or does not match its author, in name or address; merge commits are not checked. You can run the same check before you push: `cargo xtask dco origin/main HEAD`. The planning-phase commits already carry a sign-off.
 
 ### Contributor Licence Agreement
 

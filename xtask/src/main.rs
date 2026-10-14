@@ -13,14 +13,19 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitCode};
 
 use xtask::check::{Step, plan};
+use xtask::dco;
 use xtask::deny::unjustified_suppressions;
 use xtask::dependabot;
+use xtask::english;
 use xtask::exit::exit_code;
 use xtask::guard::scan;
+use xtask::header;
+use xtask::licence;
 use xtask::listing::check_listing;
 use xtask::osv::{judge, shipped_packages, shipped_roots};
 use xtask::registry::Registry;
 use xtask::sources::collect;
+use xtask::tracked;
 use xtask::vendor::{actual_list, regenerate, verify};
 use xtask::vet::violations;
 
@@ -46,6 +51,7 @@ fn main() -> ExitCode {
     {
         ["check"] => run_check(&root),
         ["guard"] => run_guard(&root),
+        ["dco", base, head] => run_dco(&root, base, head),
         ["osv-gate", report] => run_osv_gate(&root, Path::new(report)),
         ["vendor-hashes", "write"] => write_hash_list(&root),
         ["vendor-hashes", "verify"] => verify_hash_list(&root),
@@ -57,7 +63,7 @@ fn main() -> ExitCode {
 fn usage() -> io::Result<ExitCode> {
     writeln!(
         io::stderr(),
-        "usage: cargo xtask check | guard | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify"
+        "usage: cargo xtask check | guard | dco <base> <head> | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify"
     )?;
     Ok(ExitCode::FAILURE)
 }
@@ -94,6 +100,9 @@ fn run_step(step: &Step, root: &Path) -> io::Result<bool> {
         Step::DenySuppressions => deny_suppressions_pass(root),
         Step::VetExemptions => vet_exemptions_pass(root),
         Step::Dependabot => dependabot_passes(root),
+        Step::LicenceCopy => licence_copy_passes(root),
+        Step::SourceHeaders => source_headers_pass(root),
+        Step::English => english_passes(root),
         Step::Cargo { args, env, .. } => Ok(Command::new(cargo_program())
             .args(args)
             .envs(env.iter().copied())
@@ -203,6 +212,68 @@ fn deny_suppressions_pass(root: &Path) -> io::Result<bool> {
         writeln!(io::stderr(), "{finding}")?;
     }
     Ok(findings.is_empty())
+}
+
+fn licence_copy_passes(root: &Path) -> io::Result<bool> {
+    let read = |path: &str| {
+        fs::read(root.join(path))
+            .map_err(|error| io::Error::new(error.kind(), format!("{path}: {error}")))
+    };
+    let finding = licence::difference(&read(licence::LICENSE_PATH)?, &read(licence::COPY_PATH)?);
+    if let Some(finding) = &finding {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(finding.is_none())
+}
+
+fn source_headers_pass(root: &Path) -> io::Result<bool> {
+    let paths: Vec<String> = tracked::paths(root)?
+        .into_iter()
+        .filter(|path| path.ends_with(".rs"))
+        .collect();
+    let findings = header::violations(&tracked::read_text(root, &paths)?);
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn english_passes(root: &Path) -> io::Result<bool> {
+    let allowlist =
+        english::parse_allowlist(&fs::read_to_string(root.join(english::ALLOWLIST_PATH))?)
+            .map_err(io::Error::other)?;
+    let files = tracked::read_text(root, &tracked::paths(root)?)?;
+    let findings = english::violations(&files, &allowlist);
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    Ok(findings.is_empty())
+}
+
+fn run_dco(root: &Path, base: &str, head: &str) -> io::Result<ExitCode> {
+    let range = format!("{base}..{head}");
+    let output = tracked::git_command(root)
+        .args(["log", dco::LOG_FORMAT, &range])
+        .output()?;
+    if !output.status.success() {
+        io::stderr().write_all(&output.stderr)?;
+        return Err(io::Error::other(format!("git log {range} failed")));
+    }
+    let commits =
+        dco::parse_log(&String::from_utf8_lossy(&output.stdout)).map_err(io::Error::other)?;
+    if commits.is_empty() {
+        writeln!(
+            io::stderr(),
+            "no commits in {range}; refusing to pass an empty range"
+        )?;
+        return Ok(ExitCode::FAILURE);
+    }
+    let findings = dco::violations(&commits);
+    for finding in &findings {
+        writeln!(io::stderr(), "{finding}")?;
+    }
+    writeln!(io::stderr(), "checked {} commits in {range}", commits.len())?;
+    Ok(exit_status(findings.is_empty()))
 }
 
 fn dependabot_passes(root: &Path) -> io::Result<bool> {

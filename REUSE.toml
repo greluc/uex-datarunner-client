@@ -19,6 +19,7 @@ path = [
   ".cargo/**",
   "supply-chain/**",
   "xtask/fixtures/**",
+  "xtask/english-allowlist.toml",
 ]
 precedence = "closest"
 SPDX-FileCopyrightText = "Lucas Greuloch"
