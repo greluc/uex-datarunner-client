@@ -373,12 +373,30 @@ Source code
                 pulls in are read from the manifests when pinned in M0]
   Text          legal/crates/, with the other crates
 
-2.19 TLS provider of rustls [pending O-110]
-  Crate         ring or aws-lc-rs, undecided; both contain C and assembler
-                and are a registered exception (09 section 3b, ADR-0005 D2)
-  Licence       [the licence of the bundled native parts is checked against
-                the licence policy of CLAUDE.md before the choice; O-110]
+2.19 TLS provider of rustls
+  Crates        aws-lc-rs 1.18.2 with aws-lc-sys 0.46.0 (AWS-LC, C, C++ and
+                assembler, compiled by the build script of aws-lc-sys); a
+                registered exception to the pure-Rust rule (09 section 3b,
+                ADR-0006, O-110). Pulled in by rustls 0.23.46 with its
+                aws-lc-rs feature, through the crate tallyline-adapter-uex
+  Licence       aws-lc-rs: ISC AND (Apache-2.0 OR ISC); aws-lc-sys: ISC,
+                Apache-2.0, MIT, BSD-3-Clause and MIT-0 as an alternative of a
+                dual licence, per-file as read in the published 0.46.0 on
+                2026-10-14 (ADR-0006). The jitterentropy library is offered
+                under a BSD-style licence or GPL-2.0; the BSD-3-Clause option
+                is the one elected. The Keccak and AES reference code is
+                CC0-1.0.
+  Notices       the aws-lc-sys LICENSE file with its Apache-2.0, ISC, MIT,
+                BSD-3-Clause and MIT-0 texts, and the notices of
+                jitterentropy, s2n-bignum, mlkem-native, mldsa-native, fiat
+                and the CC0 reference code, copied unmodified from the
+                vendored aws-lc-sys 0.46.0 [collected into legal/ by the
+                notices step of R-DOC-3]
+  Not compiled  ring 0.17.14 is locked as an optional dependency of
+                rustls-webpki and never built (09 section 3b)
   Text          legal/crates/, with the other crates
+  Amended 2026-10-14 (ADR-0006): the provider is decided and enters the
+  build with the crate tallyline-adapter-uex (issue #24).
 
 
 3. Content in this repository that is not under the project licence

@@ -2,7 +2,7 @@
 
 **Tallyline** (the product name, decided 2026-10-12, O-8; the GitHub repository is still `uex-datarunner-client`) is a desktop client (Windows + Linux) for capturing Star Citizen commodity terminal data – **manually or via screenshot OCR** – and submitting it to the **UEX API 2.0** (`POST /data_submit`). Current UEX data (terminals, commodities, latest prices, status levels, tolerances) are **constraints and default values** for recognition and selection.
 
-**Status:** planning phase, milestone M0 in `docs/plan/04-roadmap.md` has started. The only code so far is the `xtask` crate (`cargo xtask check`, the supply-chain guard and the vendor hash list, `rust-toolchain.toml`, workspace lints); every other crate is created with its first test. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
+**Status:** planning phase, milestone M0 in `docs/plan/04-roadmap.md` has started. The code so far is the `xtask` crate (`cargo xtask check`, the supply-chain guard and the vendor hash list, `rust-toolchain.toml`, workspace lints) and `crates/adapter-uex` (`tallyline-adapter-uex`: the read-only UEX client of the M0 API spike and its CLI `tallyline-uex-spike`, issue #24); every other crate is created with its first test, under `crates/`. Implementation language: Rust with egui; our own code is Rust only and native code in a dependency is allowed only as a registered exception (ADR-0005, accepted 2026-10-12; it supersedes ADR-0001's Java 27 + JavaFX choice). Licence: GPL-3.0-or-later (ADR-0003). Do not invent build commands, file paths, crates or type names that exist neither in `docs/` nor in the tree; if something is not written down, it has not been decided: ask. A crate, version or command that ADR-0005 does not name is "chosen and verified at source in M0".
 
 ## Language
 
@@ -82,15 +82,15 @@ Reading UEX (GET) is allowed. Every write that an agent makes or triggers – `d
 | OCR runtime | `ort` (ONNX Runtime binding, **registered native-code exception and the one release-candidate exception**; how the library reaches the build is decided in M0, O-108) | `=2.0.0-rc.13` |
 | OCR models | PaddleOCR PP-OCRv6 small det + rec (ONNX, Hugging Face `PaddlePaddle/…`) | – |
 | Optional AI | Local VLM via the Ollama HTTP API (not bundled, installed by the user); endpoints verified against the official Ollama docs (`docs/api.md`) | v0.40.1 (current) |
-| Async and HTTP | `tokio` and `reqwest` with rustls (ADR-0005 D4); CPU-heavy work stays on bounded dedicated thread pools, never on the async runtime | verified in M0 |
-| TLS | `rustls` with `aws-lc-rs` as provider (registered native-code exception, ADR-0006, O-110); `rustls-platform-verifier` for the system store | `aws-lc-rs` 1.18.2, `rustls` 0.23.45, `rustls-platform-verifier` 0.7.1 (newest stable on 2026-10-14; pinned in the M0 dependency pull request) |
-| JSON and serialisation | `serde` with a JSON crate | verified in M0 |
+| Async and HTTP | `tokio` and `reqwest` with rustls (ADR-0005 D4), `reqwest` with `rustls-no-provider` only and the TLS configuration passed in by `adapter-uex`; CPU-heavy work stays on bounded dedicated thread pools, never on the async runtime | `tokio` 1.53.2, `reqwest` 0.13.5 (locked 2026-10-14, issue #24) |
+| TLS | `rustls` with `aws-lc-rs` as provider (registered native-code exception, ADR-0006, O-110), passed in explicitly instead of a process-wide default; `rustls-platform-verifier` for the system store; `AWS_LC_SYS_USE_SYSTEM=0` in `.cargo/config.toml` | `aws-lc-rs` 1.18.2 with `aws-lc-sys` 0.46.0, `rustls` 0.23.46 (raised from 0.23.45 for RUSTSEC-2026-0346 to 0349), `rustls-platform-verifier` 0.7.1 (locked 2026-10-14, issue #24) |
+| JSON and serialisation | `serde` with `serde_json` | `serde` 1.0.228, `serde_json` 1.0.151 (workspace minimums; the lockfile holds the exact versions) |
 | DB | `rusqlite` with bundled SQLite (registered native-code exception, O-109) | verified in M0 |
 | Logging | `tracing` with a subscriber and a masking layer for secrets | verified in M0 |
 | Credential store | `keyring` | 4.2.0 (ADR-0001) |
 | Money and time | a decimal type for money, chosen in M0; time through `std::time` or a crate chosen in M0, always behind a `Clock` trait | verified in M0 |
 | Format and lint | `rustfmt` (`cargo fmt`), Clippy (`cargo clippy -- -D warnings`, `disallowed_types`/`disallowed_methods`), `#![deny(missing_docs)]` | with the pinned toolchain |
-| Tests | the built-in test harness, `proptest`, `wiremock`, the egui UI test harness `egui_kittest` with its `wgpu` and `snapshot` features (O-114) | `egui_kittest` `=0.36.2` (verified 2026-10-14); the others verified in M0 |
+| Tests | the built-in test harness, `proptest`, `wiremock`, the egui UI test harness `egui_kittest` with its `wgpu` and `snapshot` features (O-114) | `egui_kittest` `=0.36.2` (verified 2026-10-14); `wiremock` 0.6.5 (locked 2026-10-14); the others verified in M0 |
 | Mutation testing and coverage | `cargo-mutants`, `cargo-llvm-cov` | verified in M0 |
 | Architecture rules | an `xtask` test over `cargo metadata` (context map, adapter leaves), Clippy, `cargo-deny` `bans` (ADR-0005 D13) | – |
 | Supply chain | `Cargo.lock` with `--locked`; `cargo-deny`; `cargo-audit` and OSV-Scanner (release binary, SHA-256 pinned, 10 S-19); `cargo-vet`; `cargo vendor`; an SBOM generator (CycloneDX); GitHub Actions `actions/checkout`, `actions/attest`, `actions/upload-artifact`, `actions/download-artifact` and a Rust toolchain installer step | chosen and verified in M0 (actions pinned by SHA, tags in `docs/dependency-pins.md`) |
@@ -173,6 +173,7 @@ cargo test --workspace --locked # all tests
 cargo test <name> --locked      # targeted tests
 cargo run                       # start the app (the binary crate's name is O-122)
 cargo run --release -p ocr-eval -- --corpus "$TALLYLINE_CORPUS_DIR"   # OCR evaluation (tools/ocr-eval)
+cargo run --locked -p tallyline-adapter-uex -- [--host space|uk] game-versions   # read-only UEX API spike (GET only; also status-levels, prices <id>, account, report-access)
 cargo update --dry-run          # available updates (adopt stable ones only)
 cargo xtask package             # installer for the current OS (cargo-packager)
 ```

@@ -99,6 +99,8 @@ uex-datarunner-client/
 └── tools/ocr-eval/         CLI: golden corpus evaluation, crop dumps, digest
 ```
 
+Corrected 2026-10-14: the crate directories of the tree (the core, the adapters, `ui` and `app`) live under `crates/`, as the crate-name paragraph below says; `supply-chain/`, `xtask/` and `tools/` stay at the root. The first crate there is `crates/adapter-uex` (issue #24).
+
 **Context map / dependencies** (only in arrow direction, **cycle-free**, enforced by Cargo's dependency graph, the `xtask` rule over `cargo metadata`, Clippy `disallowed_*` and `cargo-deny` `bans`; ADR-0005 D13):
 
 ```

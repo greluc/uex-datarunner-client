@@ -1,11 +1,17 @@
 [workspace]
 resolver = "3"
-members = ["xtask"]
+members = ["xtask", "crates/adapter-uex"]
 
 [workspace.dependencies]
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23.46", default-features = false, features = ["aws-lc-rs", "std"] }
+rustls-platform-verifier = { version = "0.7.1", default-features = false }
+serde = { version = "1.0.228", default-features = false, features = ["derive", "std"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["std"] }
 sha2 = { version = "0.11.0", default-features = false }
+tokio = { version = "1.53.2", default-features = false }
 toml = { version = "1.1.6", default-features = false, features = ["parse", "serde", "std"] }
+wiremock = { version = "0.6.5", default-features = false }
 
 [workspace.package]
 edition = "2024"

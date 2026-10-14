@@ -1,2 +1,5 @@
 [alias]
 xtask = "run --package xtask --locked --quiet --"
+
+[env]
+AWS_LC_SYS_USE_SYSTEM = "0"
