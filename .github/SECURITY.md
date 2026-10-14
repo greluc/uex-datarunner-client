@@ -135,7 +135,9 @@ behaviour is a finding.
   list ([`docs/plan/02-architecture.md`](../docs/plan/02-architecture.md)
   §9). In scope: any other outbound connection, including telemetry from a
   bundled library or native component (ONNX Runtime ships telemetry that the
-  client switches off; whether that is complete is an open verification, O-13),
+  client switches off; on Windows its remaining ETW events, which Windows' own
+  diagnostic-data service may collect, are an accepted exception,
+  ADR-0008),
   any listening socket, and any other access to the game.
 - **Supply chain.** Anything that would let an attacker bring code onto
   users' machines unnoticed through this project's build and release

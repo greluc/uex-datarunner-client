@@ -185,8 +185,9 @@ Source code
   Privacy       the official libraries contain telemetry (1DS over HTTPS on
                 Linux, ETW TraceLogging on Windows); the app's own code sets
                 ORT_DISABLE_TELEMETRY before the first ONNX Runtime call
-                (R-NF-12), verified by an M0 spike (O-13); no release
-                bundles ONNX Runtime before that
+                and switches the events off (R-NF-12), which removes the
+                Linux telemetry; the remaining Windows ETW events are
+                accepted (M0 spike, ADR-0008, O-13)
   Amended 2026-10-12 (ADR-0005): the Maven artefact
   com.microsoft.onnxruntime:onnxruntime 1.30.0 and its sources jar are
   replaced by the ort crate and a separately pinned library.

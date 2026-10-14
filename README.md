@@ -57,7 +57,6 @@ Decisions and checks that are still open are tracked in [docs/adr/0000-open-poin
 - the acceptance date of the Fankit Agreement (O-26), and which logo variant goes on light and on dark backgrounds (O-27; this README follows basetool's mapping until the project owner has checked the kit);
 - whether Cloud Imperium's terms allow the game screenshots in this public repository (O-28);
 - a legal review of the Microsoft C/C++ runtime DLLs that ONNX Runtime needs in the Windows packages before the first release (O-12);
-- how ONNX Runtime's built-in telemetry is switched off reliably (O-13; an M0 measurement decides);
 - the import of the `tallyline-egui` crate (O-112);
 - the M1 spike for the installers (`cargo-packager` with a pre-installed, pinned WiX 3.11.2, decided in O-116): offline build, `.deb` and archive formats.
 
