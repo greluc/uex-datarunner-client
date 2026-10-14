@@ -23,11 +23,12 @@ The configuration is `deny.toml` at the repository root. It checks licences, sou
 
 ## Dependencies
 
-`xtask` has two direct dependencies, declared once in `[workspace.dependencies]` of the root `Cargo.toml` (10 S-2). Both are build tooling and never reach the shipped binary. All crates below are pure Rust with no `links` key and no C, C++ or assembler source; the versions are the latest ones older than the 7-day cooldown of 10 S-7 when they were added (2026-10-14).
+`xtask` has three direct dependencies, declared once in `[workspace.dependencies]` of the root `Cargo.toml` (10 S-2). All three are build tooling and never reach the shipped binary. All crates below are pure Rust with no `links` key and no C, C++ or assembler source; the versions are the latest ones older than the 7-day cooldown of 10 S-7 when they were added (2026-10-14); `serde_json` is the latest version that is.
 
 | Crate | Version | Purpose | Licence (SPDX) | Source | Build script | Procedural macro |
 |---|---|---|---|---|---|---|
+| `serde_json` | 1.0.151 | Reads the JSON that `osv-scanner` and `cargo metadata` print (the OSV gate, 10 S-19) | `MIT OR Apache-2.0` | crates.io, `github.com/serde-rs/json` | yes (probes the target's pointer width) | no |
 | `sha2` | 0.11.0 | SHA-256 of the vendored files | `MIT OR Apache-2.0` | crates.io, `github.com/RustCrypto/hashes` | no | no |
 | `toml` | 1.1.6+spec-1.1.0 | Reads `Cargo.lock`, manifests, Cargo configuration and the toolchain pin | `MIT OR Apache-2.0` | crates.io, `github.com/toml-rs/toml` | no | no |
 
-Compiled transitive crates: `cfg-if`, `cpufeatures` (and `libc` on Linux, with a build script that only probes `rustc`), `digest`, `block-buffer`, `crypto-common`, `hybrid-array`, `typenum` for `sha2`; `serde_core` (build script that probes `rustc` and writes a generated module), `serde_spanned`, `toml_datetime`, `toml_parser`, `winnow` for `toml`. All are `MIT OR Apache-2.0` except `winnow` (`MIT`). `serde_derive`, `proc-macro2`, `quote`, `syn`, `unicode-ident`, `indexmap`, `hashbrown`, `equivalent` and `toml_writer` are in `Cargo.lock` and vendored but not compiled.
+Compiled transitive crates: `itoa` (`MIT OR Apache-2.0`), `memchr` (`Unlicense OR MIT`, used under MIT), `serde` (build script that probes `rustc`) and `zmij` (`MIT`, build script that probes `rustc` and the optimisation level) for `serde_json`; `cfg-if`, `cpufeatures` (and `libc` on Linux, with a build script that only probes `rustc`), `digest`, `block-buffer`, `crypto-common`, `hybrid-array`, `typenum` for `sha2`; `serde_core` (build script that probes `rustc` and writes a generated module), `serde_spanned`, `toml_datetime`, `toml_parser`, `winnow` for `toml`. All are `MIT OR Apache-2.0` except `winnow` and `zmij` (`MIT`) and `memchr` (`Unlicense OR MIT`). `serde_derive`, `proc-macro2`, `quote`, `syn`, `unicode-ident`, `indexmap`, `hashbrown`, `equivalent` and `toml_writer` are in `Cargo.lock` and vendored but not compiled.
