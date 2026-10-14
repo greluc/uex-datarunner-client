@@ -58,7 +58,7 @@ Decisions and checks that are still open are tracked in [docs/adr/0000-open-poin
 - whether Cloud Imperium's terms allow the game screenshots in this public repository (O-28);
 - a legal review of the Microsoft C/C++ runtime DLLs that ONNX Runtime needs in the Windows packages before the first release (O-12);
 - how ONNX Runtime's built-in telemetry is switched off reliably (O-13; an M0 measurement decides);
-- how the ONNX Runtime library reaches the build and is pinned (O-108), which TLS provider the registered native-code exception covers (O-110), whether and how the `tallyline-egui` crate is adopted (O-112) and the crate, package and binary names (O-122);
+- whether the GitHub release of ONNX Runtime is accepted as the only source of the Linux library's hash (O-127), and the import of the `tallyline-egui` crate (O-112);
 - the M1 spike for the installers (`cargo-packager` with a pre-installed, pinned WiX 3.11.2, decided in O-116): offline build, `.deb` and archive formats.
 
 ## Star Citizen fan content
