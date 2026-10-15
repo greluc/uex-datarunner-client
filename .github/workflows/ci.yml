@@ -75,6 +75,9 @@ jobs:
       - name: Verify the vendor hash list against a clean vendor
         run: cargo xtask vendor-hashes verify
 
+      - name: Collect the notices directory
+        run: cargo xtask notices
+
       - name: Run the gate
         run: cargo xtask check
 

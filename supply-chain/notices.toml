@@ -1,0 +1,23 @@
+[[component]]
+directory = "rust-std"
+name = "The Rust standard library and the components bundled with it"
+shipped = "always"
+files = [
+    { toolchain = "share/doc/rust/COPYRIGHT-library.html" },
+    { toolchain = "share/doc/rust/licenses/Apache-2.0.txt" },
+    { toolchain = "share/doc/rust/licenses/MIT.txt" },
+    { toolchain = "share/doc/rust/licenses/LLVM-exception.txt" },
+    { toolchain = "share/doc/rust/licenses/Unicode-3.0.txt" },
+]
+
+[[component]]
+directory = "jitterentropy"
+name = "The jitterentropy library inside aws-lc-sys"
+shipped = { with-crate = "aws-lc-sys" }
+files = [{ repository = "supply-chain/notices/jitterentropy/LICENSE" }]
+
+[[component]]
+directory = "s2n-bignum"
+name = "The s2n-bignum library inside aws-lc-sys"
+shipped = { with-crate = "aws-lc-sys" }
+files = [{ repository = "supply-chain/notices/s2n-bignum/LICENSE" }]

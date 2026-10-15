@@ -168,6 +168,7 @@ cargo xtask guard               # the CI guard of 10 S-4 over Cargo.lock, manife
 cargo xtask osv-gate <report>   # judge an osv-scanner JSON report (CI, 10 S-19; no network)
 cargo xtask vendor-hashes write # regenerate supply-chain/vendor-hashes.txt (network; run in the lockfile commit)
 cargo xtask vendor-hashes verify # compare a clean vendor with the hash list (network; CI runs it)
+cargo xtask notices             # write the notices directories target/notices/<target>/legal (R-DOC-3; network, cargo-deny; CI runs it)
 cargo fmt                       # format
 cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test --workspace --locked # all tests

@@ -6,7 +6,7 @@
 #![forbid(unsafe_code)]
 
 use std::collections::BTreeSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
@@ -22,6 +22,11 @@ use xtask::guard::scan;
 use xtask::header;
 use xtask::licence;
 use xtask::listing::check_listing;
+use xtask::lockfile;
+use xtask::notices::{
+    ComponentFile, Inputs, NOTICES_DIRECTORY, REVIEWED_LIST_PATH, Roots, assemble,
+    parse_deny_report, parse_reviewed_list, vendored_crates, write_directory,
+};
 use xtask::osv::{judge, shipped_packages, shipped_roots};
 use xtask::registry::Registry;
 use xtask::sources::collect;
@@ -39,6 +44,9 @@ const LOCKFILE: &str = "Cargo.lock";
 const HASH_LIST: &str = "supply-chain/vendor-hashes.txt";
 const VENDOR_WORK_DIR: &str = "target/xtask-vendor";
 const SHIPPED_TARGETS: [&str; 2] = ["x86_64-pc-windows-msvc", "x86_64-unknown-linux-gnu"];
+const OSV_EDGES: &str = "normal";
+const LINKED_EDGES: &str = "normal,no-proc-macro";
+const NOTICES_WORK_DIR: &str = "target/notices";
 
 fn main() -> ExitCode {
     let arguments: Vec<String> = std::env::args().skip(1).collect();
@@ -55,6 +63,7 @@ fn main() -> ExitCode {
         ["osv-gate", report] => run_osv_gate(&root, Path::new(report)),
         ["vendor-hashes", "write"] => write_hash_list(&root),
         ["vendor-hashes", "verify"] => verify_hash_list(&root),
+        ["notices"] => write_notices(&root),
         _ => usage(),
     };
     exit_code(outcome, &mut io::stderr())
@@ -63,7 +72,7 @@ fn main() -> ExitCode {
 fn usage() -> io::Result<ExitCode> {
     writeln!(
         io::stderr(),
-        "usage: cargo xtask check | guard | dco <base> <head> | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify"
+        "usage: cargo xtask check | guard | dco <base> <head> | osv-gate <report.json> | vendor-hashes write | vendor-hashes verify | notices"
     )?;
     Ok(ExitCode::FAILURE)
 }
@@ -117,19 +126,31 @@ fn run_guard(root: &Path) -> io::Result<ExitCode> {
     Ok(exit_status(guard_passes(root)?))
 }
 
-fn cargo_stdout(root: &Path, args: &[&str]) -> io::Result<String> {
-    let output = Command::new(cargo_program())
+fn program_stdout(program: &OsStr, root: &Path, args: &[&str]) -> io::Result<String> {
+    let output = Command::new(program)
         .args(args)
         .current_dir(root)
         .output()?;
     if !output.status.success() {
         io::stderr().write_all(&output.stderr)?;
-        return Err(io::Error::other(format!("cargo {} failed", args.join(" "))));
+        return Err(io::Error::other(format!(
+            "{} {} failed",
+            program.to_string_lossy(),
+            args.join(" ")
+        )));
     }
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
-fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::PackageId>)> {
+fn cargo_stdout(root: &Path, args: &[&str]) -> io::Result<String> {
+    program_stdout(&cargo_program(), root, args)
+}
+
+fn shipped_graph(
+    root: &Path,
+    edges: &str,
+    targets: &[&str],
+) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::PackageId>)> {
     let metadata = cargo_stdout(
         root,
         &["metadata", "--locked", "--no-deps", "--format-version", "1"],
@@ -137,7 +158,7 @@ fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::P
     let roots = shipped_roots(&metadata).map_err(io::Error::other)?;
     let mut shipped = BTreeSet::new();
     for name in &roots {
-        for target in SHIPPED_TARGETS {
+        for target in targets {
             let tree = cargo_stdout(
                 root,
                 &[
@@ -148,7 +169,7 @@ fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::P
                     "--target",
                     target,
                     "--edges",
-                    "normal",
+                    edges,
                     "--all-features",
                     "--prefix",
                     "none",
@@ -163,7 +184,7 @@ fn shipped_graph(root: &Path) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::P
 }
 
 fn run_osv_gate(root: &Path, report: &Path) -> io::Result<ExitCode> {
-    let (roots, shipped) = shipped_graph(root)?;
+    let (roots, shipped) = shipped_graph(root, OSV_EDGES, &SHIPPED_TARGETS)?;
     let text = fs::read_to_string(report)
         .map_err(|error| io::Error::new(error.kind(), format!("{}: {error}", report.display())))?;
     let verdict = judge(&text, &shipped).map_err(io::Error::other)?;
@@ -341,6 +362,88 @@ fn verify_hash_list(root: &Path) -> io::Result<ExitCode> {
         writeln!(io::stderr(), "{HASH_LIST} matches the vendored tree")?;
     }
     Ok(exit_status(differences.is_empty()))
+}
+
+fn toolchain_sysroot(root: &Path) -> io::Result<PathBuf> {
+    let output = program_stdout(OsStr::new("rustc"), root, &["--print", "sysroot"])?;
+    Ok(PathBuf::from(output.trim()))
+}
+
+fn write_notices(root: &Path) -> io::Result<ExitCode> {
+    let components = parse_reviewed_list(&fs::read_to_string(root.join(REVIEWED_LIST_PATH))?)
+        .map_err(io::Error::other)?;
+    let locked: BTreeSet<String> = lockfile::parse(&fs::read_to_string(root.join(LOCKFILE))?)
+        .map_err(|error| io::Error::other(error.to_string()))?
+        .into_iter()
+        .map(|package| package.name)
+        .collect();
+    let licences = parse_deny_report(&cargo_stdout(
+        root,
+        &[
+            "deny", "--locked", "list", "--format", "json", "--layout", "crate",
+        ],
+    )?)
+    .map_err(io::Error::other)?;
+    let sysroot = toolchain_sysroot(root)?;
+    let mut graphs = Vec::new();
+    for target in SHIPPED_TARGETS {
+        let (roots, linked) = shipped_graph(root, LINKED_EDGES, &[target])?;
+        let shipped: BTreeSet<_> = linked
+            .into_iter()
+            .filter(|package| !roots.contains(&package.name))
+            .collect();
+        graphs.push((target, shipped));
+    }
+    let work_dir = root.join(NOTICES_WORK_DIR);
+    if work_dir.exists() {
+        fs::remove_dir_all(&work_dir)?;
+    }
+    let passed = with_vendor_tree(root, |_, vendor_dir| {
+        let mut passed = true;
+        for (target, shipped) in &graphs {
+            let vendored = vendored_crates(vendor_dir, shipped)?;
+            let assembly = assemble(
+                Inputs {
+                    shipped,
+                    locked: &locked,
+                    vendored: &vendored,
+                    licences: &licences,
+                    components: &components,
+                },
+                |file| match file {
+                    ComponentFile::Toolchain(path) => sysroot.join(path).is_file(),
+                    ComponentFile::Repository(path) => root.join(path).is_file(),
+                },
+            );
+            for finding in &assembly.findings {
+                writeln!(io::stderr(), "{target}: {finding}")?;
+            }
+            if assembly.findings.is_empty() {
+                write_directory(
+                    &work_dir.join(target).join(NOTICES_DIRECTORY),
+                    &assembly,
+                    Roots {
+                        vendor: vendor_dir,
+                        toolchain: &sysroot,
+                        repository: root,
+                    },
+                )?;
+                writeln!(
+                    io::stderr(),
+                    "wrote {NOTICES_WORK_DIR}/{target}/{NOTICES_DIRECTORY}: {} files for {} shipped crates and the reviewed list",
+                    assembly.copies.len(),
+                    shipped.len()
+                )?;
+            } else {
+                passed = false;
+            }
+        }
+        Ok(passed)
+    })?;
+    if !passed && work_dir.exists() {
+        fs::remove_dir_all(&work_dir)?;
+    }
+    Ok(exit_status(passed))
 }
 
 fn check_requirement_tags(list: &[String], root: &Path) -> io::Result<bool> {

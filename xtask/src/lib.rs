@@ -17,6 +17,7 @@ pub mod header;
 pub mod licence;
 pub mod listing;
 pub mod lockfile;
+pub mod notices;
 pub mod osv;
 pub mod register;
 pub mod registry;
