@@ -84,13 +84,14 @@ Installers and archives (Windows MSI and ZIP, Linux .deb and tar.gz)
     third-party crate (2.16) and of the ONNX Runtime library (2.3), collected
     by xtask from Cargo.lock, the vendored sources and the pinned library
     files, because a statically linked Rust binary carries none of them.
-    cargo xtask notices writes the directory to target/notices/legal: the
-    files of every shipped crate under legal/crates/<name>-<version>/, with
-    legal/crates/index.tsv naming each crate's version and the licences of
-    the cargo-deny report, and the files of every shipped entry of the
-    reviewed list (supply-chain/notices.toml, 10 S-34) under
-    legal/<directory>/. It fails when a shipped crate or entry lacks its
-    files.
+    cargo xtask notices writes one directory per shipped target, to
+    target/notices/<target>/legal: the files of every crate shipped for that
+    target under legal/crates/<name>-<version>/, with legal/crates/index.tsv
+    naming each crate's version, the SPDX expression its manifest declares
+    and the licences the cargo-deny report detected, and the files of every
+    shipped entry of the reviewed list (supply-chain/notices.toml, 10 S-34)
+    under legal/<directory>/. It fails when a shipped crate or entry lacks
+    its files, or an entry names a crate that Cargo.lock does not hold.
   Amended 2026-10-15 (issue #29): the path legal/<component>/ is fixed; it
   was proposed for M0.
   The .deb package
@@ -180,8 +181,8 @@ Source code
   Text          legal/onnxruntime/: the MIT licence text from the tag above,
                 and ThirdPartyNotices.txt and Privacy.md of the library,
                 unmodified; committed under supply-chain/notices/onnxruntime/
-                when the library starts to ship, and cargo xtask notices
-                fails while the crate ort is shipped without them
+                together with their reviewed-list entry (shipped with the
+                crate ort) in the change that makes the library ship
   Source        linked: the tag above; attached: Eigen from
                 eigen-mirror/eigen at the commit pinned in the tag's
                 cmake/deps.txt (MPL-2.0 section 3.2(a)); for 1.30.0 that was
@@ -376,7 +377,8 @@ Source code
   Text          legal/crates/<name>-<version>/: the licence and notice files
                 of every crate, collected from the vendored sources,
                 unmodified, by cargo xtask notices; legal/crates/index.tsv
-                lists every crate with the licences cargo-deny found
+                lists every crate with the SPDX expression its manifest
+                declares and the licences cargo-deny detected
   Source        the vendored sources of the tagged source; every crate by
                 version and checksum
   Note          No crate is listed here by hand, because a hand-kept list
@@ -417,9 +419,22 @@ Source code
                 vendored aws-lc-sys 0.46.0 into
                 legal/crates/aws-lc-sys-0.46.0/ (LICENSE, aws-lc/LICENSE,
                 aws-lc/third_party/fiat/LICENSE)
-                [aws-lc/LICENSE refers to the LICENSE files of jitterentropy
-                and s2n-bignum, which the published crate does not contain;
-                open point O-134]
+  Upstream      aws/aws-lc at tag v5.11.0, commit
+                fa9bc8d6f7cfb2cf849b247fb06bbbfc41ecc9d6: the aws-lc
+                submodule of aws/aws-lc-rs at commit
+                9df497501436596d4da77109217806b3af7f56cb, which the published
+                aws-lc-sys 0.46.0 names in its .cargo_vcs_info.json
+  Added texts   aws-lc/LICENSE refers to two LICENSE files that the published
+                crate does not contain. They are taken unmodified from the
+                upstream commit above, committed under supply-chain/notices/
+                and shipped as reviewed-list entries with the crate
+                aws-lc-sys (O-134):
+    legal/jitterentropy/LICENSE
+      third_party/jitterentropy/jitterentropy-library/LICENSE, SHA-256
+      088d208b9d22530691f1e9406a85dd7f6f5a42e3cf23d3d6df6582408e3840f7
+    legal/s2n-bignum/LICENSE
+      third_party/s2n-bignum/s2n-bignum-imported/LICENSE, SHA-256
+      41c6380384dc6065456d01405ef0b43e5fe39ba1bccc4ec67801cc66142728e5
   Corrected 2026-10-15: the published aws-lc-sys 0.46.0 carries the notices
   of jitterentropy and s2n-bignum only as the summaries in aws-lc/LICENSE,
   not as files of their own.
@@ -436,12 +451,16 @@ Source code
                 licences as listed in COPYRIGHT-library.html of the
                 toolchain
   Text          legal/rust-std/: COPYRIGHT-library.html and the Apache-2.0,
-                MIT, BSD-2-Clause, LLVM-exception and Unicode-3.0 texts, copied
-                unmodified from share/doc/rust/ of the pinned toolchain
-                [COPYRIGHT-library.html also names components under MPL-2.0,
-                Zlib, BSL-1.0, Unlicense and an LGPL-2.1-or-later option
-                whose texts the toolchain does not carry; whether they are
-                linked into our binaries is open point O-134]
+                MIT, LLVM-exception and Unicode-3.0 texts, copied unmodified
+                from share/doc/rust/ of the pinned toolchain.
+                COPYRIGHT-library.html embeds the licence files of the
+                out-of-tree crates of the standard library, among them the
+                Zlib text of foldhash and the BSL-1.0 text of ryu. The two
+                crates whose texts it does not embed, fortanix-sgx-abi
+                (MPL-2.0) and r-efi (MIT OR Apache-2.0 OR LGPL-2.1-or-later),
+                are dependencies of the SGX and UEFI targets only
+                (library/std/Cargo.toml at tag 1.99.0) and are not linked
+                into the Windows and Linux binaries (O-134)
   Source        linked: the rust-lang/rust tag of the pinned version
 
 
@@ -450,6 +469,13 @@ Source code
 
 LICENSE and LICENSES/
   Licence texts; see section 1.
+
+supply-chain/notices/<component>/
+  Licence and notice files of shipped components that no shipped artefact
+  carries, copied unmodified from their upstream source and listed with
+  their SHA-256 in section 2 (jitterentropy and s2n-bignum: 2.19). Each
+  keeps its own licence and copyright; REUSE does not read files named
+  LICENSE.
 
 CODE_OF_CONDUCT.md
   Contributor Covenant 3.0, from EthicalSource/contributor_covenant at commit

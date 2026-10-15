@@ -22,10 +22,13 @@ pub const NOTICES_DIRECTORY: &str = "legal";
 /// The subdirectory of the notices directory that holds the files of the third-party crates.
 pub const CRATES_DIRECTORY: &str = "crates";
 
-/// The index of the crates directory: one line per crate with its version and licences.
+/// The index of the crates directory: one line per crate with its version, the SPDX expression its
+/// manifest declares (`-` when it declares none) and the licences `cargo-deny` detected.
 pub const CRATE_INDEX: &str = "index.tsv";
 
-const INDEX_HEADER: &str = "crate\tversion\tlicences\n";
+const INDEX_HEADER: &str = "crate\tversion\tdeclared\tdetected\n";
+
+const UNDECLARED: &str = "-";
 
 const NOTICE_PREFIXES: [&str; 8] = [
     "licence",
@@ -328,6 +331,13 @@ pub enum Finding {
     NoNoticeFiles(PackageId),
     /// A shipped crate is missing from the `cargo-deny` report or has no licence there.
     NoLicence(PackageId),
+    /// A component of the reviewed list ships with a crate that `Cargo.lock` does not hold.
+    UnknownCrate {
+        /// The component's name.
+        component: String,
+        /// The crate it names.
+        name: String,
+    },
     /// A file of a shipped component of the reviewed list does not exist.
     MissingFile {
         /// The component's name.
@@ -348,6 +358,12 @@ impl fmt::Display for Finding {
                 )
             }
             Self::NoLicence(package) => write!(f, "{package}: no licence in the cargo-deny report"),
+            Self::UnknownCrate { component, name } => {
+                write!(
+                    f,
+                    "{component}: ships with `{name}`, which Cargo.lock does not hold"
+                )
+            }
             Self::MissingFile { component, file } => match file {
                 ComponentFile::Toolchain(path) => {
                     write!(
@@ -374,13 +390,24 @@ pub struct Assembly {
     pub findings: Vec<Finding>,
 }
 
+/// What the vendored sources say about one package.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct VendoredCrate {
+    /// The SPDX expression of the `license` field of its manifest, absent when it has none.
+    pub declared: Option<String>,
+    /// Its licence and notice files, relative to its directory.
+    pub files: Vec<String>,
+}
+
 /// The inputs of [`assemble`].
 #[derive(Clone, Copy, Debug)]
 pub struct Inputs<'a> {
     /// The third-party crates of the shipped dependency graph.
     pub shipped: &'a BTreeSet<PackageId>,
-    /// The licence and notice files of every vendored package, relative to its directory.
-    pub vendored: &'a BTreeMap<PackageId, Vec<String>>,
+    /// The names of all packages in `Cargo.lock`.
+    pub locked: &'a BTreeSet<String>,
+    /// The vendored packages.
+    pub vendored: &'a BTreeMap<PackageId, VendoredCrate>,
     /// The licences per package from the `cargo-deny` report.
     pub licences: &'a BTreeMap<PackageId, Vec<String>>,
     /// The reviewed list.
@@ -390,9 +417,11 @@ pub struct Inputs<'a> {
 /// Plans the notices directory from `inputs`; `exists` tells whether a component file exists.
 ///
 /// Every shipped crate contributes its vendored licence and notice files under
-/// `crates/<name>-<version>/` and a line of the index; every shipped component of the reviewed
-/// list contributes its files under its directory. A shipped crate that is not vendored, has no
-/// such file or no licence in the report, and a missing component file, are findings.
+/// `crates/<name>-<version>/` and a line of the index with its declared SPDX expression and the
+/// licences of the report; every shipped component of the reviewed list contributes its files
+/// under its directory. A shipped crate that is not vendored, has no such file or no licence in
+/// the report, a component that names a crate `Cargo.lock` does not hold, and a missing component
+/// file, are findings.
 #[must_use]
 pub fn assemble(inputs: Inputs<'_>, exists: impl Fn(&ComponentFile) -> bool) -> Assembly {
     let mut assembly = Assembly {
@@ -401,17 +430,22 @@ pub fn assemble(inputs: Inputs<'_>, exists: impl Fn(&ComponentFile) -> bool) -> 
     };
     for package in inputs.shipped {
         let directory = vendor_directory(package);
-        match inputs.vendored.get(package) {
+        let vendored = inputs.vendored.get(package);
+        match vendored {
             None => assembly
                 .findings
                 .push(Finding::NotVendored(package.clone())),
-            Some(files) if files.is_empty() => assembly
+            Some(vendored) if vendored.files.is_empty() => assembly
                 .findings
                 .push(Finding::NoNoticeFiles(package.clone())),
-            Some(files) => assembly.copies.extend(files.iter().map(|file| PlannedFile {
-                origin: Origin::Vendor(format!("{directory}/{file}")),
-                target: format!("{CRATES_DIRECTORY}/{directory}/{file}"),
-            })),
+            Some(vendored) => {
+                assembly
+                    .copies
+                    .extend(vendored.files.iter().map(|file| PlannedFile {
+                        origin: Origin::Vendor(format!("{directory}/{file}")),
+                        target: format!("{CRATES_DIRECTORY}/{directory}/{file}"),
+                    }))
+            }
         }
         match inputs
             .licences
@@ -420,9 +454,12 @@ pub fn assemble(inputs: Inputs<'_>, exists: impl Fn(&ComponentFile) -> bool) -> 
         {
             None => assembly.findings.push(Finding::NoLicence(package.clone())),
             Some(licences) => assembly.index.push_str(&format!(
-                "{}\t{}\t{}\n",
+                "{}\t{}\t{}\t{}\n",
                 package.name,
                 package.version,
+                vendored
+                    .and_then(|vendored| vendored.declared.as_deref())
+                    .unwrap_or(UNDECLARED),
                 licences.join(", ")
             )),
         }
@@ -430,7 +467,15 @@ pub fn assemble(inputs: Inputs<'_>, exists: impl Fn(&ComponentFile) -> bool) -> 
     for component in inputs.components {
         let ships = match &component.shipped {
             Shipped::Always => true,
-            Shipped::WithCrate(name) => inputs.shipped.iter().any(|package| &package.name == name),
+            Shipped::WithCrate(name) => {
+                if !inputs.locked.contains(name) {
+                    assembly.findings.push(Finding::UnknownCrate {
+                        component: component.name.clone(),
+                        name: name.clone(),
+                    });
+                }
+                inputs.shipped.iter().any(|package| &package.name == name)
+            }
         };
         if !ships {
             continue;
@@ -515,24 +560,43 @@ fn walk(
     Ok(())
 }
 
-/// The licence and notice files of every package of `packages` that has a directory
-/// `<name>-<version>` in `vendor_dir`; a package without one is left out.
+/// The declared licence and the licence and notice files of every package of `packages` that has
+/// a directory `<name>-<version>` in `vendor_dir`; a package without one is left out.
 ///
 /// # Errors
 ///
-/// Returns an error when a package directory cannot be read (see [`notice_files`]).
-pub fn vendored_notice_files(
+/// Returns an error when a package directory cannot be read (see [`notice_files`]) or its
+/// `Cargo.toml` cannot be read as TOML.
+pub fn vendored_crates(
     vendor_dir: &Path,
     packages: &BTreeSet<PackageId>,
-) -> io::Result<BTreeMap<PackageId, Vec<String>>> {
+) -> io::Result<BTreeMap<PackageId, VendoredCrate>> {
     let mut vendored = BTreeMap::new();
     for package in packages {
         let package_dir = vendor_dir.join(vendor_directory(package));
         if package_dir.is_dir() {
-            vendored.insert(package.clone(), notice_files(&package_dir)?);
+            vendored.insert(
+                package.clone(),
+                VendoredCrate {
+                    declared: declared_licence(&package_dir)?,
+                    files: notice_files(&package_dir)?,
+                },
+            );
         }
     }
     Ok(vendored)
+}
+
+fn declared_licence(package_dir: &Path) -> io::Result<Option<String>> {
+    let path = package_dir.join("Cargo.toml");
+    let manifest: toml::Table = fs::read_to_string(&path)?
+        .parse()
+        .map_err(|error| io::Error::other(format!("{}: {error}", path.display())))?;
+    Ok(manifest
+        .get("package")
+        .and_then(|package| package.get("license"))
+        .and_then(toml::Value::as_str)
+        .map(str::to_owned))
 }
 
 /// The directories the origins of an [`Assembly`] are relative to.
@@ -587,8 +651,8 @@ mod tests {
 
     use super::{
         Assembly, Component, ComponentFile, Finding, Inputs, Origin, PlannedFile, Roots, Shipped,
-        assemble, is_notice_file, notice_files, parse_deny_report, parse_reviewed_list,
-        vendored_notice_files, write_directory,
+        VendoredCrate, assemble, is_notice_file, notice_files, parse_deny_report,
+        parse_reviewed_list, vendored_crates, write_directory,
     };
     use crate::osv::PackageId;
     use crate::scratch::Scratch;
@@ -598,6 +662,17 @@ mod tests {
             name: name.to_owned(),
             version: version.to_owned(),
         }
+    }
+
+    fn vendored(declared: &str, files: &[&str]) -> VendoredCrate {
+        VendoredCrate {
+            declared: Some(declared.to_owned()),
+            files: files.iter().map(|&file| file.to_owned()).collect(),
+        }
+    }
+
+    fn names(names: &[&str]) -> BTreeSet<String> {
+        names.iter().map(|&name| name.to_owned()).collect()
     }
 
     fn rust_std() -> Component {
@@ -654,12 +729,6 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
                 .iter()
                 .any(|component| component.directory == "rust-std"
                     && component.shipped == Shipped::Always)
-        );
-        assert!(
-            components
-                .iter()
-                .any(|component| component.directory == "onnxruntime"
-                    && component.shipped == Shipped::WithCrate("ort".to_owned()))
         );
     }
 
@@ -766,30 +835,23 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
         }
     }
 
-    fn inputs_with<'a>(
-        shipped: &'a BTreeSet<PackageId>,
-        vendored: &'a BTreeMap<PackageId, Vec<String>>,
-        licences: &'a BTreeMap<PackageId, Vec<String>>,
-        components: &'a [Component],
-    ) -> Inputs<'a> {
-        Inputs {
-            shipped,
-            vendored,
-            licences,
-            components,
-        }
-    }
-
     #[test]
     fn r_doc_3__every_shipped_crate_contributes_its_files_and_an_index_line() {
         let shipped = BTreeSet::from([package("memchr", "2.8.3"), package("tokio", "1.53.2")]);
+        let locked = names(&["memchr", "tokio", "cc"]);
         let vendored = BTreeMap::from([
             (
                 package("memchr", "2.8.3"),
-                vec!["COPYING".to_owned(), "LICENSE-MIT".to_owned()],
+                vendored("Unlicense OR MIT", &["COPYING", "LICENSE-MIT"]),
             ),
-            (package("tokio", "1.53.2"), vec!["LICENSE".to_owned()]),
-            (package("cc", "1.6.0"), vec!["LICENSE-MIT".to_owned()]),
+            (
+                package("tokio", "1.53.2"),
+                VendoredCrate {
+                    declared: None,
+                    files: vec!["LICENSE".to_owned()],
+                },
+            ),
+            (package("cc", "1.6.0"), vendored("MIT", &["LICENSE-MIT"])),
         ]);
         let licences = BTreeMap::from([
             (
@@ -798,7 +860,16 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
             ),
             (package("tokio", "1.53.2"), vec!["MIT".to_owned()]),
         ]);
-        let assembly = assemble(inputs_with(&shipped, &vendored, &licences, &[]), |_| true);
+        let assembly = assemble(
+            Inputs {
+                shipped: &shipped,
+                locked: &locked,
+                vendored: &vendored,
+                licences: &licences,
+                components: &[],
+            },
+            |_| true,
+        );
         assert_eq!(
             assembly,
             Assembly {
@@ -816,9 +887,10 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
                         target: "crates/tokio-1.53.2/LICENSE".to_owned(),
                     },
                 ],
-                index:
-                    "crate\tversion\tlicences\nmemchr\t2.8.3\tUnlicense, MIT\ntokio\t1.53.2\tMIT\n"
-                        .to_owned(),
+                index: "crate\tversion\tdeclared\tdetected\n\
+                        memchr\t2.8.3\tUnlicense OR MIT\tUnlicense, MIT\n\
+                        tokio\t1.53.2\t-\tMIT\n"
+                    .to_owned(),
                 findings: Vec::new(),
             }
         );
@@ -831,16 +903,26 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
             package("bare", "1.0.0"),
             package("unknown", "1.0.0"),
         ]);
+        let locked = names(&["absent", "bare", "unknown"]);
         let vendored = BTreeMap::from([
-            (package("bare", "1.0.0"), Vec::new()),
-            (package("unknown", "1.0.0"), vec!["LICENSE".to_owned()]),
+            (package("bare", "1.0.0"), vendored("MIT", &[])),
+            (package("unknown", "1.0.0"), vendored("MIT", &["LICENSE"])),
         ]);
         let licences = BTreeMap::from([
             (package("absent", "1.0.0"), vec!["MIT".to_owned()]),
             (package("bare", "1.0.0"), vec!["MIT".to_owned()]),
             (package("unknown", "1.0.0"), Vec::new()),
         ]);
-        let assembly = assemble(inputs_with(&shipped, &vendored, &licences, &[]), |_| true);
+        let assembly = assemble(
+            Inputs {
+                shipped: &shipped,
+                locked: &locked,
+                vendored: &vendored,
+                licences: &licences,
+                components: &[],
+            },
+            |_| true,
+        );
         assert_eq!(
             assembly.findings,
             [
@@ -853,11 +935,19 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
 
     #[test]
     fn r_doc_3__a_component_ships_always_or_with_its_crate() {
-        let empty = BTreeMap::new();
+        let empty_vendored = BTreeMap::new();
+        let empty_licences = BTreeMap::new();
+        let locked = names(&["ort"]);
         let components = [rust_std(), onnxruntime()];
         let without_ort = BTreeSet::new();
         let assembly = assemble(
-            inputs_with(&without_ort, &empty, &empty, &components),
+            Inputs {
+                shipped: &without_ort,
+                locked: &locked,
+                vendored: &empty_vendored,
+                licences: &empty_licences,
+                components: &components,
+            },
             |_| true,
         );
         assert_eq!(
@@ -867,13 +957,20 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
                 target: "rust-std/COPYRIGHT-library.html".to_owned(),
             }]
         );
+        assert!(assembly.findings.is_empty());
 
         let ort = package("ort", "2.0.0-rc.14");
         let with_ort = BTreeSet::from([ort.clone()]);
-        let vendored = BTreeMap::from([(ort.clone(), vec!["LICENSE-MIT".to_owned()])]);
+        let vendored_ort = BTreeMap::from([(ort.clone(), vendored("MIT", &["LICENSE-MIT"]))]);
         let licences = BTreeMap::from([(ort, vec!["MIT".to_owned()])]);
         let assembly = assemble(
-            inputs_with(&with_ort, &vendored, &licences, &components),
+            Inputs {
+                shipped: &with_ort,
+                locked: &locked,
+                vendored: &vendored_ort,
+                licences: &licences,
+                components: &components,
+            },
             |_| true,
         );
         assert!(assembly.copies.contains(&PlannedFile {
@@ -885,16 +982,48 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
     }
 
     #[test]
+    fn r_doc_3__a_component_naming_a_crate_outside_the_lockfile_is_a_finding() {
+        let empty_vendored = BTreeMap::new();
+        let empty_licences = BTreeMap::new();
+        let shipped = BTreeSet::new();
+        let locked = names(&["tokio"]);
+        let assembly = assemble(
+            Inputs {
+                shipped: &shipped,
+                locked: &locked,
+                vendored: &empty_vendored,
+                licences: &empty_licences,
+                components: &[onnxruntime()],
+            },
+            |_| true,
+        );
+        assert_eq!(
+            assembly.findings,
+            [Finding::UnknownCrate {
+                component: "ONNX Runtime".to_owned(),
+                name: "ort".to_owned(),
+            }]
+        );
+    }
+
+    #[test]
     fn r_doc_3__a_shipped_component_whose_file_is_missing_is_a_finding() {
-        let empty = BTreeMap::new();
         let ort = package("ort", "2.0.0-rc.14");
         let shipped = BTreeSet::from([ort.clone()]);
-        let vendored = BTreeMap::from([(ort.clone(), vec!["LICENSE-MIT".to_owned()])]);
+        let locked = names(&["ort"]);
+        let vendored_ort = BTreeMap::from([(ort.clone(), vendored("MIT", &["LICENSE-MIT"]))]);
         let licences = BTreeMap::from([(ort, vec!["MIT".to_owned()])]);
         let components = [rust_std(), onnxruntime()];
+        let only_toolchain = |file: &ComponentFile| matches!(file, ComponentFile::Toolchain(_));
         let assembly = assemble(
-            inputs_with(&shipped, &vendored, &licences, &components),
-            |file| matches!(file, ComponentFile::Toolchain(_)),
+            Inputs {
+                shipped: &shipped,
+                locked: &locked,
+                vendored: &vendored_ort,
+                licences: &licences,
+                components: &components,
+            },
+            only_toolchain,
         );
         assert_eq!(
             assembly.findings,
@@ -906,10 +1035,18 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
             }]
         );
         let not_shipped = BTreeSet::new();
+        let empty_vendored = BTreeMap::new();
+        let empty_licences = BTreeMap::new();
         assert!(
             assemble(
-                inputs_with(&not_shipped, &empty, &empty, &components),
-                |file| matches!(file, ComponentFile::Toolchain(_)),
+                Inputs {
+                    shipped: &not_shipped,
+                    locked: &locked,
+                    vendored: &empty_vendored,
+                    licences: &empty_licences,
+                    components: &components,
+                },
+                only_toolchain,
             )
             .findings
             .is_empty()
@@ -939,8 +1076,45 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
     }
 
     #[test]
+    fn r_doc_3__the_vendored_manifest_gives_the_declared_licence() {
+        let vendor = Scratch::new();
+        vendor.write(
+            "tokio-1.53.2/Cargo.toml",
+            "[package]\nname = \"tokio\"\nlicense = \"MIT\"\n",
+        );
+        vendor.write("tokio-1.53.2/LICENSE", "MIT");
+        vendor.write(
+            "ring-0.17.14/Cargo.toml",
+            "[package]\nname = \"ring\"\nlicense-file = \"LICENSE\"\n",
+        );
+        vendor.write("ring-0.17.14/LICENSE", "ISC");
+        let packages = BTreeSet::from([
+            package("tokio", "1.53.2"),
+            package("ring", "0.17.14"),
+            package("absent", "1.0.0"),
+        ]);
+        assert_eq!(
+            vendored_crates(vendor.path(), &packages).unwrap(),
+            BTreeMap::from([
+                (package("tokio", "1.53.2"), vendored("MIT", &["LICENSE"])),
+                (
+                    package("ring", "0.17.14"),
+                    VendoredCrate {
+                        declared: None,
+                        files: vec!["LICENSE".to_owned()],
+                    }
+                ),
+            ])
+        );
+    }
+
+    #[test]
     fn r_doc_3__the_notices_directory_holds_unmodified_copies_and_the_index() {
         let workspace = Scratch::new();
+        workspace.write(
+            "vendor/tokio-1.53.2/Cargo.toml",
+            "[package]\nname = \"tokio\"\nlicense = \"MIT\"\n",
+        );
         workspace.write("vendor/tokio-1.53.2/LICENSE", "tokio licence\r\n");
         workspace.write("vendor/tokio-1.53.2/src/lib.rs", "");
         workspace.write("vendor/serde-1.0.0/LICENSE-MIT", "serde licence");
@@ -948,11 +1122,18 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
         workspace.write("legal/stale.txt", "left over");
         let vendor = workspace.path().join("vendor");
         let shipped = BTreeSet::from([package("tokio", "1.53.2")]);
-        let vendored = vendored_notice_files(&vendor, &shipped).unwrap();
+        let locked = names(&["tokio", "serde"]);
+        let vendored = vendored_crates(&vendor, &shipped).unwrap();
         let licences = BTreeMap::from([(package("tokio", "1.53.2"), vec!["MIT".to_owned()])]);
         let components = [rust_std()];
         let assembly = assemble(
-            inputs_with(&shipped, &vendored, &licences, &components),
+            Inputs {
+                shipped: &shipped,
+                locked: &locked,
+                vendored: &vendored,
+                licences: &licences,
+                components: &components,
+            },
             |_| true,
         );
         let target = workspace.path().join("legal");
@@ -976,7 +1157,7 @@ files = [{ repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt"
         );
         assert_eq!(
             fs::read_to_string(target.join("crates/index.tsv")).unwrap(),
-            "crate\tversion\tlicences\ntokio\t1.53.2\tMIT\n"
+            "crate\tversion\tdeclared\tdetected\ntokio\t1.53.2\tMIT\tMIT\n"
         );
         assert!(!target.join("stale.txt").exists());
         assert!(!target.join("crates/serde-1.0.0").exists());

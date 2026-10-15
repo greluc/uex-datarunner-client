@@ -22,9 +22,10 @@ use xtask::guard::scan;
 use xtask::header;
 use xtask::licence;
 use xtask::listing::check_listing;
+use xtask::lockfile;
 use xtask::notices::{
     ComponentFile, Inputs, NOTICES_DIRECTORY, REVIEWED_LIST_PATH, Roots, assemble,
-    parse_deny_report, parse_reviewed_list, vendored_notice_files, write_directory,
+    parse_deny_report, parse_reviewed_list, vendored_crates, write_directory,
 };
 use xtask::osv::{judge, shipped_packages, shipped_roots};
 use xtask::registry::Registry;
@@ -148,6 +149,7 @@ fn cargo_stdout(root: &Path, args: &[&str]) -> io::Result<String> {
 fn shipped_graph(
     root: &Path,
     edges: &str,
+    targets: &[&str],
 ) -> io::Result<(Vec<String>, BTreeSet<xtask::osv::PackageId>)> {
     let metadata = cargo_stdout(
         root,
@@ -156,7 +158,7 @@ fn shipped_graph(
     let roots = shipped_roots(&metadata).map_err(io::Error::other)?;
     let mut shipped = BTreeSet::new();
     for name in &roots {
-        for target in SHIPPED_TARGETS {
+        for target in targets {
             let tree = cargo_stdout(
                 root,
                 &[
@@ -182,7 +184,7 @@ fn shipped_graph(
 }
 
 fn run_osv_gate(root: &Path, report: &Path) -> io::Result<ExitCode> {
-    let (roots, shipped) = shipped_graph(root, OSV_EDGES)?;
+    let (roots, shipped) = shipped_graph(root, OSV_EDGES, &SHIPPED_TARGETS)?;
     let text = fs::read_to_string(report)
         .map_err(|error| io::Error::new(error.kind(), format!("{}: {error}", report.display())))?;
     let verdict = judge(&text, &shipped).map_err(io::Error::other)?;
@@ -370,10 +372,10 @@ fn toolchain_sysroot(root: &Path) -> io::Result<PathBuf> {
 fn write_notices(root: &Path) -> io::Result<ExitCode> {
     let components = parse_reviewed_list(&fs::read_to_string(root.join(REVIEWED_LIST_PATH))?)
         .map_err(io::Error::other)?;
-    let (roots, linked) = shipped_graph(root, LINKED_EDGES)?;
-    let shipped: BTreeSet<_> = linked
+    let locked: BTreeSet<String> = lockfile::parse(&fs::read_to_string(root.join(LOCKFILE))?)
+        .map_err(|error| io::Error::other(error.to_string()))?
         .into_iter()
-        .filter(|package| !roots.contains(&package.name))
+        .map(|package| package.name)
         .collect();
     let licences = parse_deny_report(&cargo_stdout(
         root,
@@ -383,48 +385,65 @@ fn write_notices(root: &Path) -> io::Result<ExitCode> {
     )?)
     .map_err(io::Error::other)?;
     let sysroot = toolchain_sysroot(root)?;
-    let target = root.join(NOTICES_WORK_DIR).join(NOTICES_DIRECTORY);
-    let assembly = with_vendor_tree(root, |_, vendor_dir| {
-        let vendored = vendored_notice_files(vendor_dir, &shipped)?;
-        let assembly = assemble(
-            Inputs {
-                shipped: &shipped,
-                vendored: &vendored,
-                licences: &licences,
-                components: &components,
-            },
-            |file| match file {
-                ComponentFile::Toolchain(path) => sysroot.join(path).is_file(),
-                ComponentFile::Repository(path) => root.join(path).is_file(),
-            },
-        );
-        if assembly.findings.is_empty() {
-            write_directory(
-                &target,
-                &assembly,
-                Roots {
-                    vendor: vendor_dir,
-                    toolchain: &sysroot,
-                    repository: root,
+    let mut graphs = Vec::new();
+    for target in SHIPPED_TARGETS {
+        let (roots, linked) = shipped_graph(root, LINKED_EDGES, &[target])?;
+        let shipped: BTreeSet<_> = linked
+            .into_iter()
+            .filter(|package| !roots.contains(&package.name))
+            .collect();
+        graphs.push((target, shipped));
+    }
+    let work_dir = root.join(NOTICES_WORK_DIR);
+    if work_dir.exists() {
+        fs::remove_dir_all(&work_dir)?;
+    }
+    let passed = with_vendor_tree(root, |_, vendor_dir| {
+        let mut passed = true;
+        for (target, shipped) in &graphs {
+            let vendored = vendored_crates(vendor_dir, shipped)?;
+            let assembly = assemble(
+                Inputs {
+                    shipped,
+                    locked: &locked,
+                    vendored: &vendored,
+                    licences: &licences,
+                    components: &components,
                 },
-            )?;
-        } else if target.exists() {
-            fs::remove_dir_all(&target)?;
+                |file| match file {
+                    ComponentFile::Toolchain(path) => sysroot.join(path).is_file(),
+                    ComponentFile::Repository(path) => root.join(path).is_file(),
+                },
+            );
+            for finding in &assembly.findings {
+                writeln!(io::stderr(), "{target}: {finding}")?;
+            }
+            if assembly.findings.is_empty() {
+                write_directory(
+                    &work_dir.join(target).join(NOTICES_DIRECTORY),
+                    &assembly,
+                    Roots {
+                        vendor: vendor_dir,
+                        toolchain: &sysroot,
+                        repository: root,
+                    },
+                )?;
+                writeln!(
+                    io::stderr(),
+                    "wrote {NOTICES_WORK_DIR}/{target}/{NOTICES_DIRECTORY}: {} files for {} shipped crates and the reviewed list",
+                    assembly.copies.len(),
+                    shipped.len()
+                )?;
+            } else {
+                passed = false;
+            }
         }
-        Ok(assembly)
+        Ok(passed)
     })?;
-    for finding in &assembly.findings {
-        writeln!(io::stderr(), "{finding}")?;
+    if !passed && work_dir.exists() {
+        fs::remove_dir_all(&work_dir)?;
     }
-    if assembly.findings.is_empty() {
-        writeln!(
-            io::stderr(),
-            "wrote {NOTICES_WORK_DIR}/{NOTICES_DIRECTORY}: {} files for {} shipped crates and the reviewed list",
-            assembly.copies.len(),
-            shipped.len()
-        )?;
-    }
-    Ok(exit_status(assembly.findings.is_empty()))
+    Ok(exit_status(passed))
 }
 
 fn check_requirement_tags(list: &[String], root: &Path) -> io::Result<bool> {

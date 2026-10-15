@@ -10,7 +10,7 @@ Committed records of the supply-chain measures of `docs/plan/10-supply-chain-sec
 | `imports.lock` | The audits imported from the sources of `config.toml`, as fetched when `cargo vet regenerate imports` last ran |
 | `bootstrap-exemptions.txt` | The crates that the bootstrap exemptions of `config.toml` cover; the set only shrinks (10 S-6) |
 | `notices.toml` | The reviewed list of 10 S-34: the shipped components whose licence texts `cargo-deny` cannot see, read by `cargo xtask notices` (R-DOC-3) |
-| `notices/<directory>/` | Licence and notice files of reviewed-list components that come from the repository; created with the first one (the ONNX Runtime texts, when the library ships) |
+| `notices/<directory>/` | Licence and notice files of reviewed-list components that no shipped artefact carries, copied unmodified from their upstream source: `jitterentropy/LICENSE` and `s2n-bignum/LICENSE` from aws/aws-lc at the commit `aws-lc-sys` bundles (`NOTICE` §2.19, O-134) |
 
 ## `notices.toml`
 
@@ -18,17 +18,17 @@ One `[[component]]` table per component:
 
 ```toml
 [[component]]
-directory = "onnxruntime"
-name = "ONNX Runtime"
-shipped = { with-crate = "ort" }
-files = [{ repository = "supply-chain/notices/onnxruntime/LICENSE" }]
+directory = "jitterentropy"
+name = "The jitterentropy library inside aws-lc-sys"
+shipped = { with-crate = "aws-lc-sys" }
+files = [{ repository = "supply-chain/notices/jitterentropy/LICENSE" }]
 ```
 
 - `directory` is the subdirectory of the notices directory `legal/` that receives the files: one lower-case segment, never `crates`, which holds the crate files.
-- `shipped` is `"always"` or `{ with-crate = "<crate>" }`; an entry of the second kind takes effect as soon as the crate is in the shipped dependency graph, so its files are required from then on.
-- `files` are copied unmodified under their file names. A `toolchain` path is relative to the sysroot of the pinned toolchain (`rustc --print sysroot`), a `repository` path to the workspace root. A repository file is third-party text: it is committed unmodified, gets an override in `REUSE.toml` with its own licence and copyright, and its origin and SHA-256 go into `NOTICE`.
+- `shipped` is `"always"` or `{ with-crate = "<crate>" }`; an entry of the second kind takes effect for a target as soon as the crate is in that target's shipped dependency graph, so its files are required from then on. The crate must be in `Cargo.lock`, so an entry is added in the change that makes its component ship, never in advance (O-135); the ONNX Runtime entry, with its MIT text, `ThirdPartyNotices.txt` and `Privacy.md`, comes with `ort`.
+- `files` are copied unmodified under their file names. A `toolchain` path is relative to the sysroot of the pinned toolchain (`rustc --print sysroot`), a `repository` path to the workspace root. A repository file is third-party text: it is committed unmodified under `notices/<directory>/`, and its origin and SHA-256 go into `NOTICE`. REUSE does not read files named `LICENSE`, `COPYING` and the like; a file with any other name gets an override in `REUSE.toml` with its own licence and copyright.
 
-`cargo xtask notices` fails when a file of a shipped entry is missing. What the shipped artefacts cannot supply yet is O-134.
+`cargo xtask notices` fails when a file of a shipped entry is missing or an entry names a crate outside `Cargo.lock`.
 
 ## `vendor-hashes.txt`
 

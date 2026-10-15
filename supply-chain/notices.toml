@@ -6,17 +6,18 @@ files = [
     { toolchain = "share/doc/rust/COPYRIGHT-library.html" },
     { toolchain = "share/doc/rust/licenses/Apache-2.0.txt" },
     { toolchain = "share/doc/rust/licenses/MIT.txt" },
-    { toolchain = "share/doc/rust/licenses/BSD-2-Clause.txt" },
     { toolchain = "share/doc/rust/licenses/LLVM-exception.txt" },
     { toolchain = "share/doc/rust/licenses/Unicode-3.0.txt" },
 ]
 
 [[component]]
-directory = "onnxruntime"
-name = "ONNX Runtime"
-shipped = { with-crate = "ort" }
-files = [
-    { repository = "supply-chain/notices/onnxruntime/LICENSE" },
-    { repository = "supply-chain/notices/onnxruntime/ThirdPartyNotices.txt" },
-    { repository = "supply-chain/notices/onnxruntime/Privacy.md" },
-]
+directory = "jitterentropy"
+name = "The jitterentropy library inside aws-lc-sys"
+shipped = { with-crate = "aws-lc-sys" }
+files = [{ repository = "supply-chain/notices/jitterentropy/LICENSE" }]
+
+[[component]]
+directory = "s2n-bignum"
+name = "The s2n-bignum library inside aws-lc-sys"
+shipped = { with-crate = "aws-lc-sys" }
+files = [{ repository = "supply-chain/notices/s2n-bignum/LICENSE" }]
