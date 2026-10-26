@@ -7,7 +7,4 @@ digest
 hashbrown
 hybrid-array
 indexmap
-libc
-sha2
-toml
 typenum
