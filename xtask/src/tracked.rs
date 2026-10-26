@@ -22,24 +22,40 @@ pub const LIST_ARGUMENTS: [&str; 5] = [
 
 const SNIFF_BYTES: u64 = 8192;
 
-const GIT_ENVIRONMENT: [&str; 6] = [
+const GIT_ENVIRONMENT: [&str; 16] = [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
     "GIT_DIR",
     "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
     "GIT_INDEX_FILE",
-    "GIT_OBJECT_DIRECTORY",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
     "GIT_COMMON_DIR",
     "GIT_CEILING_DIRECTORIES",
 ];
+
+/// Removes from `command` the repository-local `GIT_*` variables that a Git hook or
+/// `git rebase --exec` exports, so a child process finds its repository from its own directory.
+pub fn without_git_environment(command: &mut Command) -> &mut Command {
+    for name in GIT_ENVIRONMENT {
+        command.env_remove(name);
+    }
+    command
+}
 
 /// A `git` command that runs in `root` without the `GIT_*` variables a Git hook exports, so it
 /// acts on the repository at `root` and never on the one that started the hook.
 #[must_use]
 pub fn git_command(root: &Path) -> Command {
     let mut command = Command::new("git");
-    for name in GIT_ENVIRONMENT {
-        command.env_remove(name);
-    }
-    command.current_dir(root);
+    without_git_environment(&mut command).current_dir(root);
     command
 }
 
@@ -115,8 +131,35 @@ pub fn read_text(root: &Path, paths: &[String]) -> io::Result<Vec<SourceFile>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_listing, paths, read_text};
+    use std::path::Path;
+    use std::process::Command;
+
+    use super::{git_command, parse_listing, paths, read_text};
     use crate::scratch::Scratch;
+
+    fn removed_variables(command: &Command) -> Vec<String> {
+        command
+            .get_envs()
+            .filter(|(_, value)| value.is_none())
+            .map(|(name, _)| name.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn a_git_command_drops_every_variable_git_calls_repository_local() {
+        let output = Command::new("git")
+            .args(["rev-parse", "--local-env-vars"])
+            .output()
+            .unwrap();
+        assert!(output.status.success());
+        let removed = removed_variables(&git_command(Path::new(".")));
+        let local = String::from_utf8(output.stdout).unwrap();
+        let inherited: Vec<&str> = local
+            .lines()
+            .filter(|name| !removed.iter().any(|removed| removed == name))
+            .collect();
+        assert!(inherited.is_empty(), "{inherited:?}");
+    }
 
     #[test]
     fn the_listing_is_split_at_nul_sorted_and_deduplicated() {

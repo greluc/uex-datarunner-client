@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
 use crate::scratch::Scratch;
+use crate::tracked::without_git_environment;
 
 const ROOT_LICENSE: &str = "GPL-3.0-or-later";
 
@@ -89,18 +90,24 @@ fn project(members: &[Member]) -> Scratch {
     project
 }
 
-fn run(project: &Scratch, program: &str, arguments: &[&str]) -> Output {
+fn fixture_command(project: &Scratch, program: &str, arguments: &[&str]) -> Command {
     let cargo = std::env::var_os("CARGO").unwrap_or_else(|| program.into());
     let program = if program == "cargo" {
         cargo
     } else {
         program.into()
     };
-    Command::new(program)
+    let mut command = Command::new(program);
+    without_git_environment(&mut command)
         .args(arguments)
         .current_dir(project.path())
         .env("CARGO_HOME", project.path().join("cargo-home"))
-        .env("CARGO_TARGET_DIR", project.path().join("target"))
+        .env("CARGO_TARGET_DIR", project.path().join("target"));
+    command
+}
+
+fn run(project: &Scratch, program: &str, arguments: &[&str]) -> Output {
+    fixture_command(project, program, arguments)
         .output()
         .unwrap()
 }
@@ -158,7 +165,25 @@ fn git_dependency(project: &Scratch) -> String {
     reason = "tagged test names use a double underscore (11 B4)"
 )]
 mod tests {
-    use super::{Member, gate, git_dependency, project, repository_root, root_manifest, stderr};
+    use super::{
+        Member, fixture_command, gate, git_dependency, project, repository_root, root_manifest,
+        stderr,
+    };
+    use crate::scratch::Scratch;
+
+    #[test]
+    fn fixture_commands_do_not_inherit_the_repository_of_a_git_hook() {
+        let project = Scratch::new();
+        for program in ["git", "cargo"] {
+            let command = fixture_command(&project, program, &["--version"]);
+            assert!(
+                command
+                    .get_envs()
+                    .any(|(name, value)| name == "GIT_DIR" && value.is_none()),
+                "{program} inherits GIT_DIR"
+            );
+        }
+    }
 
     const ALLOWED: [&str; 16] = [
         "Apache-2.0",
