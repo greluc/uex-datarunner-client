@@ -77,4 +77,4 @@ The logo, the trademark line of the Fan Kit Guidelines §2b and the notice of th
 
 ## Disclaimer
 
-Unofficial community project, not affiliated with UEX Corp or Cloud Imperium Games / Roberts Space Industries.
+Independent community project, not made or endorsed by UEX Corp and not affiliated with UEX Corp or Cloud Imperium Games / Roberts Space Industries.
