@@ -103,14 +103,14 @@ behaviour is a finding.
 
 ### In scope
 
-- **UEX secret key handling.** The secret key (and a UEX app token, if UEX
-  requires one) is stored only in the OS keystore: Windows Credential Manager
+- **UEX secret key handling.** The secret key (and a UEX app token the user
+  entered instead of the built-in one) is stored only in the OS keystore: Windows Credential Manager
   or the Linux Secret Service. Only on Linux, and only if the Secret Service
   is unavailable, a fallback file with permissions 0600 is used after an
   explicit warning (R-NF-4). The key must never appear in a log line, in the
   diagnostics export (R-NF-6), in a screenshot or in this repository, and it
   must never go to a host other than the UEX hosts that R-API-3 allows (the
-  built-in base and fallback hosts, or a custom host the user confirmed as an
+  built-in base host, or a custom host the user confirmed as an
   expert setting). Any path that leaks the key, stores it elsewhere or sends
   it elsewhere is in scope.
 - **Screenshot and balance leakage.** The upload screenshot holds only the

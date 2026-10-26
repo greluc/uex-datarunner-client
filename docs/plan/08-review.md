@@ -1,6 +1,6 @@
 # Review of the plan (2026-10-08)
 
-> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-12.
+> **Doc type:** Historical record — corrections are new dated sections. Last reviewed: 2026-10-26.
 
 All documents under `docs/plan/` were reviewed, plus `CLAUDE.md` and `README.md`. The criteria were completeness, factual errors, logic gaps and contradictions between the documents. The findings have been corrected directly in the documents. This list records **what** was wrong or incomplete, so that the changes remain traceable.
 
@@ -473,3 +473,18 @@ Reading guide for the findings above:
 - Findings about the Java toolchain, packaging and licence duties (JDK 27 versus 25, the jlink image and the ONNX Runtime merge, JavaFX natives, WiX through jpackage, OpenJDK and OpenJFX source archives, the Licensee gate, Gradle dependency verification) are overtaken. The matching open points are marked moot or amended in the [register](../adr/0000-open-points.md) (O-9, O-11, O-12, O-14 to O-16, O-25, O-35, O-66, O-67), and O-108 to O-124 record the new decisions.
 - The accessibility question O-73 is narrowed: R-UI-17 no longer contains the screen-reader requirement, which became R-UI-17a (Could).
 - Section K question 20 (JDK security-release rhythm) and question 21 (WiX) are moot; the Rust toolchain rhythm is O-119 and the installer decision is O-116.
+
+## R. UEX answers and owner decisions (2026-10-26)
+
+UEX answered the 22 questions of issue #19 by e-mail on 2026-10-25, and a follow-up the same day reported server fixes made because of them (06 tag [UEX]). The sections above stay as written; where they rest on the superseded facts, this section and the documents it names supersede them.
+
+- **Facts that changed the plan:** `api.uexcorp.uk` is the primary host and `api.uexcorp.space` must not be a desktop client's fallback; the quota is daily per app token, with no per-minute limit, and runs out as HTTP 429 `exceeded_daily_quota`; `container_sizes` is read per row; a request stops at its first failing row and keeps the rows before it; `service_unavailable` and the image errors come before any row is stored; only the current game version is accepted (A18 refuted); the live price follows submission order, not `date_added`; dry runs are never stored; `duplicated_report` and `too_many_reports` count only the user's own reports since the follow-up; UEX resizes stored screenshots to fit 1920×1080.
+- **O-85** reopened and decided: one Tallyline app token in the release artefacts, a user's own token only in a build without it or through an expert setting. A2, R-API-4, R-NF-4, 02 §2, §6, §9 N1 and L1, 05 F39, 06 "Basics", 10 S-14, `CLAUDE.md` "Working rules". How the token reaches the artefacts is O-139.
+- **O-69** decided: no test account exists; the scheduled drift job is GET-only without credentials, and dry-run writes run locally with the owner's key and approval per call. 04 M0, M1; 10 S-14; `CLAUDE.md` "Tests".
+- **O-136** (per-row `container_sizes`, the split of O-92 withdrawn): R-OCR-9, R-SUB-1; 02 §3, §6; 05 F27; 07 §2.4; 11 §A1, §A3.
+- **O-137** (one submission per capture instead of a stitched screenshot): R-SUB-7, A11; 02 §2, §3 "Capture split" (`splitByCapture`), §6; 11 §A1, §A3; release process step 3.
+- **O-138** (rows stored before an error, default applied) and the new assumption **A25**: R-SUB-9, R-SUB-11; 02 §6; 06 "Rows stored before an error".
+- **O-140** (`scu_variation` is a percentage; the SCU tolerance keeps its settings default for now): R-VAL-2, A15.
+- **Requirements that followed their own condition:** R-SUB-9 and R-SUB-11 move `service_unavailable`, `image_upload_error` and `image_storage_error` to the not-processed set, as R-SUB-11 had foreseen; R-API-3 keeps an empty fallback list; R-CAP-3b drops the "keep the capture-time version" choice once a newer version exists, as A18 had foreseen; R-SUB-4 and the cooldown key keep their shape (A12 verified); R-VAL-8 keeps its rule, now confirmed; R-SUB-2 loses the 120/min bucket.
+- **Answered without plan change:** O-19, O-50 (new default), O-106 (UEX may be named, with an independence statement; README updated), O-53, O-55, O-89, O-98.
+- **Asked again:** 06 open points 30 to 36.

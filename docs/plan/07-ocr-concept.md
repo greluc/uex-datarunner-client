@@ -1,6 +1,6 @@
 # OCR concept
 
-> **Doc type:** Living spec — binding. Last reviewed: 2026-10-14.
+> **Doc type:** Living spec — binding. Last reviewed: 2026-10-26.
 
 ## 1. Observations on real screenshots (Patch City, Pyro)
 
@@ -193,7 +193,7 @@ The parsers get a **field-typed raw string** per card field. Deciding which toke
   - A read set gets `Inconsistent` (below the send threshold) if it is not a contiguous run (assumption A22), if its box count does not match the read sizes, or – once the field meaning is verified ([06](06-uex-api.md) open point 26) – if its largest size exceeds the terminal's `max_container_size`.
   - Such a set is never forced onto a run.
   - Once the assumption is confirmed on the corpus, the matcher's vocabulary is restricted to the 28 contiguous runs; a reading that fits none stays `Inconsistent`.
-  - A set that is sent groups its row with the other rows of the same set into one report (R-OCR-9, O-92; 02 §3 "Container-size split").
+  - A set that is sent goes into its own row's `container_sizes` (R-OCR-9, O-136); rows with different sets share one report. Corrected 2026-10-26: the grouping of rows by set into separate reports (O-92) is withdrawn, because UEX reads the field per row.
 
 ### 2.5 Resolution and validation with UEX data
 
